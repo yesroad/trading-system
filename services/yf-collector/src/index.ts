@@ -29,17 +29,9 @@ function env(name: string) {
   const v = process.env[name];
   return v ?? "";
 }
+const YF_RUN_MODE = env("YF_RUN_MODE");
 
-const RUN_MODE = (env("YF_RUN_MODE") || "MARKET_ONLY") as RunMode;
-
-// 2편 기준: 휴일은 “최소만” 하드코딩 (필요 시 추가)
-// ※ 정확한 전체 휴장 캘린더는 다음 편에서 개선 가능
-const US_MARKET_HOLIDAYS = new Set<string>([
-  "2026-01-01", // New Year's Day
-  "2026-01-19", // MLK Day
-  "2026-02-16", // Washington's Birthday
-  // 필요 시 추가
-]);
+const RUN_MODE = (YF_RUN_MODE || "MARKET_ONLY") as RunMode;
 
 const SERVICE_NAME = "yf-collector" as const;
 
@@ -84,10 +76,23 @@ function isWeekend(dt: DateTime) {
   return dt.weekday >= 6;
 }
 
-function isHoliday(dt: DateTime) {
-  const d = dt.toISODate();
-  if (!d) return false;
-  return US_MARKET_HOLIDAYS.has(d);
+async function isUsMarketClosed(dateIso: string) {
+  const { data, error } = await supabase
+    .from("market_calendar")
+    .select("status, reason")
+    .eq("market", "US")
+    .eq("venue", "NYSE")
+    .eq("date", dateIso)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[yf-collector] market_calendar 조회 실패", error);
+    // 조회 실패 시에는 수집을 멈추지 않음
+    return { closed: false, reason: "" };
+  }
+
+  if (!data) return { closed: false, reason: "" };
+  return { closed: data.status === "closed", reason: data.reason ?? "" };
 }
 
 function minutesOfDay(dt: DateTime) {
@@ -110,7 +115,7 @@ function isInExtendedHours(dt: DateTime) {
  * 이번 실행을 스킵할지 판단
  * - 스킵은 실패가 아니라 정상 처리
  */
-function shouldSkipNow() {
+async function shouldSkipNow() {
   const dt = nowNy();
 
   if (RUN_MODE === "ALWAYS") {
@@ -121,8 +126,15 @@ function shouldSkipNow() {
     return { skip: true as const, reason: "주말" };
   }
 
-  if (isHoliday(dt)) {
-    return { skip: true as const, reason: "미국장 휴일" };
+  const d = dt.toISODate();
+  if (d) {
+    const h = await isUsMarketClosed(d);
+    if (h.closed) {
+      return {
+        skip: true as const,
+        reason: `미국장 휴일${h.reason ? ` (${h.reason})` : ""}`,
+      };
+    }
   }
 
   if (RUN_MODE === "EXTENDED") {
@@ -144,6 +156,8 @@ await safeUpsertWorkerStatus({ state: "unknown", message: "시작됨" });
 
 // 프로세스 내부 중복 실행 방지
 let isRunning = false;
+// 스킵 상태(사유) 캐시: 같은 사유로 계속 스킵될 때 로그/DB 업데이트를 반복하지 않음
+let lastSkipReason: string | null = null;
 
 // 백오프 상태
 let backoffMs = BACKOFF_MIN_MS;
@@ -165,17 +179,27 @@ async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
     return { ok: true, skipped: true };
   }
 
-  const { skip, reason } = shouldSkipNow();
+  const { skip, reason } = await shouldSkipNow();
   if (skip) {
-    console.log("[yf-collector] 실행 스킵:", reason);
+    // 같은 사유로 반복 스킵이면 조용히(로그/DB 업데이트 최소화)
+    if (lastSkipReason !== reason) {
+      lastSkipReason = reason;
+      console.log("[yf-collector] 실행 스킵:", reason);
 
-    await safeUpsertWorkerStatus({
-      state: "skipped",
-      message: reason,
-      last_event_at: new Date().toISOString(),
-    });
+      await safeUpsertWorkerStatus({
+        state: "skipped",
+        message: reason,
+        last_event_at: new Date().toISOString(),
+      });
+    }
 
     return { ok: true, skipped: true }; // 실패 아님
+  }
+
+  // 스킵 상태에서 정상 실행으로 돌아오는 순간(1회)
+  if (lastSkipReason !== null) {
+    console.log("[yf-collector] 수집 재개");
+    lastSkipReason = null;
   }
 
   isRunning = true;
@@ -269,11 +293,7 @@ async function loop() {
   const delay = nextDelayMs(successForScheduling);
 
   if (result.skipped) {
-    console.log(
-      "[yf-collector] 다음 실행까지 대기:",
-      Math.round(delay / 1000),
-      "초"
-    );
+    // 스킵 상태에서는 콘솔을 조용하게 유지(필요하면 lastSkipReason 변경 시점에만 로그가 남음)
   } else if (result.ok) {
     console.log(
       "[yf-collector] 다음 실행까지 대기:",
@@ -292,5 +312,4 @@ async function loop() {
 }
 
 // 시작 시 한 번 실행, 이후 루프
-await runOnce();
-setTimeout(loop, BASE_LOOP_MS);
+void loop();
