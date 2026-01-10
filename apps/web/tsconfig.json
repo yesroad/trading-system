@@ -1,0 +1,15 @@
+{
+  "extends": "../../packages/typescript-config/web.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@workspace/ui/*": ["../../packages/ui/src/*"]
+    },
+    "incremental": true,
+    "jsx": "preserve",
+    "plugins": [{ "name": "next" }]
+  },
+  "include": [".", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
