@@ -2,6 +2,8 @@
  * KIS (모의) - 토큰 발급 + 국내주식 현재가 조회
  */
 
+import { env } from "./utils/env.js";
+
 type KisTokenResponse = {
   access_token: string;
   expires_in: number; // seconds
@@ -45,22 +47,9 @@ let cachedToken: { value: string; expiresAt: number } | null = null;
 // 토큰 발급 실패 시 쿨다운(기본 60초)
 let nextTokenRequestAt = 0;
 
-function env(name: string) {
-  const v = process.env[name];
-  if (!v) {
-    console.error(`[kis-collector] 환경변수 누락: ${name}`);
-    throw new Error(`${name} is missing`);
-  }
-  return v;
-}
-
 const BASE_URL = env("KIS_BASE_URL");
 const APP_KEY = env("KIS_APP_KEY");
 const APP_SECRET = env("KIS_APP_SECRET");
-
-console.log(
-  `[kis-collector] ENV 확인 KIS_BASE_URL=${BASE_URL ? "OK" : "MISSING"}`
-);
 
 async function getAccessToken() {
   const now = Date.now();
