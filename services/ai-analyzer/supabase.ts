@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { env } from "./utils/env.js";
+import { env } from "./utils/env";
 
 /**
  * 서버/워커용 Supabase 클라이언트

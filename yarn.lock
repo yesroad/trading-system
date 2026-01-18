@@ -1025,7 +1025,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@supabase/supabase-js@npm:^2.90.1":
+"@supabase/supabase-js@npm:^2.57.0, @supabase/supabase-js@npm:^2.90.1":
   version: 2.90.1
   resolution: "@supabase/supabase-js@npm:2.90.1"
   dependencies:
@@ -1622,6 +1622,20 @@ __metadata:
   checksum: 10c0/c2c9ab7599692d594b6a161559ada307b7a624fa4c7b03e3afdb5a5e31cd0e53269115b620fcab024c5ac6a6f37fa5eb2e004f076ad30f5f7e6b8b671f7b35fe
   languageName: node
   linkType: hard
+
+"ai-analyzer@workspace:services/ai-analyzer":
+  version: 0.0.0-use.local
+  resolution: "ai-analyzer@workspace:services/ai-analyzer"
+  dependencies:
+    "@supabase/supabase-js": "npm:^2.57.0"
+    "@types/luxon": "npm:^3.7.1"
+    "@workspace/eslint-config": "npm:*"
+    dotenv: "npm:^17.2.3"
+    luxon: "npm:^3.6.0"
+    tsx: "npm:^4.20.0"
+    typescript: "npm:^5.9.2"
+  languageName: unknown
+  linkType: soft
 
 "ajv@npm:^6.12.4":
   version: 6.12.6
@@ -3822,7 +3836,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"luxon@npm:^3.7.2":
+"luxon@npm:^3.6.0, luxon@npm:^3.7.2":
   version: 3.7.2
   resolution: "luxon@npm:3.7.2"
   checksum: 10c0/ed8f0f637826c08c343a29dd478b00628be93bba6f068417b1d8896b61cb61c6deacbe1df1e057dbd9298334044afa150f9aaabbeb3181418ac8520acfdc2ae2
@@ -5092,7 +5106,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tsx@npm:^4.21.0":
+"tsx@npm:^4.20.0, tsx@npm:^4.21.0":
   version: 4.21.0
   resolution: "tsx@npm:4.21.0"
   dependencies:
@@ -5266,7 +5280,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.9.3":
+"typescript@npm:^5.9.2, typescript@npm:^5.9.3":
   version: 5.9.3
   resolution: "typescript@npm:5.9.3"
   bin:
@@ -5286,7 +5300,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
+"typescript@patch:typescript@npm%3A^5.9.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
   version: 5.9.3
   resolution: "typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"
   bin:
