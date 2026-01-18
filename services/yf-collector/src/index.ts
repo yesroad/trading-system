@@ -9,9 +9,9 @@
  */
 
 import { DateTime } from "luxon";
-import { supabase } from "./supabase";
-import { fetchYahooBars } from "./fetchYahoo";
-import { upsertBars } from "./db";
+import { supabase } from "./supabase.js";
+import { fetchYahooBars } from "./fetchYahoo.js";
+import { upsertBars } from "./db.js";
 
 const SYMBOLS = ["AAPL", "TSLA"];
 const TIMEFRAME = "1m";
