@@ -1,37 +1,35 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
-
-import tailwindcss from "eslint-plugin-tailwindcss";
+import nextConfig from "eslint-config-next";
+import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginPrettier from "eslint-plugin-prettier";
 import unusedImports from "eslint-plugin-unused-imports";
-import prettier from "eslint-config-prettier";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
 
 export default [
-  ...compat.extends("next", "next/core-web-vitals", "next/typescript"),
+  // 검사 제외 대상
+  {
+    ignores: [
+      "node_modules/",
+      ".next/",
+      "dist/",
+      ".turbo/",
+      "out/",
+      "coverage/",
+    ],
+  },
 
+  // Next.js 설정 (flat config)
+  ...nextConfig,
+
+  // Prettier 충돌 규칙 비활성화
+  eslintConfigPrettier,
+
+  // 커스텀 규칙
   {
     files: ["**/*.{js,jsx,ts,tsx}"],
-    languageOptions: {
-      parserOptions: {
-        ecmaVersion: 2022,
-        sourceType: "module",
-      },
-    },
     plugins: {
-      tailwindcss,
       prettier: eslintPluginPrettier,
       "unused-imports": unusedImports,
     },
     rules: {
-      ...prettier.rules,
       "prettier/prettier": [
         "warn",
         {
@@ -43,8 +41,11 @@ export default [
           bracketSameLine: false,
         },
       ],
-      "tailwindcss/classnames-order": "warn",
       "unused-imports/no-unused-imports": "warn",
+
+      // 타입스크립트 unused-vars는 plugin으로 대체
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": "off",
     },
   },
 ];

@@ -1,5 +1,16 @@
-import { supabase } from "./supabase.js";
-import type { AiFilterDecision, EquityBar, Market } from "./types/ai.js";
+import { supabase } from './supabase.js';
+import type { AiFilterDecision, EquityBar, Market } from './types/ai.js';
+import type { JsonValue } from './types/json.js';
+import type { Nullable } from './types/utils.js';
+
+type EquityBarRow = {
+  ts: string | number | Date;
+  open: string | number;
+  high: string | number;
+  low: string | number;
+  close: string | number;
+  volume?: string | number | null;
+};
 
 /**
  * equity_bars에서 최근 구간 바 데이터를 가져온다.
@@ -14,20 +25,21 @@ export async function fetchRecentBars(params: {
   window_end: string;
 }): Promise<EquityBar[]> {
   const { data, error } = await supabase
-    .from("equity_bars")
-    .select("ts, open, high, low, close, volume")
-    .eq("symbol", params.symbol)
-    .eq("timeframe", params.timeframe)
-    .gte("ts", params.window_start)
-    .lte("ts", params.window_end)
-    .order("ts", { ascending: true });
+    .from('equity_bars')
+    .select('ts, open, high, low, close, volume')
+    .eq('symbol', params.symbol)
+    .eq('timeframe', params.timeframe)
+    .gte('ts', params.window_start)
+    .lte('ts', params.window_end)
+    .order('ts', { ascending: true });
 
   if (error) {
-    console.error("[ai-analyzer] equity_bars 조회 실패", error);
+    console.error('[ai-analyzer] equity_bars 조회 실패', error);
     throw new Error(String(error.message ?? error));
   }
 
-  return (data ?? []).map((r: any) => ({
+  const rows = (data ?? []) as EquityBarRow[];
+  return rows.map((r) => ({
     ts: String(r.ts),
     open: Number(r.open),
     high: Number(r.high),
@@ -43,17 +55,17 @@ export async function insertAnalysisRun(params: {
   input_hash: string;
   window_start: string;
   window_end: string;
-  status: "success" | "failed" | "skipped";
-  skip_reason?: string | null;
-  error_message?: string | null;
-  latency_ms?: number | null;
-  model?: string | null;
-  prompt_tokens?: number | null;
-  completion_tokens?: number | null;
-  total_tokens?: number | null;
+  status: 'success' | 'failed' | 'skipped';
+  skip_reason?: Nullable<string>;
+  error_message?: Nullable<string>;
+  latency_ms?: Nullable<number>;
+  model?: Nullable<string>;
+  prompt_tokens?: Nullable<number>;
+  completion_tokens?: Nullable<number>;
+  total_tokens?: Nullable<number>;
 }) {
-  const { error } = await supabase.from("analysis_runs").insert({
-    service: "ai-analyzer",
+  const { error } = await supabase.from('analysis_runs').insert({
+    service: 'ai-analyzer',
     market: params.market,
     symbol: params.symbol,
     input_hash: params.input_hash,
@@ -70,7 +82,7 @@ export async function insertAnalysisRun(params: {
   });
 
   if (error) {
-    console.error("[ai-analyzer] analysis_runs 기록 실패", error);
+    console.error('[ai-analyzer] analysis_runs 기록 실패', error);
   }
 }
 
@@ -83,7 +95,7 @@ export async function upsertAiResult(params: {
   input_hash: string;
   result: AiFilterDecision;
 }) {
-  const { error } = await supabase.from("ai_analysis_results").upsert(
+  const { error } = await supabase.from('ai_analysis_results').upsert(
     {
       market: params.market,
       symbol: params.symbol,
@@ -96,13 +108,13 @@ export async function upsertAiResult(params: {
       confidence: params.result.confidence,
       reason: params.result.reason,
       tags: params.result.tags ?? [],
-      raw: (params.result.raw ?? null) as any,
+      raw: (params.result.raw ?? null) as JsonValue | null,
     },
-    { onConflict: "market,symbol,window_end,input_hash" }
+    { onConflict: 'market,symbol,window_end,input_hash' },
   );
 
   if (error) {
-    console.error("[ai-analyzer] ai_analysis_results upsert 실패", error);
+    console.error('[ai-analyzer] ai_analysis_results upsert 실패', error);
   }
 }
 
@@ -117,15 +129,15 @@ export async function hasAiResult(params: {
   input_hash: string;
 }) {
   const { data, error } = await supabase
-    .from("ai_analysis_results")
-    .select("id")
-    .eq("symbol", params.symbol)
-    .eq("window_end", params.window_end)
-    .eq("input_hash", params.input_hash)
+    .from('ai_analysis_results')
+    .select('id')
+    .eq('symbol', params.symbol)
+    .eq('window_end', params.window_end)
+    .eq('input_hash', params.input_hash)
     .limit(1);
 
   if (error) {
-    console.error("[ai-analyzer] ai_analysis_results 중복 체크 실패", error);
+    console.error('[ai-analyzer] ai_analysis_results 중복 체크 실패', error);
     return false;
   }
   return (data?.length ?? 0) > 0;

@@ -1,4 +1,4 @@
-import "dotenv/config";
+import 'dotenv/config';
 
 /**
  * 환경변수 유틸
@@ -14,7 +14,7 @@ export function env(name: string): string {
 }
 
 /** 있으면 쓰고 없으면 기본값 */
-export function envOptional(name: string, fallback = ""): string {
+export function envOptional(name: string, fallback = ''): string {
   return process.env[name] ?? fallback;
 }
 
@@ -22,5 +22,5 @@ export function envOptional(name: string, fallback = ""): string {
 export function envBool(name: string, fallback: boolean): boolean {
   const v = process.env[name];
   if (v == null) return fallback;
-  return v.toLowerCase() === "true";
+  return v.toLowerCase() === 'true';
 }

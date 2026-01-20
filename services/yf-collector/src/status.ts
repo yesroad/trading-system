@@ -2,26 +2,22 @@
  * 워커 상태(모드/스킵/성공/실패)를 DB에 남기는 용도
  */
 
-import { supabase } from "./supabase.js";
+import { supabase } from './supabase.js';
+import type { Nullable } from './types/utils.js';
 
-export type WorkerState =
-  | "unknown"
-  | "running"
-  | "success"
-  | "failed"
-  | "skipped";
+export type WorkerState = 'unknown' | 'running' | 'success' | 'failed' | 'skipped';
 
 export async function upsertWorkerStatus(params: {
   service: string; // 'yf-collector'
   run_mode: string; // MARKET_ONLY/EXTENDED/ALWAYS
   state: WorkerState;
-  message?: string | null;
+  message?: Nullable<string>;
   last_event_at?: string; // ISO
-  last_success_at?: string | null;
+  last_success_at?: Nullable<string>;
 }) {
   const now = new Date().toISOString();
 
-  const { error } = await supabase.from("worker_status").upsert(
+  const { error } = await supabase.from('worker_status').upsert(
     {
       service: params.service,
       run_mode: params.run_mode,
@@ -31,7 +27,7 @@ export async function upsertWorkerStatus(params: {
       last_success_at: params.last_success_at ?? null,
       updated_at: now,
     },
-    { onConflict: "service" }
+    { onConflict: 'service' },
   );
 
   if (error) throw error;
