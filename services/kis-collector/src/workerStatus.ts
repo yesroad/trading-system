@@ -2,27 +2,23 @@
  * worker_status 업데이트 유틸
  */
 
-import { supabase } from "./supabase.js";
+import { supabase } from './supabase.js';
+import type { Nullable } from './types/utils.js';
 
-export type WorkerState =
-  | "unknown"
-  | "running"
-  | "success"
-  | "failed"
-  | "skipped";
+export type WorkerState = 'unknown' | 'running' | 'success' | 'failed' | 'skipped';
 
-const SERVICE_NAME = "kis-collector" as const;
+const SERVICE_NAME = 'kis-collector' as const;
 
 export async function upsertWorkerStatus(params: {
   run_mode: string;
   state: WorkerState;
-  message?: string | null;
+  message?: Nullable<string>;
   last_event_at?: string;
-  last_success_at?: string | null;
+  last_success_at?: Nullable<string>;
 }) {
   const nowIso = new Date().toISOString();
 
-  const { error } = await supabase.from("worker_status").upsert(
+  const { error } = await supabase.from('worker_status').upsert(
     {
       service: SERVICE_NAME,
       run_mode: params.run_mode,
@@ -32,10 +28,10 @@ export async function upsertWorkerStatus(params: {
       last_success_at: params.last_success_at ?? null,
       updated_at: nowIso,
     },
-    { onConflict: "service" }
+    { onConflict: 'service' },
   );
 
   if (error) {
-    console.error("[kis-collector] worker_status 업데이트 실패", error);
+    console.error('[kis-collector] worker_status 업데이트 실패', error);
   }
 }

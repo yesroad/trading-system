@@ -1,4 +1,4 @@
-import "dotenv/config";
+import 'dotenv/config';
 
 export function env(name: string): string {
   const v = process.env[name];

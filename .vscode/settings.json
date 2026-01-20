@@ -1,0 +1,17 @@
+{
+  // Flat Config 사용 명시
+  "eslint.experimental.useFlatConfig": true,
+
+  // 저장 시 ESLint 자동 수정
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // 검사 대상 언어 명시
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ]
+}

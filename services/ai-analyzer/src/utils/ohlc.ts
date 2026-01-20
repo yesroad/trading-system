@@ -1,4 +1,4 @@
-import type { EquityBar, OhlcSummary } from "../types/ai.js";
+import type { EquityBar, OhlcSummary } from '../types/ai.js';
 
 /**
  * OHLC 시계열에서 아주 가벼운 요약/지표만 만든다.

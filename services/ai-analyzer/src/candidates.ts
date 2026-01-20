@@ -44,7 +44,7 @@ export function decideCandidate(ohlc: OhlcSummary): CandidateDecision {
   return {
     isCandidate,
     score: Number(score.toFixed(2)),
-    reason: reasons.length ? reasons.join(', ') : 'no signal'
+    reason: reasons.length ? reasons.join(', ') : 'no signal',
   };
 }
 
@@ -63,9 +63,9 @@ export async function upsertCandidate(params: {
       timeframe: params.timeframe,
       window_end: params.window_end,
       score: params.score,
-      reason: params.reason
+      reason: params.reason,
     },
-    { onConflict: 'market,symbol,window_end' }
+    { onConflict: 'market,symbol,window_end' },
   );
 
   if (error) {
@@ -73,10 +73,7 @@ export async function upsertCandidate(params: {
   }
 }
 
-export async function loadCandidates(params: {
-  market: Market;
-  window_end: string;
-}) {
+export async function loadCandidates(params: { market: Market; window_end: string }) {
   const { data, error } = await supabase
     .from('analysis_candidates')
     .select('symbol, timeframe, score, reason')

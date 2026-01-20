@@ -1,13 +1,28 @@
-export type Market = "US" | "KR";
+import type { Nullable } from './utils.js';
+import type { JsonValue } from './json.js';
 
-export type AiDecision = "ALLOW" | "CAUTION" | "BLOCK";
+export type Market = 'US' | 'KR';
+
+export type AiDecision = 'ALLOW' | 'CAUTION' | 'BLOCK';
 
 export type AiFilterDecision = {
   decision: AiDecision;
   confidence: number; // 0~1
   reason: string; // 한글 한 줄
   tags?: string[];
-  raw?: unknown;
+  raw?: JsonValue;
+};
+
+export type AiUsage = {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+};
+
+export type OpenAiResponse = {
+  choices?: Array<{ message?: { content?: unknown } }>;
+  usage?: AiUsage;
+  model?: string;
 };
 
 export type EquityBar = {
@@ -16,7 +31,7 @@ export type EquityBar = {
   high: number;
   low: number;
   close: number;
-  volume?: number | null;
+  volume?: Nullable<number>;
 };
 
 export type OhlcSummary = {
