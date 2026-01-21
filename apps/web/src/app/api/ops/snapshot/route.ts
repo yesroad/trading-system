@@ -11,9 +11,6 @@ import type {
 
 export const runtime = 'nodejs';
 
-// ✅ 서버 전용 env 권장: NEXT_PUBLIC_* 말고 별도 키로
-// (지금 envServer가 NEXT_PUBLIC만 받도록 되어있다면 일단 유지하고,
-//  나중에 envServer를 서버 전용 키로 옮기는 걸 추천)
 const SUPABASE_URL = envServer('NEXT_PUBLIC_SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = envServer('NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY');
 
@@ -33,6 +30,29 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function lagMinutesFromIso(iso: string | null): number | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return null;
+  const diffMs = Date.now() - t;
+  // 미래 시각이 들어오면 0으로 클램프
+  return Math.max(0, Math.floor(diffMs / 60_000));
+}
+
+function buildLagByService(rows: WorkerStatusRow[]) {
+  const lagByService: Record<string, number | null> = {};
+  const lags: number[] = [];
+
+  for (const r of rows) {
+    const lag = lagMinutesFromIso(r.last_success_at);
+    lagByService[r.service] = lag;
+    if (typeof lag === 'number') lags.push(lag);
+  }
+
+  const lagMinutesMax = lags.length === 0 ? null : Math.max(...lags);
+  return { lagByService, lagMinutesMax };
+}
+
 async function withTtl<T>(params: {
   key: string;
   ttlMs: number;
@@ -42,7 +62,6 @@ async function withTtl<T>(params: {
   const now = Date.now();
   const hit = cache.get(params.key) as CacheEntry<T> | undefined;
 
-  // ✅ force면 캐시를 무시하고 무조건 새로 로딩
   if (!params.force && hit && hit.expiresAt > now) {
     return { generatedAt: hit.generatedAt, value: hit.value, cacheHit: true };
   }
@@ -59,7 +78,6 @@ export async function GET(req: Request) {
   const force = url.searchParams.get('force') === '1';
 
   try {
-    // 블록별 TTL (ms)
     const TTL_WORKER_MS = 3_000;
     const TTL_RUNS_MS = 10_000;
 
@@ -72,8 +90,9 @@ export async function GET(req: Request) {
           .from('worker_status')
           .select('service, run_mode, state, message, last_event_at, last_success_at, updated_at')
           .order('service', { ascending: true });
+
         if (error) throw new Error(error.message);
-        return data ?? [];
+        return (data ?? []) as WorkerStatusRow[];
       },
     });
 
@@ -89,8 +108,9 @@ export async function GET(req: Request) {
           )
           .order('started_at', { ascending: false })
           .limit(20);
+
         if (error) throw new Error(error.message);
-        return data ?? [];
+        return (data ?? []) as IngestionRunRow[];
       },
     });
 
@@ -106,8 +126,9 @@ export async function GET(req: Request) {
           )
           .order('created_at', { ascending: false })
           .limit(30);
+
         if (error) throw new Error(error.message);
-        return data ?? [];
+        return (data ?? []) as AnalysisRunRow[];
       },
     });
 
@@ -123,25 +144,30 @@ export async function GET(req: Request) {
           )
           .order('created_at', { ascending: false })
           .limit(20);
+
         if (error) throw new Error(error.message);
-        return data ?? [];
+        return (data ?? []) as AiResultRow[];
       },
     });
 
-    // ✅ 전체 cacheHit: 모든 블록이 hit일 때만 true
     const allHit =
       workerStatus.cacheHit &&
       ingestionRuns.cacheHit &&
       analysisRuns.cacheHit &&
       aiResults.cacheHit;
 
+    // ✅ 1번: 서버에서 “지연(분)” 계산
+    const { lagByService, lagMinutesMax } = buildLagByService(workerStatus.value);
+
     const body: OpsSnapshot = {
       meta: {
         generatedAt: nowIso(),
         force,
-        // “대시보드가 이해하기 쉬운” 표현: runs 기준 TTL을 대표로
         ttlSeconds: TTL_RUNS_MS / 1000,
         cacheHit: allHit,
+
+        lagMinutesMax,
+        lagByService,
       },
       blocks: {
         workerStatus: {
