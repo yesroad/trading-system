@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 type EnvKey =
   | 'SUPABASE_URL'
   | 'SUPABASE_SERVICE_ROLE_KEY'

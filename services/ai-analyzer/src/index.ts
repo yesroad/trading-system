@@ -11,38 +11,31 @@
  * - DUPLICATE_INPUT이면 호출 안 함
  */
 
-import { DateTime } from "luxon";
+import { DateTime } from 'luxon';
 
-import { envBool, envOptional } from "./utils/env";
-import { sha256 } from "./utils/hash";
-import { summarizeBars } from "./utils/ohlc";
-import { buildAiContext } from "./utils/summary";
+import { envBool, envOptional } from './utils/env';
+import { sha256 } from './utils/hash';
+import { summarizeBars } from './utils/ohlc';
+import { buildAiContext } from './utils/summary';
 
-import { callAiFilter } from "./ai";
-import {
-  fetchRecentBars,
-  hasAiResult,
-  insertAnalysisRun,
-  upsertAiResult,
-} from "./db";
-import { decideCandidate, loadCandidates, upsertCandidate } from "./candidates";
-import { supabase } from "./supabase";
-import type { Market } from "./types/ai";
-import type { Nullable } from "./types/utils";
+import { callAiFilter } from './ai';
+import { fetchRecentBars, hasAiResult, insertAnalysisRun, upsertAiResult } from './db';
+import { decideCandidate, loadCandidates, upsertCandidate } from './candidates';
+import { supabase } from './supabase';
+import type { Market } from './types/ai';
+import type { Nullable } from './types/utils';
 
-console.log("[ai-analyzer] 시작");
+console.log('[ai-analyzer] 시작');
 
-const AI_ENABLED = envBool("AI_ENABLED", false);
-const MARKET = (envOptional("AI_MARKET", "US") as Market) ?? "US";
-const TIMEFRAME = envOptional("AI_TIMEFRAME", "1m");
+const AI_ENABLED = envBool('AI_ENABLED', false);
+const MARKET = (envOptional('AI_MARKET', 'US') as Market) ?? 'US';
+const TIMEFRAME = envOptional('AI_TIMEFRAME', '1m');
 
-const INTERVAL_MS = Number(
-  envOptional("AI_INTERVAL_MS", String(15 * 60 * 1000)),
-);
-const WINDOW_MINUTES = Number(envOptional("AI_WINDOW_MINUTES", "240"));
+const INTERVAL_MS = Number(envOptional('AI_INTERVAL_MS', String(15 * 60 * 1000)));
+const WINDOW_MINUTES = Number(envOptional('AI_WINDOW_MINUTES', '240'));
 
-const SYMBOLS = (envOptional("AI_SYMBOLS", "AAPL,TSLA") || "AAPL,TSLA")
-  .split(",")
+const SYMBOLS = (envOptional('AI_SYMBOLS', 'AAPL,TSLA') || 'AAPL,TSLA')
+  .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
 
@@ -52,7 +45,7 @@ function getErrorMessage(error: unknown) {
 }
 
 function nowNy() {
-  return DateTime.now().setZone("America/New_York");
+  return DateTime.now().setZone('America/New_York');
 }
 
 function isWeekendNy(dt: DateTime) {
@@ -62,21 +55,21 @@ function isWeekendNy(dt: DateTime) {
 
 async function isUsHolidayNy(dateIso: string) {
   const { data, error } = await supabase
-    .from("market_calendar")
-    .select("status, reason")
-    .eq("market", "US")
-    .eq("venue", "NYSE")
-    .eq("date", dateIso)
+    .from('market_calendar')
+    .select('status, reason')
+    .eq('market', 'US')
+    .eq('venue', 'NYSE')
+    .eq('date', dateIso)
     .maybeSingle();
 
   if (error) {
     // 휴일 조회 실패는 "스킵"으로 만들지 않는다. (운영 중단 방지)
-    console.error("[ai-analyzer] market_calendar 조회 실패", error);
-    return { closed: false as const, reason: "" };
+    console.error('[ai-analyzer] market_calendar 조회 실패', error);
+    return { closed: false as const, reason: '' };
   }
 
-  if (!data) return { closed: false as const, reason: "" };
-  return { closed: data.status === "closed", reason: data.reason ?? "" };
+  if (!data) return { closed: false as const, reason: '' };
+  return { closed: data.status === 'closed', reason: data.reason ?? '' };
 }
 
 function computeWindow() {
@@ -102,17 +95,17 @@ async function recordGlobalSkip(params: {
 
   lastSkipReason = params.reason;
 
-  console.log("[ai-analyzer] 실행 스킵:", params.reason);
+  console.log('[ai-analyzer] 실행 스킵:', params.reason);
 
   await insertAnalysisRun({
     market: MARKET,
-    symbol: "__ALL__",
+    symbol: '__ALL__',
     input_hash: sha256(
       `${MARKET}:${TIMEFRAME}:${params.window_start}:${params.window_end}:${params.reason}`,
     ),
     window_start: params.window_start,
     window_end: params.window_end,
-    status: "skipped",
+    status: 'skipped',
     skip_reason: params.reason,
   });
 }
@@ -123,7 +116,7 @@ async function runOnce() {
 
   // 0) 주말 스킵 (평일 24시간 실행 정책)
   if (isWeekendNy(dt)) {
-    await recordGlobalSkip({ window_start, window_end, reason: "WEEKEND" });
+    await recordGlobalSkip({ window_start, window_end, reason: 'WEEKEND' });
     return;
   }
 
@@ -132,7 +125,7 @@ async function runOnce() {
   if (d) {
     const h = await isUsHolidayNy(d);
     if (h.closed) {
-      const reason = `MARKET_HOLIDAY${h.reason ? ` (${h.reason})` : ""}`;
+      const reason = `MARKET_HOLIDAY${h.reason ? ` (${h.reason})` : ''}`;
       await recordGlobalSkip({ window_start, window_end, reason });
       return;
     }
@@ -141,7 +134,7 @@ async function runOnce() {
   // 평일/비휴일로 돌아오면 스킵 캐시 리셋 + 재개 로그 1회
   if (lastSkipReason !== null) {
     lastSkipReason = null;
-    console.log("[ai-analyzer] 평일/비휴일 감지 → 수집 재개");
+    console.log('[ai-analyzer] 평일/비휴일 감지 → 수집 재개');
   }
 
   // 2) 후보 생성(모든 심볼에 대해)
@@ -165,8 +158,8 @@ async function runOnce() {
           ),
           window_start,
           window_end,
-          status: "skipped",
-          skip_reason: "INSUFFICIENT_BARS",
+          status: 'skipped',
+          skip_reason: 'INSUFFICIENT_BARS',
         });
         continue;
       }
@@ -184,16 +177,11 @@ async function runOnce() {
           reason: candidate.reason,
         });
 
-        console.log(
-          "[ai-analyzer] 후보:",
-          symbol,
-          `score=${candidate.score}`,
-          candidate.reason,
-        );
+        console.log('[ai-analyzer] 후보:', symbol, `score=${candidate.score}`, candidate.reason);
       }
     } catch (e: unknown) {
       const msg = getErrorMessage(e);
-      console.error("[ai-analyzer] 후보 생성 실패:", symbol, msg);
+      console.error('[ai-analyzer] 후보 생성 실패:', symbol, msg);
 
       await insertAnalysisRun({
         market: MARKET,
@@ -203,7 +191,7 @@ async function runOnce() {
         ),
         window_start,
         window_end,
-        status: "failed",
+        status: 'failed',
         error_message: msg.slice(0, 300),
       });
     }
@@ -213,18 +201,16 @@ async function runOnce() {
   const candidates = await loadCandidates({ market: MARKET, window_end });
 
   if (candidates.length === 0) {
-    console.log("[ai-analyzer] 후보 없음 → AI 호출 스킵");
+    console.log('[ai-analyzer] 후보 없음 → AI 호출 스킵');
 
     await insertAnalysisRun({
       market: MARKET,
-      symbol: "__ALL__",
-      input_hash: sha256(
-        `${MARKET}:${TIMEFRAME}:${window_start}:${window_end}:NO_CANDIDATE`,
-      ),
+      symbol: '__ALL__',
+      input_hash: sha256(`${MARKET}:${TIMEFRAME}:${window_start}:${window_end}:NO_CANDIDATE`),
       window_start,
       window_end,
-      status: "skipped",
-      skip_reason: "NO_CANDIDATE",
+      status: 'skipped',
+      skip_reason: 'NO_CANDIDATE',
     });
 
     return;
@@ -253,8 +239,8 @@ async function runOnce() {
           ),
           window_start,
           window_end,
-          status: "skipped",
-          skip_reason: "INSUFFICIENT_BARS",
+          status: 'skipped',
+          skip_reason: 'INSUFFICIENT_BARS',
         });
         continue;
       }
@@ -284,8 +270,8 @@ async function runOnce() {
           input_hash,
           window_start,
           window_end,
-          status: "skipped",
-          skip_reason: "DUPLICATE_INPUT",
+          status: 'skipped',
+          skip_reason: 'DUPLICATE_INPUT',
         });
         continue;
       }
@@ -297,8 +283,8 @@ async function runOnce() {
           input_hash,
           window_start,
           window_end,
-          status: "skipped",
-          skip_reason: "AI_DISABLED",
+          status: 'skipped',
+          skip_reason: 'AI_DISABLED',
         });
         continue;
       }
@@ -324,7 +310,7 @@ async function runOnce() {
         input_hash,
         window_start,
         window_end,
-        status: "success",
+        status: 'success',
         latency_ms,
         model: ai.model ?? null,
         prompt_tokens: usage?.prompt_tokens ?? null,
@@ -333,7 +319,7 @@ async function runOnce() {
       });
 
       console.log(
-        "[ai-analyzer] 저장:",
+        '[ai-analyzer] 저장:',
         symbol,
         ai.result.decision,
         `conf=${ai.result.confidence.toFixed(2)}`,
@@ -343,7 +329,7 @@ async function runOnce() {
       const latency_ms = Date.now() - t0;
       const msg = getErrorMessage(e);
 
-      console.error("[ai-analyzer] AI 실패:", symbol, msg);
+      console.error('[ai-analyzer] AI 실패:', symbol, msg);
 
       await insertAnalysisRun({
         market: MARKET,
@@ -353,7 +339,7 @@ async function runOnce() {
         ),
         window_start,
         window_end,
-        status: "failed",
+        status: 'failed',
         error_message: msg.slice(0, 300),
         latency_ms,
       });
@@ -366,12 +352,12 @@ async function loop() {
   setTimeout(loop, INTERVAL_MS);
 }
 
-console.log("[ai-analyzer] 모드:", AI_ENABLED ? "ON" : "OFF");
+console.log('[ai-analyzer] 모드:', AI_ENABLED ? 'ON' : 'OFF');
 console.log(
-  "[ai-analyzer] 대상:",
+  '[ai-analyzer] 대상:',
   MARKET,
   TIMEFRAME,
   `window=${WINDOW_MINUTES}m`,
-  SYMBOLS.join(","),
+  SYMBOLS.join(','),
 );
 void loop();

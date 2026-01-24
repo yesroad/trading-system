@@ -7,18 +7,57 @@ import type { UpbitTicker, UpbitMinuteCandle } from './types/upbit';
 
 type WorkerState = 'unknown' | 'running' | 'success' | 'failed' | 'skipped';
 
+/**
+ * worker_status 테이블 업서트 payload
+ * - running 상태에서는 last_success_at 같은 값은 "유지"하고 싶어서 optional로 둔다.
+ */
 type WorkerStatusUpsert = {
   service: string;
   state: WorkerState;
-  run_mode: string | null;
-  message: string | null;
-  last_event_at: string | null;
-  last_success_at: string | null;
-  updated_at: string | null;
+  run_mode?: string | null;
+  message?: string | null;
+  last_event_at?: string | null;
+  last_success_at?: string | null;
+  updated_at?: string | null;
 };
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+// Upbit의 candle_date_time_utc는 보통 타임존 표시(Z)가 없는 형태라서,
+// DB(timestamptz) 저장/변환 시 UTC로 명확히 해준다.
+function normalizeUtcIso(utcLike: string): string {
+  // 이미 Z 또는 오프셋(+09:00 등)이 있으면 그대로 사용
+  if (utcLike.endsWith('Z')) return utcLike;
+  if (/[+-]\d{2}:\d{2}$/.test(utcLike)) return utcLike;
+  return `${utcLike}Z`;
+}
+
+// UTC ISO → KST 로컬 시각 문자열(YYYY-MM-DD HH:mm:ss)
+// (DB의 candle_time_kst 컬럼을 timestamp(타임존 없음)으로 쓰기 위한 값)
+function utcIsoToKstLocalTimestamp(utcIso: string): string {
+  const d = new Date(utcIso);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`시간 파싱 실패(UTC): ${utcIso}`);
+  }
+
+  // sv-SE 로케일은 "YYYY-MM-DD HH:mm:ss" 형태로 안정적으로 반환
+  return d.toLocaleString('sv-SE', {
+    timeZone: 'Asia/Seoul',
+    hour12: false,
+  });
+}
+
+// ISO 문자열(UTC/Z 포함) 중 더 최신(큰) 값을 고른다.
+function pickLaterIso(a: string | null, b: string | null): string | null {
+  if (!a) return b;
+  if (!b) return a;
+  const ta = new Date(a).getTime();
+  const tb = new Date(b).getTime();
+  if (Number.isNaN(ta)) return b;
+  if (Number.isNaN(tb)) return a;
+  return ta >= tb ? a : b;
 }
 
 function timeframeToMinuteUnit(tf: string): number {
@@ -31,6 +70,10 @@ function timeframeToMinuteUnit(tf: string): number {
   return unit;
 }
 
+/**
+ * worker_status 업서트
+ * - undefined는 payload에 넣지 않아서 "기존 값 유지"가 가능하게 한다.
+ */
 async function upsertWorkerStatus(patch: WorkerStatusUpsert): Promise<void> {
   const payload: WorkerStatusUpsert = {
     ...patch,
@@ -67,32 +110,34 @@ async function insertIngestionRun(params: {
 async function upsertUpbitCandles(rows: UpbitMinuteCandle[]): Promise<number> {
   if (rows.length === 0) return 0;
 
-  // ✅ upbit_candles 테이블에 맞춰 저장
-  // 기대 컬럼 예:
-  // market, timeframe, candle_time_kst, open, high, low, close, volume, trade_price, created_at
-  const payload = rows.map((c) => ({
-    market: c.market,
-    timeframe: `${c.unit}m`,
-    candle_time_kst: c.candle_date_time_kst,
-    candle_time_utc: c.candle_date_time_utc,
-    open: c.opening_price,
-    high: c.high_price,
-    low: c.low_price,
-    close: c.trade_price,
-    volume: c.candle_acc_trade_volume,
-    trade_price: c.candle_acc_trade_price,
-    source_timestamp: c.timestamp,
-    created_at: nowIso(),
-  }));
+  const payload = rows.map((c) => {
+    const candleTimeUtc = normalizeUtcIso(c.candle_date_time_utc);
+    const candleTimeKst = utcIsoToKstLocalTimestamp(candleTimeUtc);
 
+    return {
+      market: c.market,
+      timeframe: `${c.unit}m`,
+      candle_time_kst: candleTimeKst, // timestamp (tz 없음)로 저장
+      candle_time_utc: candleTimeUtc, // timestamptz (UTC 명시)로 저장
+      open: c.opening_price,
+      high: c.high_price,
+      low: c.low_price,
+      close: c.trade_price,
+      volume: c.candle_acc_trade_volume,
+      trade_price: c.candle_acc_trade_price,
+      source_timestamp: c.timestamp,
+      created_at: nowIso(),
+    };
+  });
+
+  // 중요: onConflict 컬럼 조합과 DB의 UNIQUE(또는 CONSTRAINT) 조합이 정확히 일치해야 함
   const { error, data } = await supabase
     .from('upbit_candles')
-    .upsert(payload, { onConflict: 'market,timeframe,candle_time_kst' })
+    .upsert(payload, { onConflict: 'market,timeframe,candle_time_utc' })
     .select('market');
 
   if (error) throw new Error(`upbit_candles 저장 실패: ${error.message}`);
 
-  // select 결과 row 수로 inserted/updated 수를 대략 반환
   return Array.isArray(data) ? data.length : rows.length;
 }
 
@@ -118,8 +163,7 @@ async function mainLoop(): Promise<void> {
         run_mode: 'loop',
         message: '수집 루프 실행 중',
         last_event_at: startedAt,
-        last_success_at: null,
-        updated_at: null,
+        // running 때 last_success_at을 null로 덮어쓰지 않기 위해 아예 보내지 않는다.
       });
 
       // 1) KRW 마켓 전체 스캔 (SCAN_INTERVAL마다 갱신)
@@ -136,8 +180,7 @@ async function mainLoop(): Promise<void> {
         console.log(`[업비트 수집기] KRW 마켓 수: ${cachedAllKrwMarkets.length}개`);
       }
 
-      // 2) 티커 전체 조회 → 거래대금 상위 N 선정 (SCAN_INTERVAL마다 같이 갱신해도 되고, 여기서는 매 루프마다 갱신해도 됨)
-      //    부하를 줄이려면 “needRescan일 때만” top을 갱신하는 걸 추천.
+      // 2) 티커 전체 조회 → 거래대금 상위 N 선정
       if (needRescan || topMarkets.length === 0) {
         console.log('[업비트 수집기] KRW 티커 조회 후 상위 종목 선정 중...');
         const tickers: UpbitTicker[] = await fetchTickers(cachedAllKrwMarkets);
@@ -151,7 +194,10 @@ async function mainLoop(): Promise<void> {
       // 3) 상위 N개만 캔들 최신 N개 수집
       let insertedTotal = 0;
 
-      // 너무 공격적으로 때리면 제한 걸릴 수 있어서, 30개를 한 번에 다 치지 말고 약간 텀을 준다.
+      // ✅ 이번 루프에서 "가장 최신 캔들 시각(UTC)"을 추적해서
+      // worker_status.last_success_at에 반영한다.
+      let latestCandleUtcThisLoop: string | null = null;
+
       for (const market of topMarkets) {
         const candles = await fetchMinuteCandles({
           market,
@@ -159,7 +205,13 @@ async function mainLoop(): Promise<void> {
           count: env.UPBIT_CANDLE_LIMIT,
         });
 
-        // 최신이 앞에 오니까, DB upsert는 그대로 넣어도 됨
+        // Upbit minute candle은 보통 최신이 앞에 옴.
+        // 안전하게 candle_date_time_utc를 normalize 해서 최신값으로 기록.
+        if (candles.length > 0) {
+          const latest = normalizeUtcIso(candles[0].candle_date_time_utc);
+          latestCandleUtcThisLoop = pickLaterIso(latestCandleUtcThisLoop, latest);
+        }
+
         const inserted = await upsertUpbitCandles(candles);
         insertedTotal += inserted;
 
@@ -186,8 +238,8 @@ async function mainLoop(): Promise<void> {
         run_mode: 'loop',
         message: `정상 완료 (상위 ${env.UPBIT_TOP_N}개 캔들 수집)`,
         last_event_at: finishedAt,
-        last_success_at: finishedAt,
-        updated_at: null,
+        // ✅ "루프 종료 시간"이 아니라 "데이터 최신 시각"을 성공 시각으로 기록
+        last_success_at: latestCandleUtcThisLoop ?? finishedAt,
       });
 
       console.log(`[업비트 수집기] 정상 완료: 저장=${insertedTotal}건, 다음 실행까지 대기...`);
@@ -217,13 +269,13 @@ async function mainLoop(): Promise<void> {
       // worker status 기록
       try {
         await upsertWorkerStatus({
-          service: env.WORKER_SERVICE_NAME,
+          service: serviceName,
           state: 'failed',
           run_mode: 'loop',
           message: msg,
           last_event_at: finishedAt,
-          last_success_at: null,
-          updated_at: null,
+          // 실패 시엔 last_success_at을 굳이 null로 덮지 말고 유지하고 싶으면 생략하는 게 더 운영 친화적
+          // (원하면 null로 덮는 방식으로 바꿀 수 있음)
         });
       } catch (inner: unknown) {
         const innerMsg = inner instanceof Error ? inner.message : String(inner);

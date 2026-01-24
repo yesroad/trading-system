@@ -1,9 +1,9 @@
-import type { Nullable } from "./utils";
-import type { JsonValue } from "./json";
+import type { Nullable } from './utils';
+import type { JsonValue } from './json';
 
-export type Market = "US" | "KR";
+export type Market = 'US' | 'KR';
 
-export type AiDecision = "ALLOW" | "CAUTION" | "BLOCK";
+export type AiDecision = 'ALLOW' | 'CAUTION' | 'BLOCK';
 
 export type AiFilterDecision = {
   decision: AiDecision;
