@@ -1,5 +1,5 @@
-import { env, envOptional } from './utils/env.js';
-import type { AiDecision, AiFilterDecision, AiUsage, OpenAiResponse } from './types/ai.js';
+import { env, envOptional } from './utils/env';
+import type { AiDecision, AiFilterDecision, AiUsage, OpenAiResponse } from './types/ai';
 
 const OPENAI_API_KEY = env('OPENAI_API_KEY');
 const MODEL = envOptional('AI_MODEL', 'gpt-4o-mini');

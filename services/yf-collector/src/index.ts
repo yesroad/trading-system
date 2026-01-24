@@ -8,14 +8,14 @@
  *   - ALWAYS: 24시간 실행(휴일도 실행)
  */
 
-import { DateTime } from 'luxon';
-import { supabase } from './supabase.js';
-import { fetchYahooBars } from './fetchYahoo.js';
-import { upsertBars } from './db.js';
-import type { Nullable } from './types/utils.js';
+import { DateTime } from "luxon";
+import { supabase } from "./supabase";
+import { fetchYahooBars } from "./fetchYahoo";
+import { upsertBars } from "./db";
+import type { Nullable } from "./types/utils";
 
-const SYMBOLS = ['AAPL', 'TSLA'];
-const TIMEFRAME = '1m';
+const SYMBOLS = ["AAPL", "TSLA"];
+const TIMEFRAME = "1m";
 
 // 정상 주기(성공 시)
 const BASE_LOOP_MS = 15 * 60 * 1000;
@@ -24,19 +24,19 @@ const BASE_LOOP_MS = 15 * 60 * 1000;
 const BACKOFF_MIN_MS = 30_000;
 const BACKOFF_MAX_MS = BASE_LOOP_MS;
 
-type RunMode = 'MARKET_ONLY' | 'EXTENDED' | 'ALWAYS';
+type RunMode = "MARKET_ONLY" | "EXTENDED" | "ALWAYS";
 
 function env(name: string) {
   const v = process.env[name];
-  return v ?? '';
+  return v ?? "";
 }
-const YF_RUN_MODE = env('YF_RUN_MODE');
+const YF_RUN_MODE = env("YF_RUN_MODE");
 
-const RUN_MODE = (YF_RUN_MODE || 'MARKET_ONLY') as RunMode;
+const RUN_MODE = (YF_RUN_MODE || "MARKET_ONLY") as RunMode;
 
-const SERVICE_NAME = 'yf-collector' as const;
+const SERVICE_NAME = "yf-collector" as const;
 
-type WorkerState = 'unknown' | 'running' | 'success' | 'failed' | 'skipped';
+type WorkerState = "unknown" | "running" | "success" | "failed" | "skipped";
 
 async function safeUpsertWorkerStatus(params: {
   state: WorkerState;
@@ -47,7 +47,7 @@ async function safeUpsertWorkerStatus(params: {
   try {
     const nowIso = new Date().toISOString();
 
-    const { error } = await supabase.from('worker_status').upsert(
+    const { error } = await supabase.from("worker_status").upsert(
       {
         service: SERVICE_NAME,
         run_mode: RUN_MODE,
@@ -57,19 +57,19 @@ async function safeUpsertWorkerStatus(params: {
         last_success_at: params.last_success_at ?? null,
         updated_at: nowIso,
       },
-      { onConflict: 'service' },
+      { onConflict: "service" },
     );
 
     if (error) {
-      console.error('[yf-collector] worker_status 업데이트 실패', error);
+      console.error("[yf-collector] worker_status 업데이트 실패", error);
     }
   } catch (e) {
-    console.error('[yf-collector] worker_status 업데이트 예외', e);
+    console.error("[yf-collector] worker_status 업데이트 예외", e);
   }
 }
 
 function nowNy() {
-  return DateTime.now().setZone('America/New_York');
+  return DateTime.now().setZone("America/New_York");
 }
 
 function isWeekend(dt: DateTime) {
@@ -79,21 +79,21 @@ function isWeekend(dt: DateTime) {
 
 async function isUsMarketClosed(dateIso: string) {
   const { data, error } = await supabase
-    .from('market_calendar')
-    .select('status, reason')
-    .eq('market', 'US')
-    .eq('venue', 'NYSE')
-    .eq('date', dateIso)
+    .from("market_calendar")
+    .select("status, reason")
+    .eq("market", "US")
+    .eq("venue", "NYSE")
+    .eq("date", dateIso)
     .maybeSingle();
 
   if (error) {
-    console.error('[yf-collector] market_calendar 조회 실패', error);
+    console.error("[yf-collector] market_calendar 조회 실패", error);
     // 조회 실패 시에는 수집을 멈추지 않음
-    return { closed: false, reason: '' };
+    return { closed: false, reason: "" };
   }
 
-  if (!data) return { closed: false, reason: '' };
-  return { closed: data.status === 'closed', reason: data.reason ?? '' };
+  if (!data) return { closed: false, reason: "" };
+  return { closed: data.status === "closed", reason: data.reason ?? "" };
 }
 
 function minutesOfDay(dt: DateTime) {
@@ -119,12 +119,12 @@ function isInExtendedHours(dt: DateTime) {
 async function shouldSkipNow() {
   const dt = nowNy();
 
-  if (RUN_MODE === 'ALWAYS') {
-    return { skip: false as const, reason: '' };
+  if (RUN_MODE === "ALWAYS") {
+    return { skip: false as const, reason: "" };
   }
 
   if (isWeekend(dt)) {
-    return { skip: true as const, reason: '주말' };
+    return { skip: true as const, reason: "주말" };
   }
 
   const d = dt.toISODate();
@@ -133,25 +133,27 @@ async function shouldSkipNow() {
     if (h.closed) {
       return {
         skip: true as const,
-        reason: `미국장 휴일${h.reason ? ` (${h.reason})` : ''}`,
+        reason: `미국장 휴일${h.reason ? ` (${h.reason})` : ""}`,
       };
     }
   }
 
-  if (RUN_MODE === 'EXTENDED') {
-    if (!isInExtendedHours(dt)) return { skip: true as const, reason: '장외(확장시간 아님)' };
-    return { skip: false as const, reason: '' };
+  if (RUN_MODE === "EXTENDED") {
+    if (!isInExtendedHours(dt))
+      return { skip: true as const, reason: "장외(확장시간 아님)" };
+    return { skip: false as const, reason: "" };
   }
 
   // MARKET_ONLY
-  if (!isInMarketHours(dt)) return { skip: true as const, reason: '장외(정규장 아님)' };
-  return { skip: false as const, reason: '' };
+  if (!isInMarketHours(dt))
+    return { skip: true as const, reason: "장외(정규장 아님)" };
+  return { skip: false as const, reason: "" };
 }
 
-console.log('[yf-collector] 해외주식 배치 수집 시작');
-console.log('[yf-collector] 실행 모드:', RUN_MODE);
+console.log("[yf-collector] 해외주식 배치 수집 시작");
+console.log("[yf-collector] 실행 모드:", RUN_MODE);
 
-await safeUpsertWorkerStatus({ state: 'unknown', message: '시작됨' });
+await safeUpsertWorkerStatus({ state: "unknown", message: "시작됨" });
 
 // 프로세스 내부 중복 실행 방지
 let isRunning = false;
@@ -172,7 +174,9 @@ function nextDelayMs(success: boolean) {
 
 async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
   if (isRunning) {
-    console.warn('[yf-collector] 이전 실행이 아직 끝나지 않아 이번 실행은 건너뜀');
+    console.warn(
+      "[yf-collector] 이전 실행이 아직 끝나지 않아 이번 실행은 건너뜀",
+    );
     return { ok: true, skipped: true };
   }
 
@@ -181,10 +185,10 @@ async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
     // 같은 사유로 반복 스킵이면 조용히(로그/DB 업데이트 최소화)
     if (lastSkipReason !== reason) {
       lastSkipReason = reason;
-      console.log('[yf-collector] 실행 스킵:', reason);
+      console.log("[yf-collector] 실행 스킵:", reason);
 
       await safeUpsertWorkerStatus({
-        state: 'skipped',
+        state: "skipped",
         message: reason,
         last_event_at: new Date().toISOString(),
       });
@@ -195,34 +199,34 @@ async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
 
   // 스킵 상태에서 정상 실행으로 돌아오는 순간(1회)
   if (lastSkipReason !== null) {
-    console.log('[yf-collector] 수집 재개');
+    console.log("[yf-collector] 수집 재개");
     lastSkipReason = null;
   }
 
   isRunning = true;
 
   await safeUpsertWorkerStatus({
-    state: 'running',
-    message: '수집 중',
+    state: "running",
+    message: "수집 중",
     last_event_at: new Date().toISOString(),
   });
 
   const startedAt = new Date().toISOString();
 
   const { data: run, error: runError } = await supabase
-    .from('ingestion_runs')
+    .from("ingestion_runs")
     .insert({
-      job: 'yfinance-equity',
+      job: "yfinance-equity",
       symbols: SYMBOLS,
       timeframe: TIMEFRAME,
       started_at: startedAt,
-      status: 'running',
+      status: "running",
     })
     .select()
     .single();
 
   if (runError || !run) {
-    console.error('[yf-collector] ingestion_runs 시작 기록 실패', runError);
+    console.error("[yf-collector] ingestion_runs 시작 기록 실패", runError);
     isRunning = false;
     return { ok: false, skipped: false };
   }
@@ -235,47 +239,47 @@ async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
       const { inserted } = await upsertBars(symbol, TIMEFRAME, bars);
       insertedTotal += inserted;
 
-      console.log('[yf-collector] 수집 완료:', symbol, `(${bars.length} bars)`);
+      console.log("[yf-collector] 수집 완료:", symbol, `(${bars.length} bars)`);
     }
 
     await supabase
-      .from('ingestion_runs')
+      .from("ingestion_runs")
       .update({
-        status: 'success',
+        status: "success",
         inserted_count: insertedTotal,
         finished_at: new Date().toISOString(),
       })
-      .eq('id', run.id);
+      .eq("id", run.id);
 
     const nowIso = new Date().toISOString();
     await safeUpsertWorkerStatus({
-      state: 'success',
+      state: "success",
       message: `성공 (insert: ${insertedTotal})`,
       last_event_at: nowIso,
       last_success_at: nowIso,
     });
 
-    console.log('[yf-collector] 배치 성공 - insert:', insertedTotal);
+    console.log("[yf-collector] 배치 성공 - insert:", insertedTotal);
     return { ok: true, skipped: false };
   } catch (e: unknown) {
-    console.error('[yf-collector] 배치 실패', e);
+    console.error("[yf-collector] 배치 실패", e);
 
     const errorMessage = e instanceof Error ? e.message : String(e);
 
     await safeUpsertWorkerStatus({
-      state: 'failed',
+      state: "failed",
       message: errorMessage,
       last_event_at: new Date().toISOString(),
     });
 
     await supabase
-      .from('ingestion_runs')
+      .from("ingestion_runs")
       .update({
-        status: 'failed',
+        status: "failed",
         error_message: errorMessage,
         finished_at: new Date().toISOString(),
       })
-      .eq('id', run.id);
+      .eq("id", run.id);
 
     return { ok: false, skipped: false };
   } finally {
@@ -294,12 +298,16 @@ async function loop() {
   if (result.skipped) {
     // 스킵 상태에서는 콘솔을 조용하게 유지(필요하면 lastSkipReason 변경 시점에만 로그가 남음)
   } else if (result.ok) {
-    console.log('[yf-collector] 다음 실행까지 대기:', Math.round(delay / 1000), '초');
+    console.log(
+      "[yf-collector] 다음 실행까지 대기:",
+      Math.round(delay / 1000),
+      "초",
+    );
   } else {
     console.warn(
-      '[yf-collector] 실패 백오프 적용. 다음 재시도까지:',
+      "[yf-collector] 실패 백오프 적용. 다음 재시도까지:",
       Math.round(delay / 1000),
-      '초',
+      "초",
     );
   }
 

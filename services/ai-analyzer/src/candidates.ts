@@ -1,5 +1,5 @@
-import type { Market, OhlcSummary } from './types/ai.js';
-import { supabase } from './supabase.js';
+import type { Market, OhlcSummary } from "./types/ai";
+import { supabase } from "./supabase";
 
 export type CandidateDecision =
   | { isCandidate: true; score: number; reason: string }
@@ -44,7 +44,7 @@ export function decideCandidate(ohlc: OhlcSummary): CandidateDecision {
   return {
     isCandidate,
     score: Number(score.toFixed(2)),
-    reason: reasons.length ? reasons.join(', ') : 'no signal',
+    reason: reasons.length ? reasons.join(", ") : "no signal",
   };
 }
 
@@ -56,7 +56,7 @@ export async function upsertCandidate(params: {
   score: number;
   reason: string;
 }) {
-  const { error } = await supabase.from('analysis_candidates').upsert(
+  const { error } = await supabase.from("analysis_candidates").upsert(
     {
       market: params.market,
       symbol: params.symbol,
@@ -65,24 +65,27 @@ export async function upsertCandidate(params: {
       score: params.score,
       reason: params.reason,
     },
-    { onConflict: 'market,symbol,window_end' },
+    { onConflict: "market,symbol,window_end" },
   );
 
   if (error) {
-    console.error('[ai-analyzer] analysis_candidates upsert 실패', error);
+    console.error("[ai-analyzer] analysis_candidates upsert 실패", error);
   }
 }
 
-export async function loadCandidates(params: { market: Market; window_end: string }) {
+export async function loadCandidates(params: {
+  market: Market;
+  window_end: string;
+}) {
   const { data, error } = await supabase
-    .from('analysis_candidates')
-    .select('symbol, timeframe, score, reason')
-    .eq('market', params.market)
-    .eq('window_end', params.window_end)
-    .order('score', { ascending: false });
+    .from("analysis_candidates")
+    .select("symbol, timeframe, score, reason")
+    .eq("market", params.market)
+    .eq("window_end", params.window_end)
+    .order("score", { ascending: false });
 
   if (error) {
-    console.error('[ai-analyzer] analysis_candidates 조회 실패', error);
+    console.error("[ai-analyzer] analysis_candidates 조회 실패", error);
     return [];
   }
 

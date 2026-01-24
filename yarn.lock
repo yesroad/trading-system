@@ -6406,6 +6406,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"upbit-collector@workspace:services/upbit-collector":
+  version: 0.0.0-use.local
+  resolution: "upbit-collector@workspace:services/upbit-collector"
+  dependencies:
+    "@supabase/supabase-js": "npm:^2.90.1"
+    "@workspace/eslint-config": "npm:*"
+    dotenv: "npm:^17.2.3"
+    eslint: "npm:^9.39.2"
+    luxon: "npm:^3.7.2"
+    tsx: "npm:^4.21.0"
+    typescript: "npm:^5.9.3"
+    zod: "npm:^4.3.5"
+  languageName: unknown
+  linkType: soft
+
 "update-browserslist-db@npm:^1.2.0":
   version: 1.2.3
   resolution: "update-browserslist-db@npm:1.2.3"

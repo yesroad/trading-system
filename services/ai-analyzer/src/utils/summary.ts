@@ -1,4 +1,4 @@
-import type { Market, OhlcSummary } from '../types/ai.js';
+import type { Market, OhlcSummary } from "../types/ai";
 
 /**
  * LLM 입력을 짧게 만들기 위한 "텍스트 컨텍스트" 생성
@@ -26,7 +26,7 @@ export function buildAiContext(params: {
     `range_pct=${round2(ohlc.range_pct)}`,
     `mean_abs_return_pct=${round3(ohlc.mean_abs_return_pct)}`,
     `slope_per_min_pct=${round4(ohlc.slope_per_min_pct)}`,
-  ].join('\n');
+  ].join("\n");
 }
 
 function round2(n: number) {
