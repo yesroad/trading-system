@@ -2,25 +2,21 @@
  * KIS 가격 수집 워커 (다종목 + 안정성 가드 + 장시간 스킵)
  */
 
-import { fetchKrxPrice } from "./kis";
-import { insertTick } from "./insertTick";
-import { createBackoff } from "./backoff";
-import {
-  bumpErrorCount,
-  getSystemGuard,
-  setTradingEnabled,
-} from "./systemGuard";
-import { loadActiveKisKrxSymbols, TrackedSymbol } from "./trackedSymbols";
-import { upsertWorkerStatus } from "./workerStatus";
-import { env } from "./utils/env";
-import type { Nullable } from "./types/utils";
+import { fetchKrxPrice } from './kis';
+import { insertTick } from './insertTick';
+import { createBackoff } from './backoff';
+import { bumpErrorCount, getSystemGuard, setTradingEnabled } from './systemGuard';
+import { loadActiveKisKrxSymbols, TrackedSymbol } from './trackedSymbols';
+import { upsertWorkerStatus } from './workerStatus';
+import { env } from './utils/env';
+import type { Nullable } from './types/utils';
 
 // 실행 모드
 // - MARKET_ONLY: 정규장(09:00~15:30 KST)만 실행 (기본)
 // - EXTENDED: 08:00~16:00 KST
 // - ALWAYS: 24시간 실행
 
-type RunMode = "MARKET_ONLY" | "EXTENDED" | "ALWAYS";
+type RunMode = 'MARKET_ONLY' | 'EXTENDED' | 'ALWAYS';
 
 type SymbolState = {
   nextRunAt: number;
@@ -28,12 +24,11 @@ type SymbolState = {
   backoff: ReturnType<typeof createBackoff>;
 };
 
-const KIS_RUN_MODE = env("KIS_RUN_MODE");
+const KIS_RUN_MODE = env('KIS_RUN_MODE');
 
-const RUN_MODE = ((KIS_RUN_MODE as RunMode | undefined) ||
-  "MARKET_ONLY") as RunMode;
+const RUN_MODE = ((KIS_RUN_MODE as RunMode | undefined) || 'MARKET_ONLY') as RunMode;
 
-console.log("[kis-collector] KIS 가격 수집 시작");
+console.log('[kis-collector] KIS 가격 수집 시작');
 
 // 심볼 목록 리프레시 주기
 const refreshListMs = 10_000;
@@ -73,9 +68,7 @@ function getState(symbol: string) {
 
 function nowKst() {
   // KST 고정
-  return new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }),
-  );
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
 }
 
 function minutesOfDay(d: Date) {
@@ -89,29 +82,27 @@ function isWeekendKst(d: Date) {
 }
 
 function shouldSkipNow(): { skip: boolean; reason: string } {
-  if (RUN_MODE === "ALWAYS") return { skip: false, reason: "" };
+  if (RUN_MODE === 'ALWAYS') return { skip: false, reason: '' };
 
   const d = nowKst();
 
-  if (isWeekendKst(d)) return { skip: true, reason: "주말" };
+  if (isWeekendKst(d)) return { skip: true, reason: '주말' };
 
   const m = minutesOfDay(d);
 
   // MARKET_ONLY: 09:00 ~ 15:30
-  if (RUN_MODE === "MARKET_ONLY") {
+  if (RUN_MODE === 'MARKET_ONLY') {
     const open = 9 * 60; // 540
     const close = 15 * 60 + 30; // 930
-    if (m < open || m > close)
-      return { skip: true, reason: "장외(정규장 아님)" };
-    return { skip: false, reason: "" };
+    if (m < open || m > close) return { skip: true, reason: '장외(정규장 아님)' };
+    return { skip: false, reason: '' };
   }
 
   // EXTENDED: 08:00 ~ 16:00
   const openEx = 8 * 60; // 480
   const closeEx = 16 * 60; // 960
-  if (m < openEx || m > closeEx)
-    return { skip: true, reason: "장외(확장시간 아님)" };
-  return { skip: false, reason: "" };
+  if (m < openEx || m > closeEx) return { skip: true, reason: '장외(확장시간 아님)' };
+  return { skip: false, reason: '' };
 }
 
 async function refreshSymbols() {
@@ -121,7 +112,7 @@ async function refreshSymbols() {
   try {
     symbols = await loadActiveKisKrxSymbols();
   } catch (e) {
-    console.error("[kis-collector] symbols refresh error", e);
+    console.error('[kis-collector] symbols refresh error', e);
   } finally {
     refreshing = false;
   }
@@ -130,8 +121,8 @@ async function refreshSymbols() {
 // 초기 상태 기록
 await upsertWorkerStatus({
   run_mode: RUN_MODE,
-  state: "unknown",
-  message: "시작됨",
+  state: 'unknown',
+  message: '시작됨',
 });
 
 await refreshSymbols();
@@ -150,11 +141,11 @@ setInterval(async () => {
       // 스킵 사유가 바뀔 때만 1회 기록(조용하게)
       if (lastSkipReason !== reason) {
         lastSkipReason = reason;
-        console.log("[kis-collector] 실행 스킵:", reason);
+        console.log('[kis-collector] 실행 스킵:', reason);
 
         await upsertWorkerStatus({
           run_mode: RUN_MODE,
-          state: "skipped",
+          state: 'skipped',
           message: reason,
           last_event_at: new Date().toISOString(),
         });
@@ -167,8 +158,8 @@ setInterval(async () => {
       lastSkipReason = null;
       await upsertWorkerStatus({
         run_mode: RUN_MODE,
-        state: "running",
-        message: "수집 재개",
+        state: 'running',
+        message: '수집 재개',
         last_event_at: new Date().toISOString(),
       });
     }
@@ -201,7 +192,7 @@ setInterval(async () => {
         st.nextRunAt = Date.now() + baseIntervalMs;
 
         // 로그는 심플하게
-        console.log("[kis-collector][tick]", s.symbol, price);
+        console.log('[kis-collector][tick]', s.symbol, price);
 
         // 워커 상태는 너무 자주 갱신하지 않도록(과도한 DB write 방지)
         const nowMs = Date.now();
@@ -209,14 +200,14 @@ setInterval(async () => {
           lastSuccessStatusAtMs = nowMs;
           await upsertWorkerStatus({
             run_mode: RUN_MODE,
-            state: "success",
-            message: "정상 수집",
+            state: 'success',
+            message: '정상 수집',
             last_event_at: ts,
             last_success_at: ts,
           });
         }
       } catch (e) {
-        console.error("[kis-collector][tick error]", s.symbol, e);
+        console.error('[kis-collector][tick error]', s.symbol, e);
 
         // 전역 가드: 실패 누적 -> trading_enabled OFF (초석)
         try {
@@ -227,18 +218,16 @@ setInterval(async () => {
 
           if (guard.trading_enabled && nextCount >= disableThreshold) {
             await setTradingEnabled(false);
-            console.error(
-              "[kis-collector][guard] trading_enabled=false (threshold reached)",
-            );
+            console.error('[kis-collector][guard] trading_enabled=false (threshold reached)');
           }
         } catch (guardErr) {
-          console.error("[kis-collector][guard error]", guardErr);
+          console.error('[kis-collector][guard error]', guardErr);
         }
 
         // 워커 상태 “실패”
         await upsertWorkerStatus({
           run_mode: RUN_MODE,
-          state: "failed",
+          state: 'failed',
           message: e instanceof Error ? e.message : String(e),
           last_event_at: new Date().toISOString(),
         });
