@@ -2,8 +2,8 @@
  * system_guard 단일 row(id=1) 접근
  */
 
-import { supabase } from './supabase.js';
-import type { Nullable } from './types/utils.js';
+import { supabase } from "./supabase";
+import type { Nullable } from "./types/utils";
 
 const ID = 1;
 
@@ -25,11 +25,11 @@ export type SystemGuardRow = {
 
 export async function getSystemGuard() {
   const { data, error } = await supabase
-    .from('system_guard')
+    .from("system_guard")
     .select(
-      'id,trading_enabled,error_count,last_error_at,updated_at,token_cooldown_count,token_cooldown_until,last_token_cooldown_at,last_success_at,last_success_symbol,last_success_price',
+      "id,trading_enabled,error_count,last_error_at,updated_at,token_cooldown_count,token_cooldown_until,last_token_cooldown_at,last_success_at,last_success_symbol,last_success_price",
     )
-    .eq('id', ID)
+    .eq("id", ID)
     .single();
 
   if (error) throw new Error(error.message);
@@ -40,13 +40,13 @@ export async function bumpErrorCount(nextCount: number) {
   const now = new Date().toISOString();
 
   const { error } = await supabase
-    .from('system_guard')
+    .from("system_guard")
     .update({
       error_count: nextCount,
       last_error_at: now,
       updated_at: now,
     })
-    .eq('id', ID);
+    .eq("id", ID);
 
   if (error) throw new Error(error.message);
 }
@@ -55,12 +55,12 @@ export async function setTradingEnabled(enabled: boolean) {
   const now = new Date().toISOString();
 
   const { error } = await supabase
-    .from('system_guard')
+    .from("system_guard")
     .update({
       trading_enabled: enabled,
       updated_at: now,
     })
-    .eq('id', ID);
+    .eq("id", ID);
 
   if (error) throw new Error(error.message);
 }
@@ -77,14 +77,14 @@ export async function recordTokenCooldown(cooldownMs = 60_000) {
   const nextCount = (guard.token_cooldown_count ?? 0) + 1;
 
   const { error } = await supabase
-    .from('system_guard')
+    .from("system_guard")
     .update({
       token_cooldown_count: nextCount,
       token_cooldown_until: until.toISOString(),
       last_token_cooldown_at: now.toISOString(),
       updated_at: now.toISOString(),
     })
-    .eq('id', ID);
+    .eq("id", ID);
 
   if (error) throw new Error(error.message);
 }
@@ -92,18 +92,21 @@ export async function recordTokenCooldown(cooldownMs = 60_000) {
 /**
  * 최근 정상 수집 시간/종목/가격 기록 (웹 표시용)
  */
-export async function recordLastSuccess(params: { symbol: string; price: number }) {
+export async function recordLastSuccess(params: {
+  symbol: string;
+  price: number;
+}) {
   const now = new Date().toISOString();
 
   const { error } = await supabase
-    .from('system_guard')
+    .from("system_guard")
     .update({
       last_success_at: now,
       last_success_symbol: params.symbol,
       last_success_price: params.price,
       updated_at: now,
     })
-    .eq('id', ID);
+    .eq("id", ID);
 
   if (error) throw new Error(error.message);
 }

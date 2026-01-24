@@ -2,10 +2,14 @@
  * equity_bars upsert
  */
 
-import { supabase } from './supabase.js';
-import { YahooBar } from './fetchYahoo.js';
+import { supabase } from "./supabase";
+import { YahooBar } from "./fetchYahoo";
 
-export async function upsertBars(symbol: string, timeframe: string, bars: YahooBar[]) {
+export async function upsertBars(
+  symbol: string,
+  timeframe: string,
+  bars: YahooBar[],
+) {
   if (bars.length === 0) return { inserted: 0 };
 
   const rows = bars.map((b) => ({
@@ -17,11 +21,11 @@ export async function upsertBars(symbol: string, timeframe: string, bars: YahooB
     low: b.low,
     close: b.close,
     volume: b.volume,
-    source: 'yahoo',
+    source: "yahoo",
   }));
 
-  const { error } = await supabase.from('equity_bars').upsert(rows, {
-    onConflict: 'symbol,timeframe,ts',
+  const { error } = await supabase.from("equity_bars").upsert(rows, {
+    onConflict: "symbol,timeframe,ts",
     ignoreDuplicates: true,
   });
 

@@ -2425,8 +2425,10 @@ __metadata:
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
     luxon: "npm:^3.6.0"
+    openai: "npm:^6.16.0"
     tsx: "npm:^4.20.0"
     typescript: "npm:^5.9.2"
+    zod: "npm:^4.3.6"
   languageName: unknown
   linkType: soft
 
@@ -5113,6 +5115,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"openai@npm:^6.16.0":
+  version: 6.16.0
+  resolution: "openai@npm:6.16.0"
+  peerDependencies:
+    ws: ^8.18.0
+    zod: ^3.25 || ^4.0
+  peerDependenciesMeta:
+    ws:
+      optional: true
+    zod:
+      optional: true
+  bin:
+    openai: bin/cli
+  checksum: 10c0/67d2cd58224f0777ea1369eae3f35a2a48c9efa9e70d05b854b9d2e96bc56f15e7baf88a732070e35d701906842baed9bf3363fb379e613037b86085d406bcd0
+  languageName: node
+  linkType: hard
+
 "optionator@npm:^0.9.3":
   version: 0.9.4
   resolution: "optionator@npm:0.9.4"
@@ -6406,6 +6425,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"upbit-collector@workspace:services/upbit-collector":
+  version: 0.0.0-use.local
+  resolution: "upbit-collector@workspace:services/upbit-collector"
+  dependencies:
+    "@supabase/supabase-js": "npm:^2.90.1"
+    "@workspace/eslint-config": "npm:*"
+    dotenv: "npm:^17.2.3"
+    eslint: "npm:^9.39.2"
+    luxon: "npm:^3.7.2"
+    tsx: "npm:^4.21.0"
+    typescript: "npm:^5.9.3"
+    zod: "npm:^4.3.5"
+  languageName: unknown
+  linkType: soft
+
 "update-browserslist-db@npm:^1.2.0":
   version: 1.2.3
   resolution: "update-browserslist-db@npm:1.2.3"
@@ -6656,5 +6690,12 @@ __metadata:
   version: 4.3.5
   resolution: "zod@npm:4.3.5"
   checksum: 10c0/5a2db7e59177a3d7e202543f5136cb87b97b047b77c8a3d824098d3fa8b80d3aa40a0a5f296965c3b82dfdccdd05dbbfacce91347f16a39c675680fd7b1ab109
+  languageName: node
+  linkType: hard
+
+"zod@npm:^4.3.6":
+  version: 4.3.6
+  resolution: "zod@npm:4.3.6"
+  checksum: 10c0/860d25a81ab41d33aa25f8d0d07b091a04acb426e605f396227a796e9e800c44723ed96d0f53a512b57be3d1520f45bf69c0cb3b378a232a00787a2609625307
   languageName: node
   linkType: hard

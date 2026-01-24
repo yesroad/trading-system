@@ -4,8 +4,8 @@
  * - 비공식 API → 최소 검증만 수행
  */
 
-import { z } from 'zod';
-import type { Nullable } from './types/utils.js';
+import { z } from "zod";
+import type { Nullable } from "./types/utils";
 
 const QuoteSchema = z.object({
   open: z.array(z.number().nullable()),
@@ -38,9 +38,11 @@ export type YahooBar = {
 };
 
 export async function fetchYahooBars(symbol: string): Promise<YahooBar[]> {
-  const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
-  url.searchParams.set('interval', '1m');
-  url.searchParams.set('range', '1d');
+  const url = new URL(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`,
+  );
+  url.searchParams.set("interval", "1m");
+  url.searchParams.set("range", "1d");
 
   const res = await fetch(url);
   if (!res.ok) {
@@ -51,7 +53,7 @@ export async function fetchYahooBars(symbol: string): Promise<YahooBar[]> {
   const parsed = ChartSchema.safeParse(json);
 
   if (!parsed.success) {
-    console.error('[yf-collector] Yahoo 응답 스키마 불일치');
+    console.error("[yf-collector] Yahoo 응답 스키마 불일치");
     return [];
   }
 
