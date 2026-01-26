@@ -1,0 +1,60 @@
+import { env } from '../config/env';
+import { diffMinutes, toKstIso } from '../utils/time';
+import type { AlertEvent, AlertLevel } from '../types/status';
+import { fetchLatestAiResultsByMarket } from '../db/queries';
+
+type AiLatest = {
+  market: string;
+  latest_created_at: string | null;
+};
+
+function levelOfAiStale(mins: number): AlertLevel | null {
+  if (mins >= env.AI_STALE_CRIT_MIN) return 'CRIT';
+  if (mins >= env.AI_STALE_WARN_MIN) return 'WARN';
+  return null;
+}
+
+export async function checkAiResults(): Promise<AlertEvent[]> {
+  const events: AlertEvent[] = [];
+
+  const markets: Array<{ key: 'KR' | 'US' | 'CRYPTO'; enabled: boolean }> = [
+    { key: 'KR', enabled: env.ENABLE_KR },
+    { key: 'US', enabled: env.ENABLE_US },
+    { key: 'CRYPTO', enabled: env.ENABLE_CRYPTO },
+  ];
+
+  const enabledMarkets = markets.filter((m) => m.enabled).map((m) => m.key);
+  if (!enabledMarkets.length) return events;
+
+  const rows = (await fetchLatestAiResultsByMarket(enabledMarkets)) as AiLatest[];
+
+  for (const m of enabledMarkets) {
+    const row = rows.find((r) => r.market === m);
+    if (!row || !row.latest_created_at) {
+      events.push({
+        level: 'WARN',
+        title: `AI 결과 없음: ${m}`,
+        message: `ai_analysis_results에 ${m} 시장 결과가 아직 없습니다.`,
+        at: new Date().toISOString(),
+      });
+      continue;
+    }
+
+    const mins = diffMinutes(new Date(row.latest_created_at), new Date());
+    const lvl = levelOfAiStale(mins);
+    if (!lvl) continue;
+
+    events.push({
+      level: lvl,
+      title: `AI 멈춤 감지: ${m}`,
+      message: [
+        `마지막 AI 결과: ${toKstIso(row.latest_created_at)}`,
+        `경과: ${mins.toFixed(1)}분`,
+        `기준: WARN=${env.AI_STALE_WARN_MIN}m / CRIT=${env.AI_STALE_CRIT_MIN}m`,
+      ].join('\n'),
+      at: new Date().toISOString(),
+    });
+  }
+
+  return events;
+}

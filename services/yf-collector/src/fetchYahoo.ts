@@ -37,10 +37,16 @@ export type YahooBar = {
   volume: Nullable<number>;
 };
 
-export async function fetchYahooBars(symbol: string): Promise<YahooBar[]> {
+export async function fetchYahooBars(
+  symbol: string,
+  params?: { interval?: string; range?: string },
+): Promise<YahooBar[]> {
+  const interval = params?.interval ?? '15m';
+  const range = params?.range ?? '1d';
+
   const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
-  url.searchParams.set('interval', '1m');
-  url.searchParams.set('range', '1d');
+  url.searchParams.set('interval', interval);
+  url.searchParams.set('range', range);
 
   const res = await fetch(url);
   if (!res.ok) {

@@ -2,7 +2,7 @@
  * KIS 가격 수집 워커 (다종목 + 안정성 가드 + 장시간 스킵)
  */
 
-import { fetchKrxPrice } from './kis';
+import { fetchKrxPrice, fetchAccountBalance, TokenCooldownError } from './kis';
 import { insertTick } from './insertTick';
 import { createBackoff } from './backoff';
 import { bumpErrorCount, getSystemGuard, setTradingEnabled } from './systemGuard';
@@ -118,6 +118,19 @@ async function refreshSymbols() {
   }
 }
 
+// 예수금 조회 함수
+async function checkAccountBalance() {
+  try {
+    await fetchAccountBalance();
+  } catch (e) {
+    // 토큰 쿨다운 에러는 조용히 스킵 (1분간 요청 스킵, 다음 주기에 자동 재시도)
+    if (e instanceof TokenCooldownError) {
+      return;
+    }
+    console.error('[kis-collector] 예수금 조회 에러', e);
+  }
+}
+
 // 초기 상태 기록
 await upsertWorkerStatus({
   run_mode: RUN_MODE,
@@ -125,8 +138,15 @@ await upsertWorkerStatus({
   message: '시작됨',
 });
 
+// 초기 예수금 조회
+await checkAccountBalance();
+
 await refreshSymbols();
 setInterval(() => void refreshSymbols(), refreshListMs);
+
+// 예수금 1분마다 조회
+const balanceCheckMs = 1 * 60 * 1000; // 1분
+setInterval(() => void checkAccountBalance(), balanceCheckMs);
 
 setInterval(async () => {
   if (mainLoopRunning) return;

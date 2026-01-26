@@ -1,5 +1,5 @@
 /**
- * KIS (모의/실전) - 토큰 발급 + 국내주식 현재가/랭킹 조회
+ * KIS (모의/실전) - 토큰 발급 + 해외주식 예수금 조회
  */
 
 import type { Nullable } from './types/utils';
@@ -17,10 +17,39 @@ type KisTokenResponse = {
   expires_in: number; // seconds
 };
 
-type KisPriceResponse = {
-  output?: {
-    stck_prpr?: string; // 현재가 (string number)
+type KisOverseasBalanceResponse = {
+  output1?: Array<{
+    pdno?: string; // 상품번호
+    prdt_name?: string; // 상품명
+    cblc_qty13?: string; // 잔고수량13
+    ord_psbl_qty1?: string; // 주문가능수량1
+  }>;
+  output2?:
+    | Array<{
+        crcy_cd?: string; // 통화코드
+        crcy_cd_name?: string; // 통화코드명
+        frcr_dncl_amt_2?: string; // 외화예수금액2
+        frst_bltn_exrt?: string; // 최초고시환율
+        frcr_evlu_amt2?: string; // 외화평가금액2
+      }>
+    | {
+        crcy_cd?: string; // 통화코드
+        crcy_cd_name?: string; // 통화코드명
+        frcr_dncl_amt_2?: string; // 외화예수금액2
+        frst_bltn_exrt?: string; // 최초고시환율
+        frcr_evlu_amt2?: string; // 외화평가금액2
+      };
+  output3?: {
+    pchs_amt_smtl_amt?: string; // 매입금액합계금액
+    tot_evlu_pfls_amt?: string; // 총평가손익금액
+    evlu_erng_rt1?: string; // 평가수익율1
+    tot_dncl_amt?: string; // 총예수금액
+    wcrc_evlu_amt_smtl?: string; // 원화평가금액합계
+    tot_asst_amt2?: string; // 총자산금액2
   };
+  rt_cd?: string;
+  msg_cd?: string;
+  msg1?: string;
 };
 
 export class TokenCooldownError extends Error {
@@ -28,7 +57,7 @@ export class TokenCooldownError extends Error {
 
   constructor(untilMs: number) {
     const waitSec = Math.ceil((untilMs - Date.now()) / 1000);
-    super(`[kis-collector] 토큰 쿨다운 중 (${waitSec}s)`);
+    super(`[yf-collector] 토큰 쿨다운 중 (${waitSec}s)`);
     this.name = 'TokenCooldownError';
     this.untilMs = untilMs;
   }
@@ -72,7 +101,7 @@ async function getAccessToken() {
     throw new TokenCooldownError(nextTokenRequestAt);
   }
 
-  console.log('[kis-collector] KIS 토큰 발급 요청');
+  console.log('[yf-collector] KIS 토큰 발급 요청');
 
   const res = await fetch(`${KIS_BASE_URL}/oauth2/tokenP`, {
     method: 'POST',
@@ -86,7 +115,7 @@ async function getAccessToken() {
 
   if (!res.ok) {
     const text = await res.text();
-    console.error('[kis-collector] 토큰 발급 실패', text);
+    console.error('[yf-collector] 토큰 발급 실패', text);
 
     // KIS 제한 대응: 실패 시 최소 60초 쿨다운
     nextTokenRequestAt = Date.now() + 60_000;
@@ -105,95 +134,42 @@ async function getAccessToken() {
   // 성공하면 쿨다운 해제
   nextTokenRequestAt = 0;
 
-  console.log('[kis-collector] KIS 토큰 발급 성공');
+  console.log('[yf-collector] KIS 토큰 발급 성공');
 
   return cachedToken.value;
 }
 
 /**
- * 국내주식 현재가 조회
- * @param code 종목코드 (예: "005930")
- */
-export async function fetchKrxPrice(code: string) {
-  const token = await getAccessToken();
-
-  const url = new URL(`${KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price`);
-  url.searchParams.set('FID_COND_MRKT_DIV_CODE', 'J');
-  url.searchParams.set('FID_INPUT_ISCD', code);
-
-  const res = await fetch(url, {
-    headers: {
-      authorization: `Bearer ${token}`,
-      appkey: KIS_APP_KEY,
-      appsecret: KIS_APP_SECRET,
-      tr_id: 'FHKST01010100',
-      custtype: 'P',
-    },
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    console.error(`[kis-collector] 현재가 조회 실패 ${code}`, text);
-    throw new Error(`KIS price failed: ${res.status}`);
-  }
-
-  const json = (await res.json()) as KisPriceResponse;
-
-  const priceStr = json.output?.stck_prpr;
-  if (!priceStr) {
-    console.error(`[kis-collector] 현재가 응답 형식 오류 ${code}`, json);
-    throw new Error('invalid KIS price response');
-  }
-
-  return { price: Number(priceStr), raw: json };
-}
-
-type KisBalanceResponse = {
-  output2?: Array<{
-    dnca_tot_amt?: string; // 예수금
-  }>;
-  rt_cd?: string;
-  msg_cd?: string;
-  msg1?: string;
-};
-
-/**
- * 예수금 조회 (KIS API)
+ * 해외주식 매수가능금액 조회 (KIS API)
  *
- * 엔드포인트: /uapi/domestic-stock/v1/trading/inquire-balance
- * - 응답: output2[0].dnca_tot_amt (예수금)
+ * 엔드포인트: /uapi/overseas-stock/v1/trading/inquire-balance
+ * - 응답: output2[0].frcr_dncl_amt_2 (외화예수금액 USD)
  * - 60초 캐싱
  * - 실패 시: 캐시 있으면 캐시 사용, 없으면 null
  */
-export async function fetchAccountBalance(): Promise<number | null> {
+export async function fetchOverseasAccountBalance(): Promise<number | null> {
   const now = Date.now();
 
   // 캐시 유효성 확인 (60초 이내)
   if (cachedBalance && now - cachedBalance.fetchedAt < BALANCE_CACHE_MS) {
-    console.log('[kis-collector] 예수금 조회 (캐시):', Math.floor(cachedBalance.value).toLocaleString(), 'KRW');
     return cachedBalance.value;
   }
 
   try {
     const token = await getAccessToken();
 
-    // 환경별 tr_id (실전: TTTC8434R, 모의: VTTC8434R)
-    const trId = `${KIS_TR_PREFIX}TTC8434R`;
+    // 환경별 tr_id (실전: TTTS3012R, 모의: VTTS3012R)
+    const trId = `${KIS_TR_PREFIX}TTS3012R`;
 
-    console.log(`[kis-collector] 예수금 조회 시작 | tr_id: ${trId}`);
+    console.log(`[yf-collector] 해외주식 매수가능금액 조회 시작 | tr_id: ${trId}`);
 
-    const url = new URL(`${KIS_BASE_URL}/uapi/domestic-stock/v1/trading/inquire-balance`);
+    const url = new URL(`${KIS_BASE_URL}/uapi/overseas-stock/v1/trading/inquire-balance`);
     url.searchParams.set('CANO', KIS_ACCOUNT_NO);
     url.searchParams.set('ACNT_PRDT_CD', KIS_ACCOUNT_PRODUCT_CD);
-    url.searchParams.set('AFHR_FLPR_YN', 'N');
-    url.searchParams.set('OFL_YN', '');
-    url.searchParams.set('INQR_DVSN', '02');
-    url.searchParams.set('UNPR_DVSN', '01');
-    url.searchParams.set('FUND_STTL_ICLD_YN', 'N');
-    url.searchParams.set('FNCG_AMT_AUTO_RDPT_YN', 'N');
-    url.searchParams.set('PRCS_DVSN', '01');
-    url.searchParams.set('CTX_AREA_FK100', '');
-    url.searchParams.set('CTX_AREA_NK100', '');
+    url.searchParams.set('OVRS_EXCG_CD', 'NASD'); // 해외거래소코드
+    url.searchParams.set('TR_CRCY_CD', 'USD'); // 거래통화코드
+    url.searchParams.set('CTX_AREA_FK200', ''); // 연속조회검색조건
+    url.searchParams.set('CTX_AREA_NK200', ''); // 연속조회키
 
     const res = await fetch(url, {
       headers: {
@@ -207,33 +183,36 @@ export async function fetchAccountBalance(): Promise<number | null> {
 
     if (!res.ok) {
       const text = await res.text();
-      console.error(`[kis-collector] 예수금 조회 실패: ${res.status} | tr_id: ${trId}`, text);
+      console.error(`[yf-collector] 매수가능금액 조회 실패: ${res.status} | tr_id: ${trId}`, text);
       // 실패 시 캐시 사용
       return cachedBalance?.value ?? null;
     }
 
-    const json = (await res.json()) as KisBalanceResponse;
+    const json = (await res.json()) as KisOverseasBalanceResponse;
 
     // rt_cd="1"이면 에러
     if (json.rt_cd === '1') {
       const errMsg = json.msg1 || json.msg_cd || 'unknown error';
       console.error(
-        `[kis-collector] 예수금 조회 오류: ${json.msg_cd} - ${errMsg} | tr_id: ${trId}`,
+        `[yf-collector] 매수가능금액 조회 오류: ${json.msg_cd} - ${errMsg} | tr_id: ${trId}`,
       );
       // 실패 시 캐시 사용
       return cachedBalance?.value ?? null;
     }
 
-    const balanceStr = json.output2?.[0]?.dnca_tot_amt;
+    const output2 = json.output2;
+    const balanceStr = Array.isArray(output2)
+      ? output2[0]?.frcr_dncl_amt_2
+      : output2?.frcr_dncl_amt_2;
     if (!balanceStr) {
-      console.error('[kis-collector] 예수금 응답 형식 오류:', json);
+      console.error('[yf-collector] 매수가능금액 응답 형식 오류:', json);
       // 실패 시 캐시 사용
       return cachedBalance?.value ?? null;
     }
 
     const balance = Number(balanceStr.replaceAll(',', '').trim());
     if (!Number.isFinite(balance)) {
-      console.error('[kis-collector] 예수금 파싱 실패:', balanceStr);
+      console.error('[yf-collector] 매수가능금액 파싱 실패:', balanceStr);
       // 실패 시 캐시 사용
       return cachedBalance?.value ?? null;
     }
@@ -241,10 +220,10 @@ export async function fetchAccountBalance(): Promise<number | null> {
     // 캐시 갱신
     cachedBalance = { value: balance, fetchedAt: now };
 
-    console.log('[kis-collector] ✅ 예수금 조회 성공:', Math.floor(balance).toLocaleString(), 'KRW');
+    console.log('[yf-collector] 해외주식 매수가능금액 조회 성공 (USD):', Math.floor(balance));
     return balance;
   } catch (e) {
-    console.error('[kis-collector] 예수금 조회 예외:', e);
+    console.error('[yf-collector] 매수가능금액 조회 예외:', e);
     // 실패 시 캐시 사용
     return cachedBalance?.value ?? null;
   }

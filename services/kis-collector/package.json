@@ -9,14 +9,14 @@
     "lint": "eslint .",
     "check-types": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
+    "dotenv": "^17.2.3"
+  },
   "devDependencies": {
     "@workspace/eslint-config": "*",
     "eslint": "^9.39.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.90.1",
-    "dotenv": "^17.2.3"
   }
 }
