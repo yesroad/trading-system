@@ -165,12 +165,16 @@ type KisBalanceResponse = {
  * - 60초 캐싱
  * - 실패 시: 캐시 있으면 캐시 사용, 없으면 null
  */
-export async function fetchAccountBalance(): Promise<number | null> {
+export async function fetchAccountBalance(): Promise<Nullable<number>> {
   const now = Date.now();
 
   // 캐시 유효성 확인 (60초 이내)
   if (cachedBalance && now - cachedBalance.fetchedAt < BALANCE_CACHE_MS) {
-    console.log('[kis-collector] 예수금 조회 (캐시):', Math.floor(cachedBalance.value).toLocaleString(), 'KRW');
+    console.log(
+      '[kis-collector] 예수금 조회 (캐시):',
+      Math.floor(cachedBalance.value).toLocaleString(),
+      'KRW',
+    );
     return cachedBalance.value;
   }
 
@@ -241,7 +245,11 @@ export async function fetchAccountBalance(): Promise<number | null> {
     // 캐시 갱신
     cachedBalance = { value: balance, fetchedAt: now };
 
-    console.log('[kis-collector] ✅ 예수금 조회 성공:', Math.floor(balance).toLocaleString(), 'KRW');
+    console.log(
+      '[kis-collector] ✅ 예수금 조회 성공:',
+      Math.floor(balance).toLocaleString(),
+      'KRW',
+    );
     return balance;
   } catch (e) {
     console.error('[kis-collector] 예수금 조회 예외:', e);

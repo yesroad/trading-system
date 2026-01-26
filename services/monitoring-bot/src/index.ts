@@ -4,7 +4,6 @@ import { sendTelegram } from './alert/sendTelegram';
 import { shouldSendAlert, recordAlertSent } from './alert/alertCooldown';
 
 import { checkWorkers } from './checks/checkWorkers';
-import { checkCollectors } from './checks/checkCollectors';
 import { checkIngestionRuns } from './checks/checkIngestionRuns';
 import { checkAiResults } from './checks/checkAiResults';
 import { buildDailyReportText } from './checks/dailyReport';
@@ -12,7 +11,6 @@ import { buildDailyReportText } from './checks/dailyReport';
 async function runChecksOnce() {
   const all = [
     ...(await checkWorkers()),
-    ...(await checkCollectors()),
     ...(await checkIngestionRuns()),
     ...(await checkAiResults()),
   ];
@@ -21,10 +19,11 @@ async function runChecksOnce() {
   const events = all.filter((e) => e.level !== 'OK');
 
   for (const e of events) {
-    if (!shouldSendAlert(e)) continue;
+    const decision = shouldSendAlert(e);
+    if (!decision.send) continue;
 
     const text = formatMessage(e);
-    await sendTelegram(text);
+    await sendTelegram(text, { isCriticalRepeat: decision.isCriticalRepeat });
     recordAlertSent(e);
   }
 

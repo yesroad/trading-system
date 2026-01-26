@@ -40,8 +40,7 @@ export async function sendTelegram(
 
   // ✅ CRIT이면 1회 더 강조 전송(🔥)
   if (!env.CRIT_REPEAT_ENABLED) return;
-  if (meta?.isCriticalRepeat) return; // 재귀 방지
-  if (!text.includes('CRIT')) return;
+  if (!meta?.isCriticalRepeat) return;
 
   const delayMs = Math.max(1, env.CRIT_REPEAT_DELAY_SEC) * 1000;
   await sleep(delayMs);

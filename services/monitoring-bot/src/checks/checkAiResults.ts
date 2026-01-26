@@ -33,7 +33,9 @@ export async function checkAiResults(): Promise<AlertEvent[]> {
     if (!row || !row.latest_created_at) {
       events.push({
         level: 'WARN',
-        title: `AI 결과 없음: ${m}`,
+        category: 'ai_missing',
+        market: m,
+        title: `AI 결과 없음`,
         message: `ai_analysis_results에 ${m} 시장 결과가 아직 없습니다.`,
         at: new Date().toISOString(),
       });
@@ -46,12 +48,17 @@ export async function checkAiResults(): Promise<AlertEvent[]> {
 
     events.push({
       level: lvl,
-      title: `AI 멈춤 감지: ${m}`,
+      category: 'ai_stale',
+      market: m,
+      title: `AI 멈춤 감지`,
       message: [
         `마지막 AI 결과: ${toKstIso(row.latest_created_at)}`,
         `경과: ${mins.toFixed(1)}분`,
         `기준: WARN=${env.AI_STALE_WARN_MIN}m / CRIT=${env.AI_STALE_CRIT_MIN}m`,
-      ].join('\n'),
+        lvl === 'CRIT' ? '가능 원인: shouldCallAIBySnapshot 미통과, 쿨다운/비용 제한' : null,
+      ]
+        .filter(Boolean)
+        .join('\n'),
       at: new Date().toISOString(),
     });
   }

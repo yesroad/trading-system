@@ -41,7 +41,7 @@ export async function fetchLatestAiResultsByMarket(markets: Array<'KR' | 'US' | 
 export async function fetchLatestWorkers() {
   const { data, error } = await supabase
     .from('worker_status')
-    .select('service,state,last_event_at,last_success_at,message')
+    .select('service,state,run_mode,last_event_at,last_success_at,message')
     .order('service', { ascending: true });
 
   if (error) throw new Error(`worker_status 조회 실패: ${error.message}`);
