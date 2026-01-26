@@ -1,11 +1,11 @@
-import Providers from '@/provider/queryProvider';
+import QueryProvider from '@/provider/queryProvider';
 import './globals.css';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
       <body>
-        <Providers>{children}</Providers>
+        <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
   );
