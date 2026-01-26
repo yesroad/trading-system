@@ -23,6 +23,13 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
   const maxTargets = env.AI_MAX_TARGETS_PER_MARKET;
   const targets = await selectTargets(market, maxTargets, snapshot);
 
+  console.log(
+    `[AI] 타겟 선정 완료 | market=${market} | targets=${targets.length} | symbols=${targets
+      .map((t) => t.symbol)
+      .slice(0, 5)
+      .join(', ')}${targets.length > 5 ? '...' : ''}`,
+  );
+
   if (targets.length === 0) {
     console.log(`[AI] 타겟 없음 | market=${market} | mode=${mode}`);
     return;
@@ -47,7 +54,9 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
     nowIso: new Date().toISOString(),
   });
 
+  console.log(`[AI] LLM 호출 시작 | market=${market} | mode=${mode}`);
   const result = await callLLM(prompt);
+  console.log(`[AI] LLM 응답 수신 | market=${market} | results=${result.results.length}개 대상`);
 
   // 저장(targets별 N건) + 호출 기록
   await saveAiResults(market, mode, result);

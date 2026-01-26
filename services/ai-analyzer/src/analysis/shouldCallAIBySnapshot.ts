@@ -9,17 +9,10 @@ type LastAiInfo = {
   symbols: string[];
 };
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null;
-}
-
-function toDate(v: unknown): Date | null {
-  if (v instanceof Date) return Number.isFinite(v.getTime()) ? v : null;
-  if (typeof v === 'string') {
-    const d = new Date(v);
-    return Number.isFinite(d.getTime()) ? d : null;
-  }
-  return null;
+function toDate(v: string | null): Date | null {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isFinite(d.getTime()) ? d : null;
 }
 
 function normalizeSymbols(targets: TargetLike[]): string[] {
@@ -50,13 +43,19 @@ function isMeaningfulNewRun(params: {
   market: Market;
   lastAiAt: Date;
   targets: string[];
-  run: unknown;
+  run: {
+    job: string;
+    started_at: string;
+    finished_at: string;
+    status: string;
+    error_message: string | null;
+    inserted_count: number | null;
+    symbols: string[] | null;
+  };
 }): { ok: boolean; reason: string } {
   const { market, lastAiAt, targets, run } = params;
 
-  if (!isRecord(run)) return { ok: false, reason: 'run이 객체가 아님' };
-
-  // run 시간은 created_at을 쓰지 않고 started_at/finished_at을 우선 사용
+  // run 시간 확인
   const startedAt = toDate(run.started_at);
   const finishedAt = toDate(run.finished_at);
   const runAt = finishedAt ?? startedAt;
@@ -64,91 +63,45 @@ function isMeaningfulNewRun(params: {
   if (!runAt) return { ok: false, reason: 'started_at/finished_at 없음' };
   if (runAt <= lastAiAt) return { ok: false, reason: 'AI 이후 실행 아님' };
 
-  // job 식별 (run.job 컬럼 기준)
-  const job = typeof run.job === 'string' ? run.job : '';
+  // job 식별
   const allowedJobs = getMarketJobs(market);
-  if (!allowedJobs.includes(job)) {
-    return { ok: false, reason: `해당 market job 아님(job=${job || 'unknown'})` };
+  if (!allowedJobs.includes(run.job)) {
+    return { ok: false, reason: `해당 market job 아님(job=${run.job})` };
   }
-
-  // status / error
-  const status = typeof run.status === 'string' ? run.status : '';
-  const errorMessage = typeof run.error_message === 'string' ? run.error_message : '';
 
   // 실패/에러는 의미있음(바로 AI로 원인 파악)
-  if (status && status !== 'success') {
-    return { ok: true, reason: `수집 실패/비정상(status=${status})` };
+  if (run.status && run.status !== 'success') {
+    return { ok: true, reason: `수집 실패/비정상(status=${run.status})` };
   }
-  if (errorMessage.trim().length > 0) {
+  if (run.error_message?.trim()) {
     return { ok: true, reason: '수집 에러 메시지 존재' };
   }
 
-  // inserted_count 기준 (없으면 0 취급)
-  const inserted =
-    typeof run.inserted_count === 'number'
-      ? run.inserted_count
-      : typeof run.inserted_count === 'string'
-        ? Number(run.inserted_count)
-        : 0;
+  // inserted_count 기준
+  const inserted = run.inserted_count ?? 0;
 
-  // 심볼 포함 여부 (run.symbols가 배열이라고 가정, 아니면 스킵)
-  const runSymbols =
-    Array.isArray(run.symbols) && run.symbols.every((x) => typeof x === 'string')
-      ? (run.symbols as string[])
-      : [];
-
+  // 심볼 포함 여부
+  const runSymbols = run.symbols ?? [];
   const targetSet = new Set(targets);
   const hasTargetOverlap = runSymbols.some((s) => targetSet.has(s));
 
   // ✅ 핵심: "새 run"이어도 아래 중 하나일 때만 의미있다고 판단
-  // 1) 타겟과 겹치는 종목을 실제로 수집했다
-  // 2) inserted_count가 0보다 크다(실제로 뭔가 저장됐다)
   if (hasTargetOverlap) return { ok: true, reason: '타겟 심볼 수집 갱신' };
-  if (Number.isFinite(inserted) && inserted > 0)
-    return { ok: true, reason: '신규 데이터 저장(inserted_count>0)' };
+  if (inserted > 0) return { ok: true, reason: '신규 데이터 저장(inserted_count>0)' };
 
   return { ok: false, reason: '성공이지만 변화 근거 부족(타겟겹침X, inserted_count=0)' };
 }
 
 function extractLastAiInfo(snapshot: Snapshot): LastAiInfo {
-  const s = snapshot as unknown;
-  if (!isRecord(s)) return { createdAt: null, symbols: [] };
+  const { latestCreatedAt, latestSymbols } = snapshot.ai;
 
-  const ai = s.ai;
-  if (!isRecord(ai)) return { createdAt: null, symbols: [] };
-
-  // 1) 선호 형태
-  const latestCreatedAt = toDate(ai.latestCreatedAt);
-  const latestSymbols = Array.isArray(ai.latestSymbols)
-    ? ai.latestSymbols.filter((x): x is string => typeof x === 'string' && x.length > 0)
+  // latestCreatedAt이 이미 snapshot에 명시적으로 포함됨
+  const createdAt = toDate(latestCreatedAt);
+  const symbols = Array.isArray(latestSymbols)
+    ? latestSymbols.filter((x): x is string => typeof x === 'string' && x.length > 0)
     : [];
 
-  if (latestCreatedAt) return { createdAt: latestCreatedAt, symbols: latestSymbols };
-
-  // 2) recentResults에서 최신 묶기
-  const recent = ai.recentResults;
-  if (!Array.isArray(recent)) return { createdAt: null, symbols: [] };
-
-  let bestAt: Date | null = null;
-  const bucket: string[] = [];
-
-  for (const row of recent) {
-    if (!isRecord(row)) continue;
-    const at = toDate(row.created_at ?? row.createdAt);
-    const sym = row.symbol;
-
-    if (!at || typeof sym !== 'string' || sym.length === 0) continue;
-
-    if (!bestAt || at > bestAt) {
-      bestAt = at;
-      bucket.length = 0;
-      bucket.push(sym);
-    } else if (bestAt && at.getTime() === bestAt.getTime()) {
-      bucket.push(sym);
-    }
-  }
-
-  return { createdAt: bestAt, symbols: Array.from(new Set(bucket)) };
+  return { createdAt, symbols };
 }
 
 /**
@@ -194,20 +147,18 @@ export function shouldCallAIBySnapshot(params: {
   }
 
   // 3) "의미있는" 새 ingestion run이 있으면 실행
-  const runs = snapshot.ingestion?.recentRuns ?? [];
-  if (Array.isArray(runs) && runs.length > 0) {
-    for (const run of runs) {
-      const check = isMeaningfulNewRun({
-        market,
-        lastAiAt: lastAi.createdAt,
-        targets: targetSymbols,
-        run,
-      });
+  const runs = snapshot.ingestion.recentRuns;
+  for (const run of runs) {
+    const check = isMeaningfulNewRun({
+      market,
+      lastAiAt: lastAi.createdAt,
+      targets: targetSymbols,
+      run,
+    });
 
-      if (check.ok) {
-        console.log(`[AI] 의미있는 수집 변화 감지 → 실행 | 이유=${check.reason}`);
-        return true;
-      }
+    if (check.ok) {
+      console.log(`[AI] 의미있는 수집 변화 감지 → 실행 | 이유=${check.reason}`);
+      return true;
     }
   }
 

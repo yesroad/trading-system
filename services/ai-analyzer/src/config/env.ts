@@ -36,7 +36,6 @@ export const env = {
   /** ===============================
    * AI 실행 제어
    * =============================== */
-  AI_LOOP_INTERVAL_MS: optionalNumber('AI_LOOP_INTERVAL_MS', 60_000),
   AI_MAX_TARGETS_PER_MARKET: optionalNumber('AI_MAX_TARGETS_PER_MARKET', 30),
 
   /** ===============================
