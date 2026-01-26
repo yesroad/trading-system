@@ -2,7 +2,7 @@
  * system_guard 단일 row(id=1) 접근
  */
 
-import { supabase } from './supabase';
+import { supabase } from './db/supabase';
 import type { Nullable } from './types/utils';
 
 const ID = 1;

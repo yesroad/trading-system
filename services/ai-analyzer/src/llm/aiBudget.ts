@@ -27,13 +27,13 @@ function dayKey(d = new Date()) {
 export function getCooldownMs(market: Market, mode: MarketMode): number {
   if (market === Market.CRYPTO) {
     if (mode === 'CRYPTO_DAILY') return 6 * 60 * 60 * 1000; // 6시간
-    return 60_000; // 크립토 장중: 1분
+    return 60_000; // 크립토 장중: 1분 (24/7 실시간 모니터링)
   }
 
   if (mode === 'PRE_OPEN') return 10 * 60_000; // 10분
-  if (mode === 'INTRADAY') return 60_000; // 1분
+  if (mode === 'INTRADAY') return 5 * 60_000; // 5분 (변동성/중요도에 따라 5~10분)
   if (mode === 'CLOSE') return 5 * 60_000; // 5분
-  if (mode === 'POST_CLOSE') return 30 * 60_000; // 30분
+  if (mode === 'POST_CLOSE') return 30 * 60_000; // 30분 (최대 60분)
 
   return Infinity; // OFF
 }

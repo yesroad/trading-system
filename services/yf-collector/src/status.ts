@@ -2,7 +2,7 @@
  * 워커 상태(모드/스킵/성공/실패)를 DB에 남기는 용도
  */
 
-import { supabase } from './supabase';
+import { supabase } from './db/supabase';
 import type { Nullable } from './types/utils';
 
 export type WorkerState = 'unknown' | 'running' | 'success' | 'failed' | 'skipped';

@@ -1,0 +1,22 @@
+{
+  "name": "monitoring-bot",
+  "packageManager": "yarn@4.9.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "node --enable-source-maps dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "check-types": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.2",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

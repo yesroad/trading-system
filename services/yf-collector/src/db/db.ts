@@ -2,8 +2,8 @@
  * equity_bars upsert
  */
 
+import { YahooBar } from '../fetchYahoo';
 import { supabase } from './supabase';
-import { YahooBar } from './fetchYahoo';
 
 export async function upsertBars(symbol: string, timeframe: string, bars: YahooBar[]) {
   if (bars.length === 0) return { inserted: 0 };

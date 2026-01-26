@@ -1,7 +1,20 @@
 import { parseMarkets, parseTickers, parseMinuteCandles } from './guards';
 import type { UpbitMarket, UpbitTicker, UpbitMinuteCandle } from './types/upbit';
+import { env } from './utils/env';
+import { createHash } from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
 
 const BASE_URL = 'https://api.upbit.com/v1';
+
+export type UpbitAccount = {
+  currency: string;
+  balance: string;
+  locked: string;
+  avg_buy_price: string;
+  avg_buy_price_modified: boolean;
+  unit_currency: string;
+};
 
 async function fetchJson(url: string): Promise<unknown> {
   const res = await fetch(url, {
@@ -63,4 +76,64 @@ export async function fetchMinuteCandles(params: {
   );
   // 업비트 캔들은 최신이 앞에 옴
   return parseMinuteCandles(raw);
+}
+
+/**
+ * Upbit 계좌 조회 (인증 필요)
+ * @returns KRW 잔액 포함 전체 계좌 정보
+ */
+export async function fetchAccounts(): Promise<UpbitAccount[]> {
+  const accessKey = env('UPBIT_ACCESS_KEY');
+  const secretKey = env('UPBIT_SECRET_KEY');
+
+  const payload = {
+    access_key: accessKey,
+    nonce: uuidv4(),
+  };
+
+  const token = jwt.sign(payload, secretKey);
+
+  const res = await fetch(`${BASE_URL}/accounts`, {
+    method: 'GET',
+    headers: {
+      accept: 'application/json',
+      authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`업비트 계좌 조회 실패: ${res.status} ${res.statusText} ${text}`);
+  }
+
+  const data = await res.json();
+
+  if (!Array.isArray(data)) {
+    throw new Error('업비트 계좌 조회 응답 형식 오류');
+  }
+
+  return data as UpbitAccount[];
+}
+
+/**
+ * KRW 잔액 조회
+ * @returns KRW 사용 가능 잔액 (balance - locked)
+ */
+export async function fetchKRWBalance(): Promise<number> {
+  const accounts = await fetchAccounts();
+  const krwAccount = accounts.find((a) => a.currency === 'KRW');
+
+  if (!krwAccount) {
+    return 0;
+  }
+
+  const balance = Number(krwAccount.balance);
+  const locked = Number(krwAccount.locked);
+
+  if (!Number.isFinite(balance) || !Number.isFinite(locked)) {
+    throw new Error('KRW 잔액 파싱 실패');
+  }
+
+  // 사용 가능 잔액 = 잔액 - 주문 중인 금액
+  return balance - locked;
 }

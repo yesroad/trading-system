@@ -2,7 +2,7 @@
  * worker_status 업데이트 유틸
  */
 
-import { supabase } from './supabase';
+import { supabase } from './db/supabase';
 import type { Nullable } from './types/utils';
 
 export type WorkerState = 'unknown' | 'running' | 'success' | 'failed' | 'skipped';

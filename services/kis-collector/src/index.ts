@@ -2,7 +2,7 @@
  * KIS 가격 수집 워커 (다종목 + 안정성 가드 + 장시간 스킵)
  */
 
-import { fetchKrxPrice } from './kis';
+import { fetchKrxPrice, fetchAccountBalance, TokenCooldownError } from './kis';
 import { insertTick } from './insertTick';
 import { createBackoff } from './backoff';
 import { bumpErrorCount, getSystemGuard, setTradingEnabled } from './systemGuard';
@@ -10,6 +10,7 @@ import { loadActiveKisKrxSymbols, TrackedSymbol } from './trackedSymbols';
 import { upsertWorkerStatus } from './workerStatus';
 import { env } from './utils/env';
 import type { Nullable } from './types/utils';
+import { createIngestionRun, finishIngestionRun, failIngestionRun } from './ingestionRuns';
 
 // 실행 모드
 // - MARKET_ONLY: 정규장(09:00~15:30 KST)만 실행 (기본)
@@ -52,6 +53,14 @@ const SUCCESS_STATUS_MIN_INTERVAL_MS = 3_000;
 
 // 장시간 스킵 상태(로그/DB 업데이트 소음 방지용)
 let lastSkipReason: Nullable<string> = null;
+
+// ingestion run 추적 (1분 주기로 배치 기록)
+const INGESTION_RUN_INTERVAL_MS = 60_000; // 1분
+let currentRunId: Nullable<number> = null;
+let currentRunStartedAt = 0;
+const currentRunSymbols = new Set<string>();
+let currentRunInsertCount = 0;
+let currentRunErrors: string[] = [];
 
 function getState(symbol: string) {
   const existing = states.get(symbol);
@@ -105,6 +114,62 @@ function shouldSkipNow(): { skip: boolean; reason: string } {
   return { skip: false, reason: '' };
 }
 
+/**
+ * 새로운 ingestion run 시작
+ */
+async function startNewIngestionRun() {
+  try {
+    // 이전 run 종료
+    if (currentRunId !== null) {
+      await finishCurrentIngestionRun();
+    }
+
+    // 새 run 시작
+    const runId = await createIngestionRun({
+      job: 'kis-equity',
+      symbols: symbols.map((s) => s.symbol),
+      timeframe: 'tick', // 실시간 틱 데이터
+    });
+
+    currentRunId = runId;
+    currentRunStartedAt = Date.now();
+    currentRunSymbols.clear();
+    currentRunInsertCount = 0;
+    currentRunErrors = [];
+
+    console.log('[kis-collector] ingestion run 시작:', runId);
+  } catch (e) {
+    console.error('[kis-collector] ingestion run 시작 실패', e);
+  }
+}
+
+/**
+ * 현재 ingestion run 종료
+ */
+async function finishCurrentIngestionRun() {
+  if (currentRunId === null) return;
+
+  try {
+    if (currentRunErrors.length > 0) {
+      // 에러가 있으면 failed
+      await failIngestionRun(currentRunId, currentRunErrors.join('; '));
+      console.log(
+        `[kis-collector] ingestion run 실패: ${currentRunId} | errors=${currentRunErrors.length}`,
+      );
+    } else {
+      // 에러 없으면 success
+      await finishIngestionRun(currentRunId, currentRunInsertCount);
+      console.log(
+        `[kis-collector] ingestion run 완료: ${currentRunId} | inserted=${currentRunInsertCount} | symbols=${currentRunSymbols.size}`,
+      );
+    }
+  } catch (e) {
+    console.error('[kis-collector] ingestion run 종료 실패', e);
+  } finally {
+    currentRunId = null;
+  }
+}
+
 async function refreshSymbols() {
   if (refreshing) return;
   refreshing = true;
@@ -118,6 +183,19 @@ async function refreshSymbols() {
   }
 }
 
+// 예수금 조회 함수
+async function checkAccountBalance() {
+  try {
+    await fetchAccountBalance();
+  } catch (e) {
+    // 토큰 쿨다운 에러는 조용히 스킵 (1분간 요청 스킵, 다음 주기에 자동 재시도)
+    if (e instanceof TokenCooldownError) {
+      return;
+    }
+    console.error('[kis-collector] 예수금 조회 에러', e);
+  }
+}
+
 // 초기 상태 기록
 await upsertWorkerStatus({
   run_mode: RUN_MODE,
@@ -125,8 +203,32 @@ await upsertWorkerStatus({
   message: '시작됨',
 });
 
+// 초기 예수금 조회
+await checkAccountBalance();
+
 await refreshSymbols();
 setInterval(() => void refreshSymbols(), refreshListMs);
+
+// 예수금 1분마다 조회
+const balanceCheckMs = 1 * 60 * 1000; // 1분
+setInterval(() => void checkAccountBalance(), balanceCheckMs);
+
+// ingestion run 주기 (1분마다 새로운 배치 사이클)
+await startNewIngestionRun();
+setInterval(() => void startNewIngestionRun(), INGESTION_RUN_INTERVAL_MS);
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('[kis-collector] SIGINT 수신, 종료 중...');
+  await finishCurrentIngestionRun();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('[kis-collector] SIGTERM 수신, 종료 중...');
+  await finishCurrentIngestionRun();
+  process.exit(0);
+});
 
 setInterval(async () => {
   if (mainLoopRunning) return;
@@ -191,6 +293,10 @@ setInterval(async () => {
         st.backoff.reset();
         st.nextRunAt = Date.now() + baseIntervalMs;
 
+        // ingestion run 추적
+        currentRunSymbols.add(s.symbol);
+        currentRunInsertCount++;
+
         // 로그는 심플하게
         console.log('[kis-collector][tick]', s.symbol, price);
 
@@ -208,6 +314,10 @@ setInterval(async () => {
         }
       } catch (e) {
         console.error('[kis-collector][tick error]', s.symbol, e);
+
+        // ingestion run 에러 기록
+        const errMsg = e instanceof Error ? e.message : String(e);
+        currentRunErrors.push(`${s.symbol}: ${errMsg}`);
 
         // 전역 가드: 실패 누적 -> trading_enabled OFF (초석)
         try {

@@ -2,7 +2,7 @@
  * 추적 종목 로더 (DB)
  */
 
-import { supabase } from './supabase';
+import { supabase } from './db/supabase';
 import type { Nullable } from './types/utils';
 
 export type TrackedSymbol = {
@@ -22,7 +22,7 @@ export async function loadActiveKisKrxSymbols() {
     .select('id,broker,market,broker_code,symbol,name,is_active,poll_interval_ms')
     .eq('is_active', true)
     .eq('broker', 'KIS')
-    .eq('market', 'KRX')
+    .in('market', ['KR', 'KRX'])
     .order('id', { ascending: true });
 
   if (error) throw new Error(error.message);

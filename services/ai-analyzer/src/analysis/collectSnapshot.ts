@@ -15,6 +15,8 @@ export type Snapshot = {
   };
   ai: {
     recentResults: AiResultRow[];
+    latestCreatedAt: string | null; // 가장 최근 AI 실행 시각 (ISO)
+    latestSymbols: string[]; // 가장 최근 AI 실행 시 분석한 종목들
   };
 };
 
@@ -104,6 +106,33 @@ async function fetchRecentAiResults(market: Market, limit: number): Promise<AiRe
 }
 
 /**
+ * AI 결과에서 가장 최근 실행 시각과 해당 시점의 종목들 추출
+ */
+function extractLatestAiInfo(results: AiResultRow[]): {
+  latestCreatedAt: string | null;
+  latestSymbols: string[];
+} {
+  if (results.length === 0) {
+    return { latestCreatedAt: null, latestSymbols: [] };
+  }
+
+  // 가장 최근 created_at 찾기 (이미 created_at desc로 정렬되어 있음)
+  const latest = results[0];
+  const latestTime = latest.created_at;
+
+  // 같은 시각에 생성된 모든 결과의 심볼 수집
+  const latestSymbols = results
+    .filter((r) => r.created_at === latestTime)
+    .map((r) => r.symbol)
+    .filter(Boolean);
+
+  return {
+    latestCreatedAt: latestTime,
+    latestSymbols: uniqueStrings(latestSymbols),
+  };
+}
+
+/**
  * ✅ collectSnapshot
  */
 export async function collectSnapshot(market: Market): Promise<Snapshot> {
@@ -119,8 +148,10 @@ export async function collectSnapshot(market: Market): Promise<Snapshot> {
     fetchRecentAiResults(market, 30),
   ]);
 
+  const { latestCreatedAt, latestSymbols } = extractLatestAiInfo(recentAi);
+
   console.log(
-    `[AI] 스냅샷 수집 완료 | market=${market} | workers=${workers.length} | runs=${recentRuns.length} | ai=${recentAi.length}`,
+    `[AI] 스냅샷 수집 완료 | market=${market} | workers=${workers.length} | runs=${recentRuns.length} | ai=${recentAi.length} | latestAt=${latestCreatedAt}`,
   );
 
   return {
@@ -136,6 +167,8 @@ export async function collectSnapshot(market: Market): Promise<Snapshot> {
     },
     ai: {
       recentResults: recentAi,
+      latestCreatedAt,
+      latestSymbols,
     },
   };
 }

@@ -6,16 +6,33 @@
  *   - MARKET_ONLY: 미국 정규장(09:30~16:00 ET) + 휴일/주말 스킵
  *   - EXTENDED: 프리/애프터 포함(04:00~20:00 ET) + 휴일/주말 스킵
  *   - ALWAYS: 24시간 실행(휴일도 실행)
+ *
+ * ✅ 타겟 구성 규칙 (우선순위 + 중복 제거)
+ * 1) positions (보유 종목)        : 항상 포함 / 절대 cash-skip 하지 않음
+ * 2) symbol_universe (DB 등록 종목): enabled=true 종목 포함
+ * 3) auto (자동 후보)             : 하드코딩된 대형주 리스트
+ *
+ * ✅ 현금 잔고 필터링
+ * - account_cash에서 USD 잔고 조회
+ * - 1주라도 매수 불가능한 종목은 auto에서만 제외
+ * - positions, symbol_universe는 무조건 포함
+ *
+ * ✅ RPS 제한
+ * - throttle 적용 (기본 2 RPS, 환경변수로 조정 가능)
  */
 
 import { DateTime } from 'luxon';
-import { supabase } from './supabase';
+import { supabase } from './db/supabase';
 import { fetchYahooBars } from './fetchYahoo';
-import { upsertBars } from './db';
+import { upsertBars } from './db/db';
 import type { Nullable } from './types/utils';
+import { loadAccountCash } from './accountCash';
+import { loadEnabledUniverseSymbols } from './symbolUniverse';
+import { loadAutoUsSymbols } from './autoCandidates';
+import { loadOpenPositionSymbols } from './positions';
+import { createGlobalThrottle } from './utils/throttle';
 
-const SYMBOLS = ['AAPL', 'TSLA'];
-const TIMEFRAME = '1m';
+const TIMEFRAME = '15m';
 
 // 정상 주기(성공 시)
 const BASE_LOOP_MS = 15 * 60 * 1000;
@@ -23,6 +40,21 @@ const BASE_LOOP_MS = 15 * 60 * 1000;
 // 실패 백오프(최소 30초 ~ 최대 BASE_LOOP_MS)
 const BACKOFF_MIN_MS = 30_000;
 const BACKOFF_MAX_MS = BASE_LOOP_MS;
+
+// 최대 수집 종목 수
+const MAX_TARGET_SYMBOLS = 15;
+
+// 자동 후보 최대 개수 (최종 포함 수는 MAX_TARGET_SYMBOLS - positions - universe)
+const AUTO_CANDIDATE_LIMIT = 50;
+
+// 현금 부족 판정 시 버퍼(수수료/호가 변동 대비)
+const CASH_BUFFER_RATIO = 0.98;
+
+// 예수금 갱신 주기
+const CASH_REFRESH_MS = 60_000;
+
+// RPS 제한 (Yahoo Finance는 비공식 API이므로 보수적으로)
+const YF_RPS = parseInt(process.env.YF_RPS || '2', 10);
 
 type RunMode = 'MARKET_ONLY' | 'EXTENDED' | 'ALWAYS';
 
@@ -148,10 +180,130 @@ async function shouldSkipNow() {
   return { skip: false as const, reason: '' };
 }
 
+type TargetSource = 'positions' | 'symbol_universe' | 'auto';
+
+type TargetSymbol = {
+  symbol: string;
+  source: TargetSource;
+  lastPrice?: number; // 현금 필터용
+};
+
+/**
+ * 코인 심볼 판별 (BTC-USD, ETH-USD 등 제외)
+ */
+function isCryptoSymbol(symbol: string): boolean {
+  return symbol.includes('-');
+}
+
+/**
+ * 타겟 종목 선정 (우선순위 + 중복 제거)
+ */
+async function loadTargetSymbols(): Promise<TargetSymbol[]> {
+  // 1) positions (보유 종목)
+  const positionSymbols = await loadOpenPositionSymbols({ market: 'US', limit: 200 });
+  const positionStocksOnly = positionSymbols.filter((s) => !isCryptoSymbol(s));
+
+  // 2) symbol_universe (enabled=true)
+  const universeRows = await loadEnabledUniverseSymbols({ market: 'US', limit: 500 });
+  const universeSymbols = universeRows
+    .map((r) => String(r.symbol || '').trim())
+    .filter((s) => s.length > 0 && !isCryptoSymbol(s));
+
+  // 3) auto (자동 후보)
+  const autoCandidates = await loadAutoUsSymbols({ limit: AUTO_CANDIDATE_LIMIT });
+  const autoSymbols = autoCandidates
+    .map((c) => String(c.symbol || '').trim())
+    .filter((s) => s.length > 0 && !isCryptoSymbol(s));
+
+  // TargetSymbol로 변환
+  const positionTargets: TargetSymbol[] = positionStocksOnly.map((sym) => ({
+    symbol: sym,
+    source: 'positions' as const,
+  }));
+
+  const universeTargets: TargetSymbol[] = universeSymbols.map((sym) => ({
+    symbol: sym,
+    source: 'symbol_universe' as const,
+  }));
+
+  const autoTargets: TargetSymbol[] = autoSymbols.map((sym) => ({
+    symbol: sym,
+    source: 'auto' as const,
+  }));
+
+  // 4) 합치기 (우선순위 유지)
+  const merged = [...positionTargets, ...universeTargets, ...autoTargets];
+
+  // 5) 중복 제거 (우선순위 유지)
+  const seen = new Set<string>();
+  const unique: TargetSymbol[] = [];
+  for (const t of merged) {
+    if (!t.symbol || seen.has(t.symbol)) continue;
+    seen.add(t.symbol);
+    unique.push(t);
+  }
+
+  // 6) 최대 개수 제한
+  const limited = unique.slice(0, MAX_TARGET_SYMBOLS);
+
+  // 7) 현금 필터는 여기서는 하지 않음 (가격 정보가 없어서)
+  // 대신 수집 시 가격을 확인하고, auto만 스킵하는 방식
+
+  console.log(
+    `[yf-collector] 타겟 선정 | positions=${positionTargets.length} | universe=${universeTargets.length} | auto=${autoTargets.length} | final=${limited.length}`,
+  );
+
+  return limited;
+}
+
+// 현금 상태 캐시
+let latestUsdCash: number | null = null;
+let cashRefreshRunning = false;
+
+/**
+ * 현금 잔고 조회
+ */
+async function loadCash(): Promise<number | null> {
+  if (cashRefreshRunning) return latestUsdCash;
+  cashRefreshRunning = true;
+
+  try {
+    const row = await loadAccountCash({
+      broker: 'KIS',
+      market: 'US',
+      currency: 'USD',
+    });
+
+    const cash =
+      typeof row?.cash_available === 'number' && Number.isFinite(row.cash_available)
+        ? row.cash_available
+        : null;
+
+    if (cash !== null) {
+      latestUsdCash = cash;
+      console.log('[yf-collector] USD 현금 갱신', Math.floor(cash));
+    } else {
+      console.log('[yf-collector] USD 현금 갱신: 값 없음(null)');
+    }
+
+    return latestUsdCash;
+  } catch (e) {
+    console.error('[yf-collector] cash load error', e);
+    return latestUsdCash;
+  } finally {
+    cashRefreshRunning = false;
+  }
+}
+
 console.log('[yf-collector] 해외주식 배치 수집 시작');
 console.log('[yf-collector] 실행 모드:', RUN_MODE);
+console.log(`[yf-collector] throttle: RPS=${YF_RPS} | 최대 종목=${MAX_TARGET_SYMBOLS}`);
 
 await safeUpsertWorkerStatus({ state: 'unknown', message: '시작됨' });
+
+// 예수금 60초 주기 갱신
+await loadCash();
+setInterval(() => void loadCash(), CASH_REFRESH_MS);
 
 // 프로세스 내부 중복 실행 방지
 let isRunning = false;
@@ -160,6 +312,9 @@ let lastSkipReason: Nullable<string> = null;
 
 // 백오프 상태
 let backoffMs = BACKOFF_MIN_MS;
+
+// throttle
+const throttle = createGlobalThrottle({ rps: YF_RPS, label: 'Yahoo' });
 
 function nextDelayMs(success: boolean) {
   if (success) {
@@ -209,11 +364,23 @@ async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
 
   const startedAt = new Date().toISOString();
 
+  // 현금 잔고 조회
+  const availableUsd = await loadCash();
+
+  // 타겟 종목 선정
+  const targets = await loadTargetSymbols();
+
+  if (targets.length === 0) {
+    console.log('[yf-collector] 수집 대상 종목이 없음');
+    isRunning = false;
+    return { ok: true, skipped: true };
+  }
+
   const { data: run, error: runError } = await supabase
     .from('ingestion_runs')
     .insert({
       job: 'yfinance-equity',
-      symbols: SYMBOLS,
+      symbols: targets.map((t) => t.symbol),
       timeframe: TIMEFRAME,
       started_at: startedAt,
       status: 'running',
@@ -230,12 +397,43 @@ async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
   try {
     let insertedTotal = 0;
 
-    for (const symbol of SYMBOLS) {
-      const bars = await fetchYahooBars(symbol);
-      const { inserted } = await upsertBars(symbol, TIMEFRAME, bars);
-      insertedTotal += inserted;
+    for (const target of targets) {
+      try {
+        // throttle 적용
+        const bars = await throttle.run(() => fetchYahooBars(target.symbol));
 
-      console.log('[yf-collector] 수집 완료:', symbol, `(${bars.length} bars)`);
+        if (bars.length === 0) {
+          console.log('[yf-collector] bars 없음:', target.symbol);
+          continue;
+        }
+
+        // 최신 가격 확인 (현금 필터용)
+        const latestBar = bars[bars.length - 1];
+        const latestPrice = latestBar.close ?? latestBar.open ?? latestBar.high ?? latestBar.low;
+
+        // 현금 필터: auto만 적용
+        if (target.source === 'auto' && availableUsd !== null && latestPrice !== null) {
+          if (latestPrice > availableUsd * CASH_BUFFER_RATIO) {
+            console.log(
+              '[yf-collector][skip-by-cash]',
+              target.symbol,
+              'lastPrice=',
+              latestPrice,
+              'cash=',
+              Math.floor(availableUsd),
+            );
+            continue;
+          }
+        }
+
+        const { inserted } = await upsertBars(target.symbol, TIMEFRAME, bars);
+        insertedTotal += inserted;
+
+        console.log('[yf-collector] 수집 완료:', target.symbol, `(${bars.length} bars)`);
+      } catch (e) {
+        console.error('[yf-collector] 종목 수집 실패:', target.symbol, e);
+        // 개별 종목 실패는 전체 실행을 중단하지 않음
+      }
     }
 
     await supabase
