@@ -1,22 +1,37 @@
 import { NextResponse } from 'next/server';
+import { DateTime } from 'luxon';
 import { createClient } from '@supabase/supabase-js';
 import { envServer } from '@/lib/env.server';
 import type {
-  OpsSnapshot,
-  WorkerStatusRow,
-  IngestionRunRow,
-  AnalysisRunRow,
   AiResultRow,
-} from '@/types/ops';
+  AnalysisRunRow,
+  IngestionRunRow,
+  OpsSnapshot,
+  PositionRow,
+  WorkerStatusRow,
+} from '@/types/api/snapshot';
 
 export const runtime = 'nodejs';
 
-const SUPABASE_URL = envServer('NEXT_PUBLIC_SUPABASE_URL');
-const SUPABASE_SERVICE_ROLE_KEY = envServer('NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY');
+/**
+ * ✅ 서버 전용 ENV
+ * - NEXT_PUBLIC_* 쓰면 클라이언트로 노출될 수 있어서 금지
+ */
+let supabase:
+  | ReturnType<typeof createClient>
+  | null = null;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false },
-});
+function getSupabaseClient() {
+  if (!supabase) {
+    const SUPABASE_URL = envServer('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = envServer('SUPABASE_SERVICE_ROLE_KEY');
+    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+    });
+  }
+
+  return supabase;
+}
 
 type CacheEntry<T> = {
   expiresAt: number;
@@ -24,19 +39,18 @@ type CacheEntry<T> = {
   value: T;
 };
 
-const cache = new Map<string, CacheEntry<any>>();
+const cache = new Map<string, CacheEntry<unknown>>();
 
-function nowIso() {
-  return new Date().toISOString();
+function nowIso(): string {
+  return DateTime.utc().toISO() ?? DateTime.utc().toFormat("yyyy-LL-dd'T'HH:mm:ss.SSS'Z'");
 }
 
 function lagMinutesFromIso(iso: string | null): number | null {
   if (!iso) return null;
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return null;
-  const diffMs = Date.now() - t;
-  // 미래 시각이 들어오면 0으로 클램프
-  return Math.max(0, Math.floor(diffMs / 60_000));
+  const dt = DateTime.fromISO(iso, { zone: 'utc' });
+  if (!dt.isValid) return null;
+  const diffMinutes = DateTime.utc().diff(dt, 'minutes').minutes;
+  return Math.max(0, Math.floor(diffMinutes));
 }
 
 function buildLagByService(rows: WorkerStatusRow[]) {
@@ -53,13 +67,67 @@ function buildLagByService(rows: WorkerStatusRow[]) {
   return { lagByService, lagMinutesMax };
 }
 
+const SELECT_WORKER_STATUS = [
+  'service',
+  'run_mode',
+  'state',
+  'message',
+  'last_event_at',
+  'last_success_at',
+  'updated_at',
+].join(', ');
+const SELECT_INGESTION_RUNS = [
+  'id',
+  'job',
+  'symbols',
+  'timeframe',
+  'status',
+  'inserted_count',
+  'updated_count',
+  'error_message',
+  'started_at',
+  'finished_at',
+].join(', ');
+const SELECT_ANALYSIS_RUNS = [
+  'id',
+  'service',
+  'market',
+  'symbol',
+  'input_hash',
+  'status',
+  'skip_reason',
+  'error_message',
+  'latency_ms',
+  'model',
+  'prompt_tokens',
+  'completion_tokens',
+  'total_tokens',
+  'window_start',
+  'window_end',
+  'created_at',
+].join(', ');
+const SELECT_AI_RESULTS = [
+  'id',
+  'market',
+  'mode',
+  'symbol',
+  'decision',
+  'confidence',
+  'summary',
+  'reasons',
+  'raw_response',
+  'risk_level',
+  'created_at',
+].join(', ');
+const SELECT_POSITIONS = ['market', 'symbol', 'qty'].join(', ');
+
 async function withTtl<T>(params: {
   key: string;
   ttlMs: number;
   force: boolean;
   loader: () => Promise<T>;
 }): Promise<{ generatedAt: string; value: T; cacheHit: boolean }> {
-  const now = Date.now();
+  const now = DateTime.utc().toMillis();
   const hit = cache.get(params.key) as CacheEntry<T> | undefined;
 
   if (!params.force && hit && hit.expiresAt > now) {
@@ -78,6 +146,7 @@ export async function GET(req: Request) {
   const force = url.searchParams.get('force') === '1';
 
   try {
+    const supabase = getSupabaseClient();
     const TTL_WORKER_MS = 3_000;
     const TTL_RUNS_MS = 10_000;
 
@@ -88,11 +157,12 @@ export async function GET(req: Request) {
       loader: async () => {
         const { data, error } = await supabase
           .from('worker_status')
-          .select('service, run_mode, state, message, last_event_at, last_success_at, updated_at')
-          .order('service', { ascending: true });
+          .select(SELECT_WORKER_STATUS)
+          .order('service', { ascending: true })
+          .returns<WorkerStatusRow[]>();
 
-        if (error) throw new Error(error.message);
-        return (data ?? []) as WorkerStatusRow[];
+        if (error) throw new Error(`worker_status: ${error.message}`);
+        return data ?? [];
       },
     });
 
@@ -103,14 +173,13 @@ export async function GET(req: Request) {
       loader: async () => {
         const { data, error } = await supabase
           .from('ingestion_runs')
-          .select(
-            'id, job, symbols, timeframe, status, inserted_count, error_message, started_at, finished_at',
-          )
+          .select(SELECT_INGESTION_RUNS)
           .order('started_at', { ascending: false })
-          .limit(20);
+          .limit(20)
+          .returns<IngestionRunRow[]>();
 
-        if (error) throw new Error(error.message);
-        return (data ?? []) as IngestionRunRow[];
+        if (error) throw new Error(`ingestion_runs: ${error.message}`);
+        return data ?? [];
       },
     });
 
@@ -121,17 +190,17 @@ export async function GET(req: Request) {
       loader: async () => {
         const { data, error } = await supabase
           .from('analysis_runs')
-          .select(
-            'id, service, market, symbol, status, skip_reason, error_message, latency_ms, model, total_tokens, window_start, window_end, created_at',
-          )
+          .select(SELECT_ANALYSIS_RUNS)
           .order('created_at', { ascending: false })
-          .limit(30);
+          .limit(30)
+          .returns<AnalysisRunRow[]>();
 
-        if (error) throw new Error(error.message);
-        return (data ?? []) as AnalysisRunRow[];
+        if (error) throw new Error(`analysis_runs: ${error.message}`);
+        return data ?? [];
       },
     });
 
+    // ✅ ai_analysis_results: “targets별 N건 저장” 스키마에 맞춤
     const aiResults = await withTtl<AiResultRow[]>({
       key: 'aiResults',
       ttlMs: TTL_RUNS_MS,
@@ -139,14 +208,29 @@ export async function GET(req: Request) {
       loader: async () => {
         const { data, error } = await supabase
           .from('ai_analysis_results')
-          .select(
-            'id, market, symbol, timeframe, decision, confidence, reason, window_end, created_at',
-          )
+          .select(SELECT_AI_RESULTS)
           .order('created_at', { ascending: false })
-          .limit(20);
+          .limit(50)
+          .returns<AiResultRow[]>();
 
-        if (error) throw new Error(error.message);
-        return (data ?? []) as AiResultRow[];
+        if (error) throw new Error(`ai_analysis_results: ${error.message}`);
+        return data ?? [];
+      },
+    });
+
+    const positions = await withTtl<PositionRow[]>({
+      key: 'positions',
+      ttlMs: TTL_RUNS_MS,
+      force,
+      loader: async () => {
+        const { data, error } = await supabase
+          .from('positions')
+          .select(SELECT_POSITIONS)
+          .gt('qty', 0)
+          .returns<PositionRow[]>();
+
+        if (error) throw new Error(`positions: ${error.message}`);
+        return data ?? [];
       },
     });
 
@@ -154,9 +238,9 @@ export async function GET(req: Request) {
       workerStatus.cacheHit &&
       ingestionRuns.cacheHit &&
       analysisRuns.cacheHit &&
-      aiResults.cacheHit;
+      aiResults.cacheHit &&
+      positions.cacheHit;
 
-    // ✅ 1번: 서버에서 “지연(분)” 계산
     const { lagByService, lagMinutesMax } = buildLagByService(workerStatus.value);
 
     const body: OpsSnapshot = {
@@ -165,7 +249,6 @@ export async function GET(req: Request) {
         force,
         ttlSeconds: TTL_RUNS_MS / 1000,
         cacheHit: allHit,
-
         lagMinutesMax,
         lagByService,
       },
@@ -194,14 +277,18 @@ export async function GET(req: Request) {
           cacheHit: aiResults.cacheHit,
           data: aiResults.value,
         },
+        positions: {
+          generatedAt: positions.generatedAt,
+          ttlSeconds: TTL_RUNS_MS / 1000,
+          cacheHit: positions.cacheHit,
+          data: positions.value,
+        },
       },
     };
 
     return NextResponse.json(body, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json(
-      { error: String(e?.message ?? e), generatedAt: nowIso() },
-      { status: 500 },
-    );
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: msg, generatedAt: nowIso() }, { status: 500 });
   }
 }
