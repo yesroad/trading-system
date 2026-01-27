@@ -21,13 +21,21 @@ export type SystemGuardRow = {
   last_success_at?: Nullable<string>;
   last_success_symbol?: Nullable<string>;
   last_success_price?: Nullable<number>;
+
+  // KIS 토큰 필드
+  kis_token_value?: Nullable<string>;
+  kis_token_expires_at?: Nullable<string>;
+  kis_token_last_issued_at?: Nullable<string>;
+  kis_token_issue_count?: number;
+  kis_token_last_error_at?: Nullable<string>;
+  kis_token_last_error_message?: Nullable<string>;
 };
 
 export async function getSystemGuard() {
   const { data, error } = await supabase
     .from('system_guard')
     .select(
-      'id,trading_enabled,error_count,last_error_at,updated_at,token_cooldown_count,token_cooldown_until,last_token_cooldown_at,last_success_at,last_success_symbol,last_success_price',
+      'id,trading_enabled,error_count,last_error_at,updated_at,token_cooldown_count,token_cooldown_until,last_token_cooldown_at,last_success_at,last_success_symbol,last_success_price,kis_token_value,kis_token_expires_at,kis_token_last_issued_at,kis_token_issue_count,kis_token_last_error_at,kis_token_last_error_message',
     )
     .eq('id', ID)
     .single();
