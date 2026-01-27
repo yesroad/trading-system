@@ -2431,6 +2431,19 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@workspace/kis-auth@npm:*, @workspace/kis-auth@workspace:packages/kis-auth":
+  version: 0.0.0-use.local
+  resolution: "@workspace/kis-auth@workspace:packages/kis-auth"
+  dependencies:
+    "@supabase/supabase-js": "npm:^2.90.1"
+    "@workspace/eslint-config": "npm:*"
+    dotenv: "npm:^17.2.3"
+    eslint: "npm:^9.39.2"
+    tsx: "npm:^4.21.0"
+    typescript: "npm:^5.9.3"
+  languageName: unknown
+  linkType: soft
+
 "@workspace/typescript-config@workspace:packages/typescript-config":
   version: 0.0.0-use.local
   resolution: "@workspace/typescript-config@workspace:packages/typescript-config"
@@ -4622,6 +4635,7 @@ __metadata:
   dependencies:
     "@supabase/supabase-js": "npm:^2.90.1"
     "@workspace/eslint-config": "npm:*"
+    "@workspace/kis-auth": "npm:*"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
     tsx: "npm:^4.21.0"
@@ -6872,6 +6886,7 @@ __metadata:
     "@supabase/supabase-js": "npm:^2.90.1"
     "@types/luxon": "npm:^3.7.1"
     "@workspace/eslint-config": "npm:*"
+    "@workspace/kis-auth": "npm:*"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
     luxon: "npm:^3.7.2"

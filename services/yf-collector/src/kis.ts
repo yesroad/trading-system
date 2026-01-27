@@ -2,6 +2,7 @@
  * KIS (모의/실전) - 토큰 발급 + 해외주식 예수금 조회
  */
 
+import { TokenManager, TokenCooldownError, KisTokenError } from '@workspace/kis-auth';
 import type { Nullable } from './types/utils';
 import {
   KIS_BASE_URL,
@@ -12,10 +13,11 @@ import {
   KIS_TR_PREFIX,
 } from './kisConfig';
 
-type KisTokenResponse = {
-  access_token: string;
-  expires_in: number; // seconds
-};
+// 토큰 매니저 인스턴스 생성 (모듈 스코프)
+const tokenManager = new TokenManager('yf-collector');
+
+// 에러 클래스 re-export
+export { TokenCooldownError, KisTokenError };
 
 type KisOverseasBalanceResponse = {
   output1?: Array<{
@@ -52,92 +54,9 @@ type KisOverseasBalanceResponse = {
   msg1?: string;
 };
 
-export class TokenCooldownError extends Error {
-  untilMs: number;
-
-  constructor(untilMs: number) {
-    const waitSec = Math.ceil((untilMs - Date.now()) / 1000);
-    super(`[yf-collector] 토큰 쿨다운 중 (${waitSec}s)`);
-    this.name = 'TokenCooldownError';
-    this.untilMs = untilMs;
-  }
-
-  get remainingMs() {
-    return Math.max(0, this.untilMs - Date.now());
-  }
-}
-
-export class KisTokenError extends Error {
-  status: number;
-  bodyText: string;
-
-  constructor(status: number, bodyText: string) {
-    super(`KIS token failed: ${status}`);
-    this.name = 'KisTokenError';
-    this.status = status;
-    this.bodyText = bodyText;
-  }
-}
-
-let cachedToken: Nullable<{ value: string; expiresAt: number }> = null;
-
-// 토큰 발급 실패 시 쿨다운(기본 60초)
-let nextTokenRequestAt = 0;
-
 // 예수금 캐시 (60초)
 let cachedBalance: Nullable<{ value: number; fetchedAt: number }> = null;
 const BALANCE_CACHE_MS = 60_000;
-
-async function getAccessToken() {
-  const now = Date.now();
-
-  // 캐시된 토큰 사용
-  if (cachedToken && cachedToken.expiresAt > now) {
-    return cachedToken.value;
-  }
-
-  // 쿨다운 중이면 토큰 발급 시도 자체를 하지 않음
-  if (now < nextTokenRequestAt) {
-    throw new TokenCooldownError(nextTokenRequestAt);
-  }
-
-  console.log('[yf-collector] KIS 토큰 발급 요청');
-
-  const res = await fetch(`${KIS_BASE_URL}/oauth2/tokenP`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      grant_type: 'client_credentials',
-      appkey: KIS_APP_KEY,
-      appsecret: KIS_APP_SECRET,
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    console.error('[yf-collector] 토큰 발급 실패', text);
-
-    // KIS 제한 대응: 실패 시 최소 60초 쿨다운
-    nextTokenRequestAt = Date.now() + 60_000;
-
-    throw new KisTokenError(res.status, text);
-  }
-
-  const data = (await res.json()) as KisTokenResponse;
-
-  cachedToken = {
-    value: data.access_token,
-    // 만료 30초 전에 갱신
-    expiresAt: Date.now() + (data.expires_in - 30) * 1000,
-  };
-
-  // 성공하면 쿨다운 해제
-  nextTokenRequestAt = 0;
-
-  console.log('[yf-collector] KIS 토큰 발급 성공');
-
-  return cachedToken.value;
-}
 
 /**
  * 해외주식 매수가능금액 조회 (KIS API)
@@ -156,7 +75,7 @@ export async function fetchOverseasAccountBalance(): Promise<number | null> {
   }
 
   try {
-    const token = await getAccessToken();
+    const token = await tokenManager.getToken();
 
     // 환경별 tr_id (실전: TTTS3012R, 모의: VTTS3012R)
     const trId = `${KIS_TR_PREFIX}TTS3012R`;
