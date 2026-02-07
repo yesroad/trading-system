@@ -6,7 +6,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import type { Nullable } from './types/utils';
+import type { Nullable } from '@workspace/shared-utils';
 
 const QuoteSchema = z.object({
   open: z.array(z.number().nullable()),

@@ -1,4 +1,4 @@
-import { Nullable } from './utils';
+import type { Nullable } from '@workspace/shared-utils';
 
 export type WorkerState = 'unknown' | 'running' | 'success' | 'failed' | 'skipped';
 

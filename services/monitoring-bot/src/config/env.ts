@@ -1,8 +1,8 @@
 import 'dotenv/config';
-import { envNumber, envBoolean, requireEnv } from '@workspace/shared-utils';
+import { env as readEnv, envNumber, envBoolean, requireEnv } from '@workspace/shared-utils';
 
 function str(key: string, def: string) {
-  const v = process.env[key];
+  const v = readEnv(key);
   return v ? String(v) : def;
 }
 
@@ -19,7 +19,7 @@ export const env = {
   AI_STALE_CRIT_MIN: envNumber('AI_STALE_CRIT_MIN', 120) ?? 120,
 
   ALERT_COOLDOWN_MIN: envNumber('ALERT_COOLDOWN_MIN', 10) ?? 10,
-  ALERT_PREFIX: process.env.ALERT_PREFIX ?? '[TRADING]',
+  ALERT_PREFIX: readEnv('ALERT_PREFIX') ?? '[TRADING]',
 
   ENABLE_KR: envBoolean('ENABLE_KR', true),
   ENABLE_US: envBoolean('ENABLE_US', true),
@@ -36,4 +36,7 @@ export const env = {
 
   DAILY_REPORT_ENABLED: envBoolean('DAILY_REPORT_ENABLED', false),
   DAILY_REPORT_TITLE: str('DAILY_REPORT_TITLE', '[TRADING] 하루 요약'),
+
+  NOTIFICATION_EVENTS_ENABLED: envBoolean('NOTIFICATION_EVENTS_ENABLED', true),
+  NOTIFICATION_EVENTS_LIMIT: envNumber('NOTIFICATION_EVENTS_LIMIT', 50) ?? 50,
 };

@@ -3,7 +3,7 @@
  */
 
 import { TokenManager, TokenCooldownError, KisTokenError } from '@workspace/kis-auth';
-import type { Nullable } from './types/utils';
+import type { Nullable } from '@workspace/shared-utils';
 import Big from 'big.js';
 import { DateTime } from 'luxon';
 import {

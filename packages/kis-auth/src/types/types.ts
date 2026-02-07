@@ -1,8 +1,8 @@
 /**
  * 공통 타입 정의
  */
-
-export type Nullable<T> = T | null;
+export type { Nullable } from '@workspace/shared-utils';
+import type { Nullable } from '@workspace/shared-utils';
 
 export type KisTokenResponse = {
   access_token: string;

@@ -23,11 +23,10 @@
 
 import 'dotenv/config';
 import { DateTime } from 'luxon';
-import { nowIso } from '@workspace/shared-utils';
+import { env, envNumber, nowIso, type Nullable } from '@workspace/shared-utils';
 import { supabase } from './db/supabase';
 import { fetchYahooBars } from './fetchYahoo';
 import { upsertBars } from './db/db';
-import type { Nullable } from './types/utils';
 import { loadAccountCash } from './accountCash';
 import { loadEnabledUniverseSymbols } from './symbolUniverse';
 import { loadAutoUsSymbols } from './autoCandidates';
@@ -56,15 +55,11 @@ const CASH_BUFFER_RATIO = 0.98;
 const CASH_REFRESH_MS = 60_000;
 
 // RPS 제한 (Yahoo Finance는 비공식 API이므로 보수적으로)
-const YF_RPS = parseInt(process.env.YF_RPS || '2', 10);
+const YF_RPS = Math.floor(envNumber('YF_RPS', 2) ?? 2);
 
 type RunMode = 'MARKET_ONLY' | 'EXTENDED' | 'ALWAYS';
 
-function env(name: string) {
-  const v = process.env[name];
-  return v ?? '';
-}
-const YF_RUN_MODE = env('YF_RUN_MODE');
+const YF_RUN_MODE = env('YF_RUN_MODE') ?? '';
 
 const RUN_MODE = (YF_RUN_MODE || 'MARKET_ONLY') as RunMode;
 

@@ -4,13 +4,12 @@
 
 import 'dotenv/config';
 import { DateTime } from 'luxon';
-import { requireEnv as env, createBackoff, nowIso } from '@workspace/shared-utils';
+import { requireEnv as env, createBackoff, nowIso, type Nullable } from '@workspace/shared-utils';
 import { upsertWorkerStatus } from '@workspace/db-client';
 import { fetchKrxPrice, fetchAccountBalance, TokenCooldownError } from './kis';
 import { insertTick } from './insertTick';
 import { bumpErrorCount, getSystemGuard, setTradingEnabled } from './systemGuard';
 import { loadActiveKisKrxSymbols, TrackedSymbol } from './trackedSymbols';
-import type { Nullable } from './types/utils';
 import { createIngestionRun, finishIngestionRun, failIngestionRun } from './ingestionRuns';
 
 // 실행 모드

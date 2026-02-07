@@ -12,8 +12,15 @@ export function normalizeUtcIso(utcLike: string): string {
   return `${utcLike}Z`;
 }
 
-export function toIsoString(date: Date): string {
-  const iso = DateTime.fromJSDate(date).toUTC().toISO();
+export function toIsoString(value: string | DateTime): string {
+  const dt =
+    typeof value === 'string'
+      ? DateTime.fromISO(value, { setZone: true })
+      : value;
+
+  if (!dt.isValid) throw new Error('ISO 변환 실패');
+
+  const iso = dt.toUTC().toISO();
   if (!iso) throw new Error('ISO 변환 실패');
   return iso;
 }

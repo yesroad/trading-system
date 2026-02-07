@@ -3,8 +3,7 @@
  */
 
 import { supabase } from './db/supabase';
-import type { Nullable } from './types/utils';
-import { nowIso } from '@workspace/shared-utils';
+import { nowIso, type Nullable } from '@workspace/shared-utils';
 
 type IngestionRunStatus = 'success' | 'running' | 'failed' | 'skipped';
 

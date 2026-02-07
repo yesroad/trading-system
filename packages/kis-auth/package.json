@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
+    "@workspace/shared-utils": "*",
     "dotenv": "^17.2.3",
     "luxon": "^3.7.2"
   },

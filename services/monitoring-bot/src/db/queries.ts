@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { nowIso } from '@workspace/shared-utils';
 
 export async function fetchRecentIngestionRuns(limit: number) {
   const { data, error } = await supabase
@@ -70,4 +71,56 @@ export async function fetchLatestIngestionSuccessByJobs(jobs: string[]) {
   }
 
   return out;
+}
+
+export type NotificationEventRow = {
+  id: number;
+  source_service: string;
+  event_type: string;
+  level: 'INFO' | 'WARNING' | 'ERROR' | string;
+  market: 'KR' | 'US' | 'CRYPTO' | 'GLOBAL' | string | null;
+  title: string;
+  message: string;
+  payload: unknown;
+  status: 'PENDING' | 'SENT' | 'FAILED' | string;
+  created_at: string;
+};
+
+export async function fetchPendingNotificationEvents(limit: number): Promise<NotificationEventRow[]> {
+  const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)));
+
+  const { data, error } = await supabase
+    .from('notification_events')
+    .select('id,source_service,event_type,level,market,title,message,payload,status,created_at')
+    .eq('status', 'PENDING')
+    .order('created_at', { ascending: true })
+    .limit(safeLimit);
+
+  if (error) throw new Error(`notification_events 조회 실패: ${error.message}`);
+  return (data ?? []) as NotificationEventRow[];
+}
+
+export async function markNotificationEventSent(id: number): Promise<void> {
+  const { error } = await supabase
+    .from('notification_events')
+    .update({
+      status: 'SENT',
+      sent_at: nowIso(),
+      error_message: null,
+    })
+    .eq('id', id);
+
+  if (error) throw new Error(`notification_events SENT 업데이트 실패: ${error.message}`);
+}
+
+export async function markNotificationEventFailed(id: number, message: string): Promise<void> {
+  const { error } = await supabase
+    .from('notification_events')
+    .update({
+      status: 'FAILED',
+      error_message: message.slice(0, 500),
+    })
+    .eq('id', id);
+
+  if (error) throw new Error(`notification_events FAILED 업데이트 실패: ${error.message}`);
 }

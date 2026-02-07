@@ -6,6 +6,7 @@ import { shouldSendAlert, recordAlertSent } from './alert/alertCooldown';
 import { checkWorkers } from './checks/checkWorkers';
 import { checkIngestionRuns } from './checks/checkIngestionRuns';
 import { checkAiResults } from './checks/checkAiResults';
+import { checkNotificationEvents } from './checks/checkNotificationEvents';
 import { buildDailyReportText } from './checks/dailyReport';
 
 async function runChecksOnce() {
@@ -29,6 +30,13 @@ async function runChecksOnce() {
 
   if (events.length === 0) {
     console.log('[TRADING] 이상 징후 없음');
+  }
+
+  const external = await checkNotificationEvents();
+  if (external.sent > 0 || external.failed > 0 || external.skipped > 0) {
+    console.log(
+      `[TRADING] 외부 알림 처리: sent=${external.sent} failed=${external.failed} skipped=${external.skipped}`,
+    );
   }
 }
 

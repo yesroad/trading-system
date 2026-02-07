@@ -1,6 +1,6 @@
 // /services/upbit-collector/src/symbolUniverse.ts
 import { supabase } from './db/supabase';
-import type { Nullable } from './types/utils';
+import type { Nullable } from '@workspace/shared-utils';
 
 export type SymbolUniverseRow = {
   market: string; // 'CRYPTO'

@@ -71,3 +71,7 @@ export default [...nodeConfig, /* 추가 설정 */];
 
 ## 참고
 공유 패턴: 모노레포 전체 컨벤션은 루트 AGENTS.md 참조.
+
+## React/UI 스킬 적용 범위
+- `dashboard-ui-skill`, `react-best-practices`, `web-design-guidelines`, `composition-patterns`는 `apps/*`의 React/Next.js UI 작업에서만 적용한다.
+- 이 워크스페이스(`services/*`, `packages/*`) 작업에는 기본 적용하지 않는다. 필요한 경우에만 예외로 명시한다.
