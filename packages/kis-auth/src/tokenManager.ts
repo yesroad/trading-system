@@ -6,25 +6,17 @@ import { supabase } from './db/supabase.js';
 import { TokenCooldownError, KisTokenError } from './errors.js';
 import type { KisTokenResponse, SystemGuardKisToken } from './types/types.js';
 import { DateTime } from 'luxon';
+import { env, requireEnv } from '@workspace/shared-utils';
 import 'dotenv/config';
 
-function getEnv(name: string): string {
-  const v = process.env[name];
-  if (!v) {
-    console.error(`[kis-auth] 환경변수 누락: ${name}`);
-    throw new Error(`${name} is missing`);
-  }
-  return v;
-}
-
 // KIS API 설정
-const KIS_ENV = (process.env.KIS_ENV || 'REAL').toUpperCase();
+const KIS_ENV = (env('KIS_ENV') ?? 'REAL').toUpperCase();
 const KIS_BASE_URL =
   KIS_ENV === 'PAPER' || KIS_ENV === 'MOCK' || KIS_ENV === 'SIM'
-    ? getEnv('KIS_PAPER_BASE_URL')
-    : getEnv('KIS_REAL_BASE_URL');
-const KIS_APP_KEY = getEnv('KIS_APP_KEY');
-const KIS_APP_SECRET = getEnv('KIS_APP_SECRET');
+    ? requireEnv('KIS_PAPER_BASE_URL')
+    : requireEnv('KIS_REAL_BASE_URL');
+const KIS_APP_KEY = requireEnv('KIS_APP_KEY');
+const KIS_APP_SECRET = requireEnv('KIS_APP_SECRET');
 
 console.log(`[kis-auth] KIS API 환경: ${KIS_ENV} | BASE_URL: ${KIS_BASE_URL}`);
 

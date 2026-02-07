@@ -1,5 +1,5 @@
 import { supabase } from './db/supabase';
-import type { Nullable } from './types/utils';
+import type { Nullable } from '@workspace/shared-utils';
 
 export type UniverseSymbolRow = {
   market: string; // 'KR' | 'US' | 'CRYPTO' ...

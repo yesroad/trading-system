@@ -3,9 +3,8 @@
  */
 
 import { supabase } from './db/supabase';
-import type { Nullable } from './types/utils';
 import { DateTime } from 'luxon';
-import { nowIso } from '@workspace/shared-utils';
+import { nowIso, type Nullable } from '@workspace/shared-utils';
 
 const ID = 1;
 

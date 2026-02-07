@@ -4,7 +4,7 @@
 
 import { TokenManager, TokenCooldownError, KisTokenError } from '@workspace/kis-auth';
 import { DateTime } from 'luxon';
-import type { Nullable } from './types/utils';
+import type { Nullable } from '@workspace/shared-utils';
 import Big from 'big.js';
 import {
   KIS_BASE_URL,

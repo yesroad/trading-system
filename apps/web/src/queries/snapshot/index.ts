@@ -21,13 +21,3 @@ export function useGetSnapshot(options: GetSnapshotOptions = {}) {
     retry: options.retry ?? 1,
   });
 }
-
-/** 버튼용(수동 트리거 전용) */
-export function useGetSnapshotForce() {
-  return useQuery({
-    queryKey: snapshotKeys.getSnapshotForce,
-    queryFn: () => snapshotService.getForceSnapshot(),
-    enabled: false,
-    retry: 0,
-  });
-}

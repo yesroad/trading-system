@@ -112,3 +112,7 @@ export async function GET() {
 
 ## 참고
 공유 패턴: 모노레포 전체 컨벤션은 루트 AGENTS.md 참조.
+
+## React/UI 스킬 적용 범위
+- `dashboard-ui-skill`, `react-best-practices`, `web-design-guidelines`, `composition-patterns`는 `apps/*`의 React/Next.js UI 작업 시 적용한다.
+- UI가 아닌 서버/스크립트/인프라 작업에는 기본 적용하지 않는다.

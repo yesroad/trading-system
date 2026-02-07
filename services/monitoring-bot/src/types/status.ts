@@ -8,7 +8,8 @@ export type AlertCategory =
   | 'ingestion_stale'
   | 'ingestion_missing'
   | 'ai_missing'
-  | 'ai_stale';
+  | 'ai_stale'
+  | 'notification_event';
 
 export type AlertEvent = {
   level: AlertLevel;
