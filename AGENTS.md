@@ -43,26 +43,11 @@ trading-system/
 
 ## 골든 룰
 
-### 불변
-- .env 파일 커밋 금지, API 키 노출 금지
-- 모든 데이터베이스 작업은 Supabase 클라이언트를 통해
-- 서비스는 독립적으로 실행, 데이터베이스로 통신
-- 환경 변수는 시작 시 반드시 검증
-
-### 해야 할 것
-- 모든 워크스페이스에서 TypeScript strict 모드 사용
-- 외부 API 응답은 Zod로 검증
-- 모든 날짜/시간 작업에 Luxon 사용
-- 커밋 전 `yarn lint`와 `yarn check-types` 실행
-- 서비스는 stateless하고 idempotent하게 유지
-- 웹 앱에서 서버 상태는 TanStack Query 사용
-
-### 하지 말아야 할 것
-- 서비스 간 직접 import (데이터베이스 사용)
-- 명시적 정당화 없이 `any` 타입 사용
-- 코드나 설정 파일에 시크릿 저장
-- API 호출 에러 핸들링 생략
-- Date 객체 직접 사용 (Luxon 사용)
+### 작업 기준
+- 작업 시 `.claude/skills`와 `.claude/rules`의 최신 내용을 먼저 확인하고, 해당 규칙/가이드를 우선 적용한다.
+- 충돌 시 우선순위: `AGENTS.md` -> `.claude/rules/immutable-rules.md` -> `.claude/skills/*`
+### 상세 불변 규칙
+- 보안/아키텍처/타입/환경변수/숫자 계산의 상세 불변 규칙은 `.claude/rules/immutable-rules.md`를 단일 출처로 따른다.
 
 ## 표준
 - 파일: kebab-case, 컴포넌트는 PascalCase

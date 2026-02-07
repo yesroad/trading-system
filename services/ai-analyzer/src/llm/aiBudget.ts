@@ -1,5 +1,6 @@
 import { Market } from '../config/markets';
 import type { MarketMode } from '../config/schedule';
+import { DateTime } from 'luxon';
 
 type BudgetState = {
   lastCallAt: number | null;
@@ -12,15 +13,15 @@ type BudgetState = {
 const state: Record<string, BudgetState> = {};
 
 function now() {
-  return Date.now();
+  return DateTime.now().toMillis();
 }
 
-function hourKey(d = new Date()) {
-  return d.toISOString().slice(0, 13); // YYYY-MM-DDTHH
+function hourKey(d = DateTime.now().toUTC()) {
+  return d.toISO({ suppressMilliseconds: true })?.slice(0, 13) ?? ''; // YYYY-MM-DDTHH
 }
 
-function dayKey(d = new Date()) {
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+function dayKey(d = DateTime.now().toUTC()) {
+  return d.toISODate() ?? '';
 }
 
 /** 시장/모드별 쿨다운(ms) */

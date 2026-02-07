@@ -1,18 +1,15 @@
 import { supabase } from './supabase';
 import type { UpbitMinuteCandle } from '../types/upbit';
 import { nowIso, normalizeUtcIso } from '@workspace/shared-utils';
+import { DateTime } from 'luxon';
 
 // UTC ISO → KST 로컬 시각 문자열(YYYY-MM-DD HH:mm:ss)
 function utcIsoToKstLocalTimestamp(utcIso: string): string {
-  const d = new Date(utcIso);
-  if (Number.isNaN(d.getTime())) {
+  const dt = DateTime.fromISO(utcIso, { setZone: true });
+  if (!dt.isValid) {
     throw new Error(`시간 파싱 실패(UTC): ${utcIso}`);
   }
-
-  return d.toLocaleString('sv-SE', {
-    timeZone: 'Asia/Seoul',
-    hour12: false,
-  });
+  return dt.setZone('Asia/Seoul').toFormat('yyyy-LL-dd HH:mm:ss');
 }
 
 export async function upsertUpbitCandles(rows: UpbitMinuteCandle[]): Promise<number> {

@@ -9,6 +9,7 @@ import { callLLM } from '../llm/callLLM';
 import { canCallLLM, recordLLMCall } from '../llm/aiBudget';
 import { saveAiResults } from '../db/saveAiResults';
 import { shouldCallAIBySnapshot } from './shouldCallAIBySnapshot';
+import { nowIso } from '@workspace/shared-utils';
 
 export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<void> {
   console.log(`[AI] ${market} | ${mode} 시작`);
@@ -21,7 +22,7 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
 
   const snapshot = await collectSnapshot(market);
   const maxTargets = env.AI_MAX_TARGETS_PER_MARKET;
-  const targets = await selectTargets(market, maxTargets, snapshot);
+  const targets = await selectTargets(maxTargets, snapshot);
 
   console.log(
     `[AI] 타겟 선정 완료 | market=${market} | targets=${targets.length} | symbols=${targets
@@ -51,7 +52,7 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
     mode,
     snapshot,
     targets,
-    nowIso: new Date().toISOString(),
+    nowIso: nowIso(),
   });
 
   console.log(`[AI] LLM 호출 시작 | market=${market} | mode=${mode}`);

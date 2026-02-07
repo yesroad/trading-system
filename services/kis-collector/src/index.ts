@@ -3,7 +3,8 @@
  */
 
 import 'dotenv/config';
-import { requireEnv as env, createBackoff } from '@workspace/shared-utils';
+import { DateTime } from 'luxon';
+import { requireEnv as env, createBackoff, nowIso } from '@workspace/shared-utils';
 import { upsertWorkerStatus } from '@workspace/db-client';
 import { fetchKrxPrice, fetchAccountBalance, TokenCooldownError } from './kis';
 import { insertTick } from './insertTick';
@@ -57,7 +58,6 @@ let lastSkipReason: Nullable<string> = null;
 // ingestion run 추적 (1분 주기로 배치 기록)
 const INGESTION_RUN_INTERVAL_MS = 60_000; // 1분
 let currentRunId: Nullable<number> = null;
-let currentRunStartedAt = 0;
 const currentRunSymbols = new Set<string>();
 let currentRunInsertCount = 0;
 let currentRunErrors: string[] = [];
@@ -67,7 +67,7 @@ function getState(symbol: string) {
   if (existing) return existing;
 
   const created: SymbolState = {
-    nextRunAt: Date.now(),
+    nextRunAt: DateTime.now().toMillis(),
     isRunning: false,
     backoff: createBackoff({ baseMs: 1000, maxMs: 30_000 }),
   };
@@ -76,18 +76,15 @@ function getState(symbol: string) {
 }
 
 function nowKst() {
-  // KST 고정
-  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  return DateTime.now().setZone('Asia/Seoul');
 }
 
-function minutesOfDay(d: Date) {
-  return d.getHours() * 60 + d.getMinutes();
+function minutesOfDay(d: DateTime) {
+  return d.hour * 60 + d.minute;
 }
 
-function isWeekendKst(d: Date) {
-  // 0=Sun, 6=Sat
-  const day = d.getDay();
-  return day === 0 || day === 6;
+function isWeekendKst(d: DateTime) {
+  return d.weekday === 6 || d.weekday === 7;
 }
 
 function shouldSkipNow(): { skip: boolean; reason: string } {
@@ -132,7 +129,6 @@ async function startNewIngestionRun() {
     });
 
     currentRunId = runId;
-    currentRunStartedAt = Date.now();
     currentRunSymbols.clear();
     currentRunInsertCount = 0;
     currentRunErrors = [];
@@ -235,7 +231,7 @@ setInterval(async () => {
   if (mainLoopRunning) return;
   mainLoopRunning = true;
 
-  const now = Date.now();
+  const now = DateTime.now().toMillis();
 
   try {
     // 장시간 스킵 판정(루프 전체 스킵)
@@ -251,7 +247,7 @@ setInterval(async () => {
           run_mode: RUN_MODE,
           state: 'skipped',
           message: reason,
-          last_event_at: new Date().toISOString(),
+          last_event_at: nowIso(),
         });
       }
       return;
@@ -265,7 +261,7 @@ setInterval(async () => {
         run_mode: RUN_MODE,
         state: 'running',
         message: '수집 재개',
-        last_event_at: new Date().toISOString(),
+        last_event_at: nowIso(),
       });
     }
 
@@ -283,7 +279,7 @@ setInterval(async () => {
       st.isRunning = true;
 
       try {
-        const ts = new Date().toISOString();
+        const ts = nowIso();
         const { price, raw } = await fetchKrxPrice(s.broker_code);
 
         await insertTick({
@@ -294,7 +290,7 @@ setInterval(async () => {
         });
 
         st.backoff.reset();
-        st.nextRunAt = Date.now() + baseIntervalMs;
+        st.nextRunAt = DateTime.now().toMillis() + baseIntervalMs;
 
         // ingestion run 추적
         currentRunSymbols.add(s.symbol);
@@ -304,7 +300,7 @@ setInterval(async () => {
         console.log('[kis-collector][tick]', s.symbol, price);
 
         // 워커 상태는 너무 자주 갱신하지 않도록(과도한 DB write 방지)
-        const nowMs = Date.now();
+        const nowMs = DateTime.now().toMillis();
         if (nowMs - lastSuccessStatusAtMs >= SUCCESS_STATUS_MIN_INTERVAL_MS) {
           lastSuccessStatusAtMs = nowMs;
           await upsertWorkerStatus({
@@ -344,11 +340,11 @@ setInterval(async () => {
           run_mode: RUN_MODE,
           state: 'failed',
           message: e instanceof Error ? e.message : String(e),
-          last_event_at: new Date().toISOString(),
+          last_event_at: nowIso(),
         });
 
         // 종목별 백오프
-        st.nextRunAt = Date.now() + st.backoff.nextDelayMs();
+        st.nextRunAt = DateTime.now().toMillis() + st.backoff.nextDelayMs();
       } finally {
         st.isRunning = false;
       }

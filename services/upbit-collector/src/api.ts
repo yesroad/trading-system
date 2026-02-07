@@ -1,6 +1,7 @@
 import { parseMarkets, parseTickers, parseMinuteCandles } from './guards';
 import type { UpbitMarket, UpbitTicker, UpbitMinuteCandle } from './types/upbit';
 import { requireEnv as env } from '@workspace/shared-utils';
+import Big from 'big.js';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 
@@ -126,13 +127,23 @@ export async function fetchKRWBalance(): Promise<number> {
     return 0;
   }
 
-  const balance = Number(krwAccount.balance);
-  const locked = Number(krwAccount.locked);
-
-  if (!Number.isFinite(balance) || !Number.isFinite(locked)) {
+  let available: Big;
+  try {
+    const balance = new Big(krwAccount.balance);
+    const locked = new Big(krwAccount.locked);
+    available = balance.minus(locked);
+  } catch {
     throw new Error('KRW 잔액 파싱 실패');
   }
 
-  // 사용 가능 잔액 = 잔액 - 주문 중인 금액
-  return balance - locked;
+  if (available.lt(0)) {
+    return 0;
+  }
+
+  const availableNumber = Number(available.toString());
+  if (!Number.isFinite(availableNumber)) {
+    throw new Error('KRW 잔액 변환 실패');
+  }
+
+  return availableNumber;
 }

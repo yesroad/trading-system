@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import { requireEnv as env, sleep, nowIso, normalizeUtcIso } from '@workspace/shared-utils';
 import { upsertWorkerStatus, insertIngestionRun, loadCryptoPositions } from '@workspace/db-client';
+import Big from 'big.js';
+import { DateTime } from 'luxon';
 import { fetchAllMarkets, fetchTickers, fetchMinuteCandles, fetchKRWBalance } from './api';
 import { upsertUpbitCandles } from './db/db';
 import { loadSymbolUniverse } from './symbolUniverse';
@@ -10,8 +12,8 @@ import type { UpbitTicker } from './types/upbit';
 function pickLaterIso(a: string | null, b: string | null): string | null {
   if (!a) return b;
   if (!b) return a;
-  const ta = new Date(a).getTime();
-  const tb = new Date(b).getTime();
+  const ta = DateTime.fromISO(a, { setZone: true }).toMillis();
+  const tb = DateTime.fromISO(b, { setZone: true }).toMillis();
   if (Number.isNaN(ta)) return b;
   if (Number.isNaN(tb)) return a;
   return ta >= tb ? a : b;
@@ -55,7 +57,7 @@ async function mainLoop(): Promise<void> {
       });
 
       // 1) KRW 마켓 전체 스캔 (SCAN_INTERVAL마다 갱신)
-      const now = Date.now();
+      const now = DateTime.now().toMillis();
       const needRescan = cachedAllKrwMarkets.length === 0 || now - lastScanAt >= scanInterval;
 
       if (needRescan) {
@@ -86,6 +88,7 @@ async function mainLoop(): Promise<void> {
 
         // 2-4) 전체 티커 조회
         const tickers: UpbitTicker[] = await fetchTickers(cachedAllKrwMarkets);
+        const krwBalanceBig = new Big(krwBalance);
 
         // 티커를 Map으로 변환 (심볼별 현재가 조회용)
         const tickerMap = new Map<string, UpbitTicker>();
@@ -106,7 +109,7 @@ async function mainLoop(): Promise<void> {
           if (!ticker) continue;
 
           // 매수 가능 여부 체크
-          if (ticker.trade_price === null || ticker.trade_price > krwBalance) continue;
+          if (ticker.trade_price === null || new Big(ticker.trade_price).gt(krwBalanceBig)) continue;
 
           selectedSymbols.add(symbol);
           selectedMarkets.push(`KRW-${symbol}`);
@@ -121,7 +124,7 @@ async function mainLoop(): Promise<void> {
           if (!ticker) continue;
 
           // 매수 가능 여부 체크
-          if (ticker.trade_price === null || ticker.trade_price > krwBalance) continue;
+          if (ticker.trade_price === null || new Big(ticker.trade_price).gt(krwBalanceBig)) continue;
 
           selectedSymbols.add(symbol);
           selectedMarkets.push(`KRW-${symbol}`);

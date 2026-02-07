@@ -1,4 +1,5 @@
 import { fetchOverseasAccountBalance } from './kis';
+import { nowIso } from '@workspace/shared-utils';
 
 export type AccountCashRow = {
   broker: string; // 'KIS'
@@ -27,7 +28,7 @@ export async function loadAccountCash(params: {
     return null;
   }
 
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   // DB 조회 결과와 동일한 형식으로 반환
   return {

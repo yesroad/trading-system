@@ -1,3 +1,5 @@
+import { nowIso } from './date';
+
 type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 
 interface LogEntry {
@@ -16,7 +18,7 @@ export class Logger {
       level,
       service: this.serviceName,
       message,
-      timestamp: new Date().toISOString(),
+      timestamp: nowIso(),
       data,
     };
 

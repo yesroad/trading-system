@@ -5,6 +5,7 @@ import {
   fetchLatestAiResultsByMarket,
   fetchLatestIngestionSuccessByJobs,
 } from '../db/queries';
+import { nowIso } from '@workspace/shared-utils';
 
 type WorkerRow = {
   service: string;
@@ -21,7 +22,7 @@ export async function buildDailyReportText(): Promise<string> {
   const lines: string[] = [];
   lines.push(env.DAILY_REPORT_TITLE);
   lines.push('');
-  lines.push(`시간: ${new Date().toISOString()}`);
+  lines.push(`시간: ${nowIso()}`);
 
   // workers 요약
   const workers = (await fetchLatestWorkers()) as WorkerRow[];

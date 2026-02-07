@@ -5,6 +5,7 @@
 import { supabase } from './db/supabase.js';
 import { TokenCooldownError, KisTokenError } from './errors.js';
 import type { KisTokenResponse, SystemGuardKisToken } from './types/types.js';
+import { DateTime } from 'luxon';
 import 'dotenv/config';
 
 function getEnv(name: string): string {
@@ -27,6 +28,17 @@ const KIS_APP_SECRET = getEnv('KIS_APP_SECRET');
 
 console.log(`[kis-auth] KIS API 환경: ${KIS_ENV} | BASE_URL: ${KIS_BASE_URL}`);
 
+function parseIsoToMillis(iso: string): number {
+  const parsed = DateTime.fromISO(iso);
+  return parsed.isValid ? parsed.toMillis() : 0;
+}
+
+function mustIso(dt: DateTime): string {
+  const iso = dt.toUTC().toISO();
+  if (!iso) throw new Error('ISO 변환 실패');
+  return iso;
+}
+
 export class TokenManager {
   private readonly SYSTEM_GUARD_ID = 1;
   private readonly TOKEN_EXPIRY_BUFFER_SEC = 30; // 만료 30초 전에 갱신
@@ -41,7 +53,7 @@ export class TokenManager {
    * 토큰 조회 - DB에서 유효한 토큰 반환 또는 재발급
    */
   async getToken(): Promise<string> {
-    const now = Date.now();
+    const now = DateTime.now().toMillis();
 
     // 1. system_guard에서 현재 토큰 상태 조회
     const { data, error } = await supabase
@@ -61,7 +73,7 @@ export class TokenManager {
 
     // 2. 쿨다운 체크
     const cooldownUntil = tokenData.token_cooldown_until
-      ? new Date(tokenData.token_cooldown_until).getTime()
+      ? parseIsoToMillis(tokenData.token_cooldown_until)
       : 0;
     if (now < cooldownUntil) {
       console.log(`[kis-auth] 토큰 쿨다운 중 (${Math.ceil((cooldownUntil - now) / 1000)}초 남음)`);
@@ -70,15 +82,17 @@ export class TokenManager {
 
     // 3. 토큰 유효성 확인
     const expiresAt = tokenData.kis_token_expires_at
-      ? new Date(tokenData.kis_token_expires_at).getTime()
+      ? parseIsoToMillis(tokenData.kis_token_expires_at)
       : 0;
 
     if (tokenData.kis_token_value && expiresAt > now) {
       // 유효한 토큰 반환
       const remainingSec = Math.floor((expiresAt - now) / 1000);
-      const expiresAtDate = new Date(expiresAt);
+      const expiresAtKst = DateTime.fromMillis(expiresAt)
+        .setZone('Asia/Seoul')
+        .toFormat('yyyy-LL-dd HH:mm:ss');
       console.log(
-        `[${this.serviceName}] 캐시된 토큰 사용 (만료까지 ${remainingSec}초, 만료 시각: ${expiresAtDate.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })})`,
+        `[${this.serviceName}] 캐시된 토큰 사용 (만료까지 ${remainingSec}초, 만료 시각: ${expiresAtKst})`,
       );
       return tokenData.kis_token_value;
     }
@@ -140,22 +154,22 @@ export class TokenManager {
     expiresInSec: number,
     currentIssueCount: number,
   ): Promise<void> {
-    const now = new Date();
-    const expiresAt = new Date(
-      now.getTime() + (expiresInSec - this.TOKEN_EXPIRY_BUFFER_SEC) * 1000,
-    );
+    const now = DateTime.now();
+    const expiresAt = now.plus({ seconds: expiresInSec - this.TOKEN_EXPIRY_BUFFER_SEC });
+    const nowIso = mustIso(now);
+    const expiresAtIso = mustIso(expiresAt);
 
     const { error } = await supabase
       .from('system_guard')
       .update({
         kis_token_value: token,
-        kis_token_expires_at: expiresAt.toISOString(),
-        kis_token_last_issued_at: now.toISOString(),
+        kis_token_expires_at: expiresAtIso,
+        kis_token_last_issued_at: nowIso,
         kis_token_issue_count: currentIssueCount + 1,
         kis_token_last_error_at: null,
         kis_token_last_error_message: null,
         token_cooldown_until: null, // 성공 시 쿨다운 해제
-        updated_at: now.toISOString(),
+        updated_at: nowIso,
       })
       .eq('id', this.SYSTEM_GUARD_ID);
 
@@ -165,7 +179,7 @@ export class TokenManager {
     }
 
     console.log(
-      `[kis-auth] 토큰 DB 저장 완료 (만료: ${expiresAt.toISOString()}, issue_count: ${currentIssueCount + 1})`,
+      `[kis-auth] 토큰 DB 저장 완료 (만료: ${expiresAtIso}, issue_count: ${currentIssueCount + 1})`,
     );
   }
 
@@ -173,16 +187,18 @@ export class TokenManager {
    * 토큰 발급 실패 기록 및 쿨다운 설정
    */
   private async recordTokenError(status: number, errorText: string): Promise<void> {
-    const now = new Date();
-    const cooldownUntil = new Date(now.getTime() + this.COOLDOWN_MS);
+    const now = DateTime.now();
+    const cooldownUntil = now.plus({ milliseconds: this.COOLDOWN_MS });
+    const nowIso = mustIso(now);
+    const cooldownUntilIso = mustIso(cooldownUntil);
 
     const { error } = await supabase
       .from('system_guard')
       .update({
-        kis_token_last_error_at: now.toISOString(),
+        kis_token_last_error_at: nowIso,
         kis_token_last_error_message: `${status}: ${errorText.substring(0, 200)}`,
-        token_cooldown_until: cooldownUntil.toISOString(),
-        updated_at: now.toISOString(),
+        token_cooldown_until: cooldownUntilIso,
+        updated_at: nowIso,
       })
       .eq('id', this.SYSTEM_GUARD_ID);
 

@@ -23,6 +23,7 @@
 
 import 'dotenv/config';
 import { DateTime } from 'luxon';
+import { nowIso } from '@workspace/shared-utils';
 import { supabase } from './db/supabase';
 import { fetchYahooBars } from './fetchYahoo';
 import { upsertBars } from './db/db';
@@ -78,7 +79,7 @@ async function safeUpsertWorkerStatus(params: {
   last_success_at?: Nullable<string>;
 }) {
   try {
-    const nowIso = new Date().toISOString();
+    const ts = nowIso();
 
     const { error } = await supabase.from('worker_status').upsert(
       {
@@ -86,9 +87,9 @@ async function safeUpsertWorkerStatus(params: {
         run_mode: RUN_MODE,
         state: params.state,
         message: params.message ?? null,
-        last_event_at: params.last_event_at ?? nowIso,
+        last_event_at: params.last_event_at ?? ts,
         last_success_at: params.last_success_at ?? null,
-        updated_at: nowIso,
+        updated_at: ts,
       },
       { onConflict: 'service' },
     );
@@ -342,7 +343,7 @@ async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
       await safeUpsertWorkerStatus({
         state: 'skipped',
         message: reason,
-        last_event_at: new Date().toISOString(),
+        last_event_at: nowIso(),
       });
     }
 
@@ -360,10 +361,10 @@ async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
   await safeUpsertWorkerStatus({
     state: 'running',
     message: '수집 중',
-    last_event_at: new Date().toISOString(),
+    last_event_at: nowIso(),
   });
 
-  const startedAt = new Date().toISOString();
+  const startedAt = nowIso();
 
   // 현금 잔고 조회
   const availableUsd = await loadCash();
@@ -442,16 +443,16 @@ async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
       .update({
         status: 'success',
         inserted_count: insertedTotal,
-        finished_at: new Date().toISOString(),
+        finished_at: nowIso(),
       })
       .eq('id', run.id);
 
-    const nowIso = new Date().toISOString();
+    const ts = nowIso();
     await safeUpsertWorkerStatus({
       state: 'success',
       message: `성공 (insert: ${insertedTotal})`,
-      last_event_at: nowIso,
-      last_success_at: nowIso,
+      last_event_at: ts,
+      last_success_at: ts,
     });
 
     console.log('[yf-collector] 배치 성공 - insert:', insertedTotal);
@@ -464,7 +465,7 @@ async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
     await safeUpsertWorkerStatus({
       state: 'failed',
       message: errorMessage,
-      last_event_at: new Date().toISOString(),
+      last_event_at: nowIso(),
     });
 
     await supabase
@@ -472,7 +473,7 @@ async function runOnce(): Promise<{ ok: boolean; skipped: boolean }> {
       .update({
         status: 'failed',
         error_message: errorMessage,
-        finished_at: new Date().toISOString(),
+        finished_at: nowIso(),
       })
       .eq('id', run.id);
 

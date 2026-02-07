@@ -1,7 +1,9 @@
 import { DateTime } from 'luxon';
 
 export function nowIso(): string {
-  return DateTime.now().toISO();
+  const iso = DateTime.now().toISO();
+  if (!iso) throw new Error('현재 시각 ISO 변환 실패');
+  return iso;
 }
 
 export function normalizeUtcIso(utcLike: string): string {
@@ -11,5 +13,7 @@ export function normalizeUtcIso(utcLike: string): string {
 }
 
 export function toIsoString(date: Date): string {
-  return date.toISOString();
+  const iso = DateTime.fromJSDate(date).toUTC().toISO();
+  if (!iso) throw new Error('ISO 변환 실패');
+  return iso;
 }
