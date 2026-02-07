@@ -1899,6 +1899,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/big.js@npm:^6.2.2":
+  version: 6.2.2
+  resolution: "@types/big.js@npm:6.2.2"
+  checksum: 10c0/8f8472dfc1ef61c492e6841e86f8b9b97e5b024136bf7964e582a6a80ba73d4dbfd6cc23ed3b9d8fea69c7f30834fffd1c88e7fb981811f5c6ca608380b5ad67
+  languageName: node
+  linkType: hard
+
 "@types/estree@npm:^1.0.6":
   version: 1.0.8
   resolution: "@types/estree@npm:1.0.8"
@@ -2750,6 +2757,13 @@ __metadata:
   bin:
     baseline-browser-mapping: dist/cli.js
   checksum: 10c0/c9bf03c65e9a6690e4abbe60c269ad14ce5578cac09fed51ff1ed6e899e049afb094c2b173365cb2397d48012a83747500db6e79dca2761faf548aee10574d3d
+  languageName: node
+  linkType: hard
+
+"big.js@npm:^7.0.1":
+  version: 7.0.1
+  resolution: "big.js@npm:7.0.1"
+  checksum: 10c0/2ea2c2e263db37b2d5c6ad6246408eabf13ba07776cfd92bf464db201ef9aa9aa1712accbfe97f4aba5d358567ebefe768e8a50102cde11f35ef3497ddc2747c
   languageName: node
   linkType: hard
 
@@ -4666,10 +4680,12 @@ __metadata:
   resolution: "kis-collector@workspace:services/kis-collector"
   dependencies:
     "@supabase/supabase-js": "npm:^2.90.1"
+    "@types/big.js": "npm:^6.2.2"
     "@workspace/db-client": "npm:*"
     "@workspace/eslint-config": "npm:*"
     "@workspace/kis-auth": "npm:*"
     "@workspace/shared-utils": "npm:*"
+    big.js: "npm:^7.0.1"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
     tsx: "npm:^4.21.0"
@@ -6283,6 +6299,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"trade-executor@workspace:services/trade-executor":
+  version: 0.0.0-use.local
+  resolution: "trade-executor@workspace:services/trade-executor"
+  dependencies:
+    "@supabase/supabase-js": "npm:^2.90.1"
+    "@workspace/db-client": "npm:*"
+    "@workspace/eslint-config": "npm:*"
+    "@workspace/shared-utils": "npm:*"
+    eslint: "npm:^9.39.2"
+    tsx: "npm:^4.21.0"
+    typescript: "npm:^5.9.3"
+  languageName: unknown
+  linkType: soft
+
 "trading-system@workspace:.":
   version: 0.0.0-use.local
   resolution: "trading-system@workspace:."
@@ -6663,10 +6693,12 @@ __metadata:
   resolution: "upbit-collector@workspace:services/upbit-collector"
   dependencies:
     "@supabase/supabase-js": "npm:^2.90.1"
+    "@types/big.js": "npm:^6.2.2"
     "@types/jsonwebtoken": "npm:^9"
     "@workspace/db-client": "npm:*"
     "@workspace/eslint-config": "npm:*"
     "@workspace/shared-utils": "npm:*"
+    big.js: "npm:^7.0.1"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
     jsonwebtoken: "npm:^9.0.3"
@@ -6920,11 +6952,13 @@ __metadata:
   resolution: "yf-collector@workspace:services/yf-collector"
   dependencies:
     "@supabase/supabase-js": "npm:^2.90.1"
+    "@types/big.js": "npm:^6.2.2"
     "@types/luxon": "npm:^3.7.1"
     "@workspace/db-client": "npm:*"
     "@workspace/eslint-config": "npm:*"
     "@workspace/kis-auth": "npm:*"
     "@workspace/shared-utils": "npm:*"
+    big.js: "npm:^7.0.1"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
     tsx: "npm:^4.21.0"

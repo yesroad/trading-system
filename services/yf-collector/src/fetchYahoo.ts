@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { DateTime } from 'luxon';
 import type { Nullable } from './types/utils';
 
 const QuoteSchema = z.object({
@@ -65,7 +66,7 @@ export async function fetchYahooBars(
   const q = r.indicators.quote[0];
 
   return r.timestamp.map((ts, i) => ({
-    ts: new Date(ts * 1000).toISOString(),
+    ts: DateTime.fromSeconds(ts).toUTC().toISO() ?? '',
     open: q.open[i],
     high: q.high[i],
     low: q.low[i],

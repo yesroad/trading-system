@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { Market } from '../config/markets';
 import type { WorkerStatusRow, IngestionRunRow, AiResultRow } from '../types/db';
+import { nowIso } from '@workspace/shared-utils';
 
 export type Snapshot = {
   generatedAt: string; // ISO
@@ -19,10 +20,6 @@ export type Snapshot = {
     latestSymbols: string[]; // 가장 최근 AI 실행 시 분석한 종목들
   };
 };
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
 
 function uniqueStrings(arr: string[]): string[] {
   return Array.from(new Set(arr));

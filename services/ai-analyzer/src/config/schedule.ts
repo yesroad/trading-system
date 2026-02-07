@@ -1,4 +1,5 @@
 import { Market, MARKET_CONFIG } from './markets';
+import { DateTime } from 'luxon';
 
 export const MARKET_MODES = [
   'PRE_OPEN', // 장 열리기 전 체크
@@ -15,31 +16,11 @@ export type MarketMode = (typeof MARKET_MODES)[number];
 /** ===============================
  * 내부 유틸: 특정 timezone의 시/분을 뽑는다
  * =============================== */
-function getTimeInZone(now: Date, timeZone: string): { hour: number; minute: number; dow: number } {
-  // dow: 0=일 ~ 6=토
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    weekday: 'short',
-    hour12: false,
-  }).formatToParts(now);
-
-  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '0');
-  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '0');
-  const weekday = parts.find((p) => p.type === 'weekday')?.value ?? 'Sun';
-
-  const dowMap: Record<string, number> = {
-    Sun: 0,
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
-  };
-
-  return { hour, minute, dow: dowMap[weekday] ?? 0 };
+function getTimeInZone(now: DateTime, timeZone: string): { hour: number; minute: number; dow: number } {
+  const dt = now.setZone(timeZone);
+  // luxon: weekday 1(Mon)~7(Sun) -> 0(Sun)~6(Sat)
+  const dow = dt.weekday % 7;
+  return { hour: dt.hour, minute: dt.minute, dow };
 }
 
 function toMin(hour: number, minute: number): number {
@@ -100,7 +81,7 @@ function isWeekend(dow: number): boolean {
 /** ===============================
  * 외부 공개: 지금 시각 기준 시장 모드 결정
  * =============================== */
-export function getMarketMode(market: Market, now: Date = new Date()): MarketMode {
+export function getMarketMode(market: Market, now: DateTime = DateTime.now()): MarketMode {
   const tz = MARKET_CONFIG[market].timezone;
 
   // CRYPTO는 장 개념이 없음

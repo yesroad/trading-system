@@ -2,6 +2,7 @@ import { env } from '../config/env';
 import { diffMinutes, toKstIso } from '../utils/time';
 import type { AlertEvent, AlertMarket } from '../types/status';
 import { fetchLatestWorkers } from '../db/queries';
+import { nowIso } from '@workspace/shared-utils';
 
 type WorkerRow = {
   service: string;
@@ -44,7 +45,7 @@ export async function checkWorkers(): Promise<AlertEvent[]> {
         market: cfg.market,
         title: '워커 상태 없음',
         message: `worker_status에 ${cfg.service} 레코드가 없습니다.`,
-        at: new Date().toISOString(),
+        at: nowIso(),
         service: cfg.service,
       });
       continue;
@@ -58,14 +59,14 @@ export async function checkWorkers(): Promise<AlertEvent[]> {
         market: cfg.market,
         title: '정상 수집 기록 없음',
         message: `마지막 성공/이벤트 기록이 없습니다. (state=${row.state})`,
-        at: new Date().toISOString(),
+        at: nowIso(),
         service: row.service,
         runMode: row.run_mode ?? undefined,
       });
       continue;
     }
 
-    const lagMin = diffMinutes(new Date(reference), new Date());
+    const lagMin = diffMinutes(reference, nowIso());
     const lvl = levelOfWorkerLag(lagMin);
     if (!lvl) continue;
 
@@ -79,7 +80,7 @@ export async function checkWorkers(): Promise<AlertEvent[]> {
         `경과: ${lagMin.toFixed(1)}분`,
         `상태: ${row.state}`,
       ].join('\n'),
-      at: new Date().toISOString(),
+      at: nowIso(),
       service: row.service,
       runMode: row.run_mode ?? undefined,
     });

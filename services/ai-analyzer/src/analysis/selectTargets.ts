@@ -1,5 +1,4 @@
 // analysis/selectTargets.ts
-import { Market } from '../config/markets';
 import type { Snapshot } from './collectSnapshot';
 
 export type SelectedTarget = {
@@ -8,11 +7,7 @@ export type SelectedTarget = {
   reason: string;
 };
 
-export async function selectTargets(
-  market: Market,
-  maxTargets: number,
-  snapshot: Snapshot,
-): Promise<SelectedTarget[]> {
+export async function selectTargets(maxTargets: number, snapshot: Snapshot): Promise<SelectedTarget[]> {
   // 성공한 수집 runs만 필터링
   const successfulRuns = snapshot.ingestion.recentRuns.filter((r) => r.status === 'success');
 

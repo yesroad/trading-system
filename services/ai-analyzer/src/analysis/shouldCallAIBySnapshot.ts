@@ -1,18 +1,19 @@
 import type { Market } from '../config/markets';
 import type { MarketMode } from '../config/schedule';
 import type { Snapshot } from './collectSnapshot';
+import { DateTime } from 'luxon';
 
 type TargetLike = { symbol: string } | string;
 
 type LastAiInfo = {
-  createdAt: Date | null;
+  createdAt: DateTime | null;
   symbols: string[];
 };
 
-function toDate(v: string | null): Date | null {
+function toDate(v: string | null): DateTime | null {
   if (!v) return null;
-  const d = new Date(v);
-  return Number.isFinite(d.getTime()) ? d : null;
+  const d = DateTime.fromISO(v, { setZone: true });
+  return d.isValid ? d : null;
 }
 
 function normalizeSymbols(targets: TargetLike[]): string[] {
@@ -41,7 +42,7 @@ function getMarketJobs(market: Market): string[] {
  */
 function isMeaningfulNewRun(params: {
   market: Market;
-  lastAiAt: Date;
+  lastAiAt: DateTime;
   targets: string[];
   run: {
     job: string;
@@ -61,7 +62,7 @@ function isMeaningfulNewRun(params: {
   const runAt = finishedAt ?? startedAt;
 
   if (!runAt) return { ok: false, reason: 'started_at/finished_at 없음' };
-  if (runAt <= lastAiAt) return { ok: false, reason: 'AI 이후 실행 아님' };
+  if (runAt.toMillis() <= lastAiAt.toMillis()) return { ok: false, reason: 'AI 이후 실행 아님' };
 
   // job 식별
   const allowedJobs = getMarketJobs(market);
@@ -135,7 +136,9 @@ export function shouldCallAIBySnapshot(params: {
   const hasWorkerIssue = snapshot.services.workers.some((w) => {
     if (w.state === 'failed') return true;
     if (w.state === 'running' && w.last_success_at) {
-      const lagMs = Date.now() - new Date(w.last_success_at).getTime();
+      const lastSuccess = toDate(w.last_success_at);
+      if (!lastSuccess) return false;
+      const lagMs = DateTime.now().toMillis() - lastSuccess.toMillis();
       return lagMs > 5 * 60 * 1000; // 5분 이상 지연
     }
     return false;

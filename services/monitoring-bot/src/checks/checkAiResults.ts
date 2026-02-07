@@ -2,6 +2,7 @@ import { env } from '../config/env';
 import { diffMinutes, toKstIso } from '../utils/time';
 import type { AlertEvent, AlertLevel } from '../types/status';
 import { fetchLatestAiResultsByMarket } from '../db/queries';
+import { nowIso } from '@workspace/shared-utils';
 
 type AiLatest = {
   market: string;
@@ -37,12 +38,12 @@ export async function checkAiResults(): Promise<AlertEvent[]> {
         market: m,
         title: `AI 결과 없음`,
         message: `ai_analysis_results에 ${m} 시장 결과가 아직 없습니다.`,
-        at: new Date().toISOString(),
+        at: nowIso(),
       });
       continue;
     }
 
-    const mins = diffMinutes(new Date(row.latest_created_at), new Date());
+    const mins = diffMinutes(row.latest_created_at, nowIso());
     const lvl = levelOfAiStale(mins);
     if (!lvl) continue;
 
@@ -59,7 +60,7 @@ export async function checkAiResults(): Promise<AlertEvent[]> {
       ]
         .filter(Boolean)
         .join('\n'),
-      at: new Date().toISOString(),
+      at: nowIso(),
     });
   }
 

@@ -1,7 +1,10 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 .vscode
-.claude
+
+#claude
+mcp.json
+settings.local.json
 
 # Dependencies
 node_modules

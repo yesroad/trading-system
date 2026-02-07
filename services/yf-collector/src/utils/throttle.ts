@@ -1,3 +1,5 @@
+import { DateTime } from 'luxon';
+
 type ThrottleConfig = {
   rps: number; // max requests per second
   label?: string;
@@ -16,7 +18,7 @@ export function createGlobalThrottle(cfg: ThrottleConfig) {
   let lastAt = 0;
 
   async function waitGap() {
-    const now = Date.now();
+    const now = DateTime.now().toMillis();
     const elapsed = now - lastAt;
     if (elapsed < minGapMs) {
       await new Promise((r) => setTimeout(r, minGapMs - elapsed));
@@ -30,7 +32,7 @@ export function createGlobalThrottle(cfg: ThrottleConfig) {
       const p = chain.then(async () => {
         await waitGap();
         const v = await fn();
-        lastAt = Date.now();
+        lastAt = DateTime.now().toMillis();
         return v;
       });
 

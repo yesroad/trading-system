@@ -2,6 +2,7 @@ import { env } from '../config/env';
 import { toKstIso, diffMinutes } from '../utils/time';
 import type { AlertEvent, AlertLevel, AlertMarket } from '../types/status';
 import { fetchRecentIngestionRuns } from '../db/queries';
+import { nowIso } from '@workspace/shared-utils';
 
 type IngestionRun = {
   id: number;
@@ -62,7 +63,7 @@ export async function checkIngestionRuns(): Promise<AlertEvent[]> {
           market: cfg.market,
           title: `수집 실행 기록 없음`,
           message: `최근 ingestion_runs에 ${job} 실행 기록이 없습니다.`,
-          at: new Date().toISOString(),
+          at: nowIso(),
         });
         continue;
       }
@@ -70,7 +71,7 @@ export async function checkIngestionRuns(): Promise<AlertEvent[]> {
       // running 오래 걸리는 것 감지
       const running = list.filter((r) => r.status === 'running' && !r.finished_at);
       for (const r of running) {
-        const lagMin = diffMinutes(new Date(r.started_at), new Date());
+        const lagMin = diffMinutes(r.started_at, nowIso());
         const lvl = levelOfRunningLag(lagMin);
         if (!lvl) continue;
 
@@ -87,14 +88,14 @@ export async function checkIngestionRuns(): Promise<AlertEvent[]> {
             `timeframe: ${r.timeframe}`,
             `symbols: ${Array.isArray(r.symbols) ? r.symbols.slice(0, 5).join(', ') : '-'}`,
           ].join('\n'),
-          at: new Date().toISOString(),
+          at: nowIso(),
         });
       }
 
       // 최근 성공 실행 stale 감지
       const success = list
         .filter((x) => x.status === 'success')
-        .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())[0];
+        .sort((a, b) => diffMinutes(a.started_at, b.started_at))[0];
 
       if (!success) {
         events.push({
@@ -103,12 +104,12 @@ export async function checkIngestionRuns(): Promise<AlertEvent[]> {
           market: cfg.market,
           title: `수집 성공 기록 없음`,
           message: `최근 runs에 success 상태가 없습니다. (job=${job})`,
-          at: new Date().toISOString(),
+          at: nowIso(),
         });
         continue;
       }
 
-      const staleMin = diffMinutes(new Date(success.started_at), new Date());
+      const staleMin = diffMinutes(success.started_at, nowIso());
       const lvl = levelOfStale(staleMin);
       if (!lvl) continue;
 
@@ -123,7 +124,7 @@ export async function checkIngestionRuns(): Promise<AlertEvent[]> {
           `경과: ${staleMin.toFixed(1)}분`,
           `기준: WARN=${env.INGESTION_STALE_WARN_MIN}m / CRIT=${env.INGESTION_STALE_CRIT_MIN}m`,
         ].join('\n'),
-        at: new Date().toISOString(),
+        at: nowIso(),
       });
     }
   }

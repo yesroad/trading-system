@@ -1,9 +1,18 @@
-export function diffMinutes(from: Date, to: Date) {
-  return (to.getTime() - from.getTime()) / 60000;
+import { DateTime } from 'luxon';
+
+function toDateTime(value: string | Date): DateTime {
+  if (typeof value === 'string') {
+    const parsed = DateTime.fromISO(value, { setZone: true });
+    if (!parsed.isValid) throw new Error(`시간 파싱 실패: ${value}`);
+    return parsed;
+  }
+  return DateTime.fromJSDate(value);
+}
+
+export function diffMinutes(from: string | Date, to: string | Date) {
+  return toDateTime(to).diff(toDateTime(from), 'minutes').minutes;
 }
 
 export function toKstIso(value: string | Date) {
-  const date = typeof value === 'string' ? new Date(value) : value;
-  const kst = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
-  return kst.toISOString();
+  return toDateTime(value).setZone('Asia/Seoul').toISO() ?? '';
 }

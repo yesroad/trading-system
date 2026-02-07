@@ -4,6 +4,8 @@
 
 import { TokenManager, TokenCooldownError, KisTokenError } from '@workspace/kis-auth';
 import type { Nullable } from './types/utils';
+import Big from 'big.js';
+import { DateTime } from 'luxon';
 import {
   KIS_BASE_URL,
   KIS_APP_KEY,
@@ -68,7 +70,7 @@ const KIS_NO_DATA_MSG_CD = '70070000';
  * - 실패 시: 캐시 있으면 캐시 사용, 없으면 null
  */
 export async function fetchOverseasAccountBalance(): Promise<number | null> {
-  const now = Date.now();
+  const now = DateTime.now().toMillis();
 
   // 캐시 유효성 확인 (60초 이내)
   if (cachedBalance && now - cachedBalance.fetchedAt < BALANCE_CACHE_MS) {
@@ -138,7 +140,15 @@ export async function fetchOverseasAccountBalance(): Promise<number | null> {
       return cachedBalance?.value ?? null;
     }
 
-    const balance = Number(balanceStr.replaceAll(',', '').trim());
+    let balance: number;
+    try {
+      const bigBalance = new Big(balanceStr.replaceAll(',', '').trim());
+      balance = Number(bigBalance.toString());
+    } catch {
+      console.error('[yf-collector] 매수가능금액 파싱 실패:', balanceStr);
+      // 실패 시 캐시 사용
+      return cachedBalance?.value ?? null;
+    }
     if (!Number.isFinite(balance)) {
       console.error('[yf-collector] 매수가능금액 파싱 실패:', balanceStr);
       // 실패 시 캐시 사용

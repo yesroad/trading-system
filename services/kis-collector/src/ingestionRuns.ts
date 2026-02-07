@@ -4,6 +4,7 @@
 
 import { supabase } from './db/supabase';
 import type { Nullable } from './types/utils';
+import { nowIso } from '@workspace/shared-utils';
 
 type IngestionRunStatus = 'success' | 'running' | 'failed' | 'skipped';
 
@@ -23,7 +24,7 @@ type UpdateIngestionRunParams = {
  * 새 ingestion run 시작
  */
 export async function createIngestionRun(params: CreateIngestionRunParams): Promise<number> {
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   const { data, error } = await supabase
     .from('ingestion_runs')
@@ -52,7 +53,7 @@ export async function createIngestionRun(params: CreateIngestionRunParams): Prom
  * ingestion run 업데이트
  */
 export async function updateIngestionRun(runId: number, params: UpdateIngestionRunParams) {
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   const { error } = await supabase
     .from('ingestion_runs')

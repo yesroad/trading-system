@@ -6,6 +6,7 @@
  */
 
 import type { UpbitTicker } from './types/upbit';
+import Big from 'big.js';
 
 export type AutoCandidate = {
   market: string; // 'KRW-BTC'
@@ -41,7 +42,7 @@ export function selectAutoCandidates(params: {
     if (excludeSymbols.has(symbol)) continue; // 이미 선정된 코인 제외
 
     // ✅ 매수 가능 여부 체크: 현재가 기준 1개라도 매수 가능한지
-    if (t.trade_price > krwBalance) continue;
+    if (new Big(t.trade_price).gt(krwBalance)) continue;
 
     candidates.push({
       market: t.market,

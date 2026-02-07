@@ -4,6 +4,8 @@
 
 import { supabase } from './db/supabase';
 import type { Nullable } from './types/utils';
+import { DateTime } from 'luxon';
+import { nowIso } from '@workspace/shared-utils';
 
 const ID = 1;
 
@@ -45,7 +47,7 @@ export async function getSystemGuard() {
 }
 
 export async function bumpErrorCount(nextCount: number) {
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   const { error } = await supabase
     .from('system_guard')
@@ -60,7 +62,7 @@ export async function bumpErrorCount(nextCount: number) {
 }
 
 export async function setTradingEnabled(enabled: boolean) {
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   const { error } = await supabase
     .from('system_guard')
@@ -78,8 +80,11 @@ export async function setTradingEnabled(enabled: boolean) {
  * - 실패 시 60초 쿨다운을 기준으로 DB에 만료시각 저장
  */
 export async function recordTokenCooldown(cooldownMs = 60_000) {
-  const now = new Date();
-  const until = new Date(now.getTime() + cooldownMs);
+  const now = DateTime.now();
+  const until = now.plus({ milliseconds: cooldownMs });
+  const nowIsoValue = now.toISO();
+  const untilIsoValue = until.toISO();
+  if (!nowIsoValue || !untilIsoValue) throw new Error('시간 ISO 변환 실패');
 
   const guard = await getSystemGuard();
   const nextCount = (guard.token_cooldown_count ?? 0) + 1;
@@ -88,9 +93,9 @@ export async function recordTokenCooldown(cooldownMs = 60_000) {
     .from('system_guard')
     .update({
       token_cooldown_count: nextCount,
-      token_cooldown_until: until.toISOString(),
-      last_token_cooldown_at: now.toISOString(),
-      updated_at: now.toISOString(),
+      token_cooldown_until: untilIsoValue,
+      last_token_cooldown_at: nowIsoValue,
+      updated_at: nowIsoValue,
     })
     .eq('id', ID);
 
@@ -101,7 +106,7 @@ export async function recordTokenCooldown(cooldownMs = 60_000) {
  * 최근 정상 수집 시간/종목/가격 기록 (웹 표시용)
  */
 export async function recordLastSuccess(params: { symbol: string; price: number }) {
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   const { error } = await supabase
     .from('system_guard')
