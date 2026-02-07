@@ -1,7 +1,6 @@
 import { parseMarkets, parseTickers, parseMinuteCandles } from './guards';
 import type { UpbitMarket, UpbitTicker, UpbitMinuteCandle } from './types/upbit';
-import { env } from './utils/env';
-import { createHash } from 'crypto';
+import { requireEnv as env } from '@workspace/shared-utils';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 

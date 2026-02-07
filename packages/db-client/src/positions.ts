@@ -1,12 +1,11 @@
-// /services/upbit-collector/src/positions.ts
-import { supabase } from './db/supabase';
-import type { Nullable } from './types/utils';
+import { getSupabase } from './client';
+import type { Nullable } from './types';
 
 export type PositionRow = {
-  broker: string; // 'UPBIT'
-  market: string; // 'CRYPTO'
-  symbol: string; // 'BTC', 'ETH', ...
-  qty: number; // numeric -> number
+  broker: string;
+  market: string;
+  symbol: string;
+  qty: number;
   avg_price: Nullable<number>;
   updated_at: string;
 };
@@ -21,9 +20,8 @@ function toNumber(v: unknown): number | null {
 }
 
 /**
- * ✅ positions에서 "보유 코인" 로딩
+ * 크립토 포지션 조회
  * - market='CRYPTO' AND qty > 0 인 종목만
- * - 보유 코인은 항상 수집 대상
  */
 export async function loadCryptoPositions(params: {
   broker?: string;
@@ -31,6 +29,8 @@ export async function loadCryptoPositions(params: {
 }): Promise<PositionRow[]> {
   const broker = params.broker || 'UPBIT';
   const limit = Math.max(1, Math.min(2000, Math.floor(params.limit ?? 500)));
+
+  const supabase = getSupabase();
 
   const { data, error } = await supabase
     .from('positions')

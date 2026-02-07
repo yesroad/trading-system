@@ -21,6 +21,7 @@
  * - throttle 적용 (기본 2 RPS, 환경변수로 조정 가능)
  */
 
+import 'dotenv/config';
 import { DateTime } from 'luxon';
 import { supabase } from './db/supabase';
 import { fetchYahooBars } from './fetchYahoo';

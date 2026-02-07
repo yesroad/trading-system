@@ -18,9 +18,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
+    "@workspace/db-client": "*",
+    "@workspace/shared-utils": "*",
     "dotenv": "^17.2.3",
     "jsonwebtoken": "^9.0.3",
-    "luxon": "^3.7.2",
     "uuid": "^13.0.0",
     "zod": "^4.3.5"
   }

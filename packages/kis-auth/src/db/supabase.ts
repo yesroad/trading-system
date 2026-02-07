@@ -15,8 +15,8 @@ function getEnv(name: string): string {
 }
 
 const SUPABASE_URL = getEnv('SUPABASE_URL');
-const SUPABASE_SERVICE_ROLE_KEY = getEnv('SUPABASE_SERVICE_ROLE_KEY');
+const SUPABASE_KEY = getEnv('SUPABASE_KEY');
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 console.log('[kis-auth] Supabase 클라이언트 초기화 완료');

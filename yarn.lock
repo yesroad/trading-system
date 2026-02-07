@@ -1930,7 +1930,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/luxon@npm:^3.7.1":
+"@types/luxon@npm:^3.4.2, @types/luxon@npm:^3.7.1":
   version: 3.7.1
   resolution: "@types/luxon@npm:3.7.1"
   checksum: 10c0/2db30c13b58adcd86daa447faa3ba59515fe907ead8ee3e6bb716d662812af0619d712f6c1eb190cdd7f9d2c00444c3ecd80af0f36e8143eb0c5e7339d6b2aca
@@ -2408,6 +2408,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@workspace/db-client@npm:*, @workspace/db-client@workspace:packages/db-client":
+  version: 0.0.0-use.local
+  resolution: "@workspace/db-client@workspace:packages/db-client"
+  dependencies:
+    "@supabase/supabase-js": "npm:^2.90.1"
+    "@workspace/eslint-config": "npm:*"
+    "@workspace/shared-utils": "npm:*"
+    eslint: "npm:^9.39.2"
+    typescript: "npm:^5.9.2"
+  languageName: unknown
+  linkType: soft
+
 "@workspace/eslint-config@npm:*, @workspace/eslint-config@workspace:packages/eslint-config":
   version: 0.0.0-use.local
   resolution: "@workspace/eslint-config@workspace:packages/eslint-config"
@@ -2441,6 +2453,19 @@ __metadata:
     eslint: "npm:^9.39.2"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.9.3"
+  languageName: unknown
+  linkType: soft
+
+"@workspace/shared-utils@npm:*, @workspace/shared-utils@workspace:packages/shared-utils":
+  version: 0.0.0-use.local
+  resolution: "@workspace/shared-utils@workspace:packages/shared-utils"
+  dependencies:
+    "@types/luxon": "npm:^3.4.2"
+    "@workspace/eslint-config": "npm:*"
+    dotenv: "npm:^17.2.4"
+    eslint: "npm:^9.39.2"
+    luxon: "npm:^3.7.2"
+    typescript: "npm:^5.9.2"
   languageName: unknown
   linkType: soft
 
@@ -2496,9 +2521,9 @@ __metadata:
     "@supabase/supabase-js": "npm:^2.90.1"
     "@types/luxon": "npm:^3.7.1"
     "@workspace/eslint-config": "npm:*"
+    "@workspace/shared-utils": "npm:*"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
-    luxon: "npm:^3.6.0"
     openai: "npm:^6.16.0"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.9.3"
@@ -3064,6 +3089,13 @@ __metadata:
   version: 17.2.3
   resolution: "dotenv@npm:17.2.3"
   checksum: 10c0/c884403209f713214a1b64d4d1defa4934c2aa5b0002f5a670ae298a51e3c3ad3ba79dfee2f8df49f01ae74290fcd9acdb1ab1d09c7bfb42b539036108bb2ba0
+  languageName: node
+  linkType: hard
+
+"dotenv@npm:^17.2.4":
+  version: 17.2.4
+  resolution: "dotenv@npm:17.2.4"
+  checksum: 10c0/901aeee9cb40860291bdb452f6ca66aada78438331a026b0bd86fd41b94a79752dbc6a8971f4f26e6cafef11b4a27bb12ea99c0cbe7dfa61791f194727f799e5
   languageName: node
   linkType: hard
 
@@ -4634,8 +4666,10 @@ __metadata:
   resolution: "kis-collector@workspace:services/kis-collector"
   dependencies:
     "@supabase/supabase-js": "npm:^2.90.1"
+    "@workspace/db-client": "npm:*"
     "@workspace/eslint-config": "npm:*"
     "@workspace/kis-auth": "npm:*"
+    "@workspace/shared-utils": "npm:*"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
     tsx: "npm:^4.21.0"
@@ -4890,7 +4924,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"luxon@npm:^3.6.0, luxon@npm:^3.7.2":
+"luxon@npm:^3.7.2":
   version: 3.7.2
   resolution: "luxon@npm:3.7.2"
   checksum: 10c0/ed8f0f637826c08c343a29dd478b00628be93bba6f068417b1d8896b61cb61c6deacbe1df1e057dbd9298334044afa150f9aaabbeb3181418ac8520acfdc2ae2
@@ -5080,6 +5114,7 @@ __metadata:
   resolution: "monitoring-bot@workspace:services/monitoring-bot"
   dependencies:
     "@supabase/supabase-js": "npm:^2.90.1"
+    "@workspace/shared-utils": "npm:*"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
     tsx: "npm:^4.19.1"
@@ -6482,7 +6517,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.6.3, typescript@npm:^5.9.3":
+"typescript@npm:^5.6.3, typescript@npm:^5.9.2, typescript@npm:^5.9.3":
   version: 5.9.3
   resolution: "typescript@npm:5.9.3"
   bin:
@@ -6502,7 +6537,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.6.3#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
+"typescript@patch:typescript@npm%3A^5.6.3#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
   version: 5.9.3
   resolution: "typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"
   bin:
@@ -6629,11 +6664,12 @@ __metadata:
   dependencies:
     "@supabase/supabase-js": "npm:^2.90.1"
     "@types/jsonwebtoken": "npm:^9"
+    "@workspace/db-client": "npm:*"
     "@workspace/eslint-config": "npm:*"
+    "@workspace/shared-utils": "npm:*"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
     jsonwebtoken: "npm:^9.0.3"
-    luxon: "npm:^3.7.2"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.9.3"
     uuid: "npm:^13.0.0"
@@ -6885,11 +6921,12 @@ __metadata:
   dependencies:
     "@supabase/supabase-js": "npm:^2.90.1"
     "@types/luxon": "npm:^3.7.1"
+    "@workspace/db-client": "npm:*"
     "@workspace/eslint-config": "npm:*"
     "@workspace/kis-auth": "npm:*"
+    "@workspace/shared-utils": "npm:*"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
-    luxon: "npm:^3.7.2"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.9.3"
     zod: "npm:^4.3.6"

@@ -57,6 +57,7 @@ type KisOverseasBalanceResponse = {
 // 예수금 캐시 (60초)
 let cachedBalance: Nullable<{ value: number; fetchedAt: number }> = null;
 const BALANCE_CACHE_MS = 60_000;
+const KIS_NO_DATA_MSG_CD = '70070000';
 
 /**
  * 해외주식 매수가능금액 조회 (KIS API)
@@ -123,6 +124,14 @@ export async function fetchOverseasAccountBalance(): Promise<number | null> {
     const balanceStr = Array.isArray(output2)
       ? output2[0]?.frcr_dncl_amt_2
       : output2?.frcr_dncl_amt_2;
+
+    // 모의투자/신규계좌에서 조회 내역 없음 응답은 정상 케이스로 본다.
+    if (!balanceStr && json.msg_cd === KIS_NO_DATA_MSG_CD) {
+      cachedBalance = { value: 0, fetchedAt: now };
+      console.log('[yf-collector] 예수금 조회 내역 없음 - USD 0으로 처리');
+      return 0;
+    }
+
     if (!balanceStr) {
       console.error('[yf-collector] 매수가능금액 응답 형식 오류:', json);
       // 실패 시 캐시 사용

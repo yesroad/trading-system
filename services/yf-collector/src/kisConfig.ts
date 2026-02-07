@@ -2,7 +2,7 @@
  * KIS API 공통 설정
  */
 
-import { env } from './utils/env';
+import { requireEnv as env } from '@workspace/shared-utils';
 
 // KIS 환경 설정
 export const KIS_ENV = (process.env.KIS_ENV || 'REAL').toUpperCase();

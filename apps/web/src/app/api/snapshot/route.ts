@@ -17,15 +17,13 @@ export const runtime = 'nodejs';
  * ✅ 서버 전용 ENV
  * - NEXT_PUBLIC_* 쓰면 클라이언트로 노출될 수 있어서 금지
  */
-let supabase:
-  | ReturnType<typeof createClient>
-  | null = null;
+let supabase: ReturnType<typeof createClient> | null = null;
 
 function getSupabaseClient() {
   if (!supabase) {
     const SUPABASE_URL = envServer('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = envServer('SUPABASE_SERVICE_ROLE_KEY');
-    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    const SUPABASE_KEY = envServer('SUPABASE_KEY');
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false },
     });
   }

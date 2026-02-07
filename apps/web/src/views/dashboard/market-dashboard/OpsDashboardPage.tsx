@@ -128,7 +128,7 @@ export default function OpsDashboardPage({ market }: OpsDashboardPageProps) {
     if (data?.meta.generatedAt) return data.meta.generatedAt;
     if (!dataUpdatedAt) return null;
     return DateTime.fromMillis(dataUpdatedAt).toISO();
-  }, [data?.meta.generatedAt, dataUpdatedAt]);
+  }, [data, dataUpdatedAt]);
 
   React.useEffect(() => {
     if (!selected) return;

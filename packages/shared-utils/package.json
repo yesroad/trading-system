@@ -1,0 +1,30 @@
+{
+  "name": "@workspace/shared-utils",
+  "version": "1.0.0",
+  "packageManager": "yarn@4.9.2",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "check-types": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.4",
+    "luxon": "^3.7.2"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.4.2",
+    "@workspace/eslint-config": "*",
+    "eslint": "^9.39.2",
+    "typescript": "^5.9.2"
+  }
+}

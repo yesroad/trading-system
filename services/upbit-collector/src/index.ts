@@ -1,21 +1,11 @@
-import { env } from './utils/env';
-import { sleep } from './utils/sleep';
+import 'dotenv/config';
+import { requireEnv as env, sleep, nowIso, normalizeUtcIso } from '@workspace/shared-utils';
+import { upsertWorkerStatus, insertIngestionRun, loadCryptoPositions } from '@workspace/db-client';
 import { fetchAllMarkets, fetchTickers, fetchMinuteCandles, fetchKRWBalance } from './api';
-import { upsertUpbitCandles, upsertWorkerStatus, insertIngestionRun } from './db/db';
-import { loadCryptoPositions } from './positions';
+import { upsertUpbitCandles } from './db/db';
 import { loadSymbolUniverse } from './symbolUniverse';
 import { selectAutoCandidates } from './autoCandidates';
 import type { UpbitTicker } from './types/upbit';
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-function normalizeUtcIso(utcLike: string): string {
-  if (utcLike.endsWith('Z')) return utcLike;
-  if (/[+-]\d{2}:\d{2}$/.test(utcLike)) return utcLike;
-  return `${utcLike}Z`;
-}
 
 function pickLaterIso(a: string | null, b: string | null): string | null {
   if (!a) return b;
@@ -116,7 +106,7 @@ async function mainLoop(): Promise<void> {
           if (!ticker) continue;
 
           // 매수 가능 여부 체크
-          if (ticker.trade_price > krwBalance) continue;
+          if (ticker.trade_price === null || ticker.trade_price > krwBalance) continue;
 
           selectedSymbols.add(symbol);
           selectedMarkets.push(`KRW-${symbol}`);
@@ -131,7 +121,7 @@ async function mainLoop(): Promise<void> {
           if (!ticker) continue;
 
           // 매수 가능 여부 체크
-          if (ticker.trade_price > krwBalance) continue;
+          if (ticker.trade_price === null || ticker.trade_price > krwBalance) continue;
 
           selectedSymbols.add(symbol);
           selectedMarkets.push(`KRW-${symbol}`);
@@ -156,8 +146,9 @@ async function mainLoop(): Promise<void> {
         topMarkets = selectedMarkets;
 
         // 실제 선정된 개수 계산
-        const positionCount = Array.from(selectedSymbols).filter((s) => positionSymbols.has(s))
-          .length;
+        const positionCount = Array.from(selectedSymbols).filter((s) =>
+          positionSymbols.has(s),
+        ).length;
         const universeCount = Array.from(selectedSymbols).filter(
           (s) => !positionSymbols.has(s) && universeSymbols.has(s),
         ).length;

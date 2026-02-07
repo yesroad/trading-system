@@ -2,13 +2,13 @@
  * KIS 가격 수집 워커 (다종목 + 안정성 가드 + 장시간 스킵)
  */
 
+import 'dotenv/config';
+import { requireEnv as env, createBackoff } from '@workspace/shared-utils';
+import { upsertWorkerStatus } from '@workspace/db-client';
 import { fetchKrxPrice, fetchAccountBalance, TokenCooldownError } from './kis';
 import { insertTick } from './insertTick';
-import { createBackoff } from './backoff';
 import { bumpErrorCount, getSystemGuard, setTradingEnabled } from './systemGuard';
 import { loadActiveKisKrxSymbols, TrackedSymbol } from './trackedSymbols';
-import { upsertWorkerStatus } from './workerStatus';
-import { env } from './utils/env';
 import type { Nullable } from './types/utils';
 import { createIngestionRun, finishIngestionRun, failIngestionRun } from './ingestionRuns';
 
@@ -198,6 +198,7 @@ async function checkAccountBalance() {
 
 // 초기 상태 기록
 await upsertWorkerStatus({
+  service: 'kis-collector',
   run_mode: RUN_MODE,
   state: 'unknown',
   message: '시작됨',
@@ -246,6 +247,7 @@ setInterval(async () => {
         console.log('[kis-collector] 실행 스킵:', reason);
 
         await upsertWorkerStatus({
+          service: 'kis-collector',
           run_mode: RUN_MODE,
           state: 'skipped',
           message: reason,
@@ -259,6 +261,7 @@ setInterval(async () => {
     if (lastSkipReason !== null) {
       lastSkipReason = null;
       await upsertWorkerStatus({
+        service: 'kis-collector',
         run_mode: RUN_MODE,
         state: 'running',
         message: '수집 재개',
@@ -305,6 +308,7 @@ setInterval(async () => {
         if (nowMs - lastSuccessStatusAtMs >= SUCCESS_STATUS_MIN_INTERVAL_MS) {
           lastSuccessStatusAtMs = nowMs;
           await upsertWorkerStatus({
+            service: 'kis-collector',
             run_mode: RUN_MODE,
             state: 'success',
             message: '정상 수집',
@@ -334,8 +338,9 @@ setInterval(async () => {
           console.error('[kis-collector][guard error]', guardErr);
         }
 
-        // 워커 상태 “실패”
+        // 워커 상태 "실패"
         await upsertWorkerStatus({
+          service: 'kis-collector',
           run_mode: RUN_MODE,
           state: 'failed',
           message: e instanceof Error ? e.message : String(e),

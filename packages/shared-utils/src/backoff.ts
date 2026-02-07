@@ -1,10 +1,9 @@
 /**
- * 실패할수록 기다리는 시간 증가 (지수 백오프 + jitter)
+ * 지수 백오프 + jitter
  */
-
 export function createBackoff(opts?: { baseMs?: number; maxMs?: number }) {
-  const baseMs = opts?.baseMs ?? 500;
-  const maxMs = opts?.maxMs ?? 30_000;
+  const baseMs = opts?.baseMs ?? 1000;
+  const maxMs = opts?.maxMs ?? 30000;
 
   let attempt = 0;
 
@@ -12,7 +11,13 @@ export function createBackoff(opts?: { baseMs?: number; maxMs?: number }) {
     attempt = 0;
   }
 
-  function nextDelayMs() {
+  function next(): number {
+    const delay = Math.min(baseMs * Math.pow(2, attempt), maxMs);
+    attempt++;
+    return delay;
+  }
+
+  function nextDelayMs(): number {
     // base * 2^attempt (최대 maxMs)
     const exp = Math.min(maxMs, baseMs * Math.pow(2, attempt));
     attempt = Math.min(attempt + 1, 20);
@@ -22,5 +27,5 @@ export function createBackoff(opts?: { baseMs?: number; maxMs?: number }) {
     return Math.floor(jitter);
   }
 
-  return { reset, nextDelayMs };
+  return { reset, next, nextDelayMs };
 }
