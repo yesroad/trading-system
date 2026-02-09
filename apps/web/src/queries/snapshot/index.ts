@@ -1,23 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
-import snapshotKeys from './queryKeys';
 import snapshotService from '@/services/api/snapshot';
+import snapshotKeys from './queryKeys';
 
-type GetSnapshotOptions = {
-  enabled?: boolean;
+type UseSnapshotOptions = {
+  force?: boolean;
   refetchInterval?: number | false;
-  refetchIntervalInBackground?: boolean;
-  retry?: number;
-  staleTime?: number;
 };
 
-export function useGetSnapshot(options: GetSnapshotOptions = {}) {
+export function useSnapshotQuery(options: UseSnapshotOptions = {}) {
+  const force = options.force ?? false;
+
   return useQuery({
-    queryKey: snapshotKeys.getSnapshot,
-    queryFn: () => snapshotService.getSnapshot(),
-    staleTime: options.staleTime ?? 5_000,
+    queryKey: snapshotKeys.byForce(force),
+    queryFn: () => snapshotService.getSnapshot(force),
+    staleTime: force ? 0 : 5_000,
     refetchInterval: options.refetchInterval ?? 10_000,
-    refetchIntervalInBackground: options.refetchIntervalInBackground ?? false,
-    enabled: options.enabled ?? true,
-    retry: options.retry ?? 1,
+    refetchIntervalInBackground: false,
+    retry: 1,
   });
 }

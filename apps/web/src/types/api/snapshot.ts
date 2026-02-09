@@ -1,98 +1,70 @@
-import type { Nullable } from '../utils';
+import type { Nullable } from '@workspace/shared-utils';
 
-export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: JsonValue }
-  | JsonValue[];
+export type MarketCode = 'CRYPTO' | 'KR' | 'US';
+export type RiskLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
 
-export interface WorkerStatusRow {
-  service: string;
-  run_mode: string;
-  state: string;
-  message: Nullable<string>;
-  last_event_at: Nullable<string>;
-  last_success_at: Nullable<string>;
-  updated_at: string;
-}
-
-export interface IngestionRunRow {
-  id: number;
-  job: string;
-  symbols: string[];
-  timeframe: string;
-  status: string;
-  inserted_count: number;
-  updated_count: number;
-  error_message: Nullable<string>;
-  started_at: string;
-  finished_at: Nullable<string>;
-}
-
-export interface AnalysisRunRow {
-  id: number;
-  service: string;
-  market: string;
-  symbol: string;
-  input_hash: string;
-  status: string;
-  skip_reason: Nullable<string>;
-  error_message: Nullable<string>;
-  latency_ms: Nullable<number>;
-  model: Nullable<string>;
-  prompt_tokens: Nullable<number>;
-  completion_tokens: Nullable<number>;
-  total_tokens: Nullable<number>;
-  window_start: string;
-  window_end: string;
-  created_at: string;
-}
-
-export interface AiResultRow {
-  id: number;
-  market: string;
-  mode: string;
-  symbol: string;
-  decision: string;
-  confidence: number;
-  summary: string;
-  reasons: JsonValue;
-  raw_response: JsonValue;
-  risk_level: string;
-  created_at: string;
-}
-
-export interface PositionRow {
-  market: string;
-  symbol: string;
-  qty: number;
-}
-
-export interface OpsSnapshotMeta {
-  generatedAt: string;
+export type SnapshotMeta = {
+  generatedAtUtc: string;
   force: boolean;
   ttlSeconds: number;
   cacheHit: boolean;
-  lagMinutesMax: Nullable<number>;
-  lagByService: Record<string, Nullable<number>>;
-}
+};
 
-export interface OpsSnapshotBlock<T> {
-  generatedAt: string;
-  ttlSeconds: number;
-  cacheHit: boolean;
-  data: T;
-}
+export type MarketRiskCounts = {
+  HIGH: number;
+  MEDIUM: number;
+  LOW: number;
+};
 
-export interface OpsSnapshot {
-  meta: OpsSnapshotMeta;
-  blocks: {
-    workerStatus: OpsSnapshotBlock<WorkerStatusRow[]>;
-    ingestionRuns: OpsSnapshotBlock<IngestionRunRow[]>;
-    analysisRuns: OpsSnapshotBlock<AnalysisRunRow[]>;
-    aiResults: OpsSnapshotBlock<AiResultRow[]>;
-    positions: OpsSnapshotBlock<PositionRow[]>;
-  };
-}
+export type MarketSummary = {
+  market: MarketCode;
+  status: 'ok' | 'warn' | 'down';
+  latestIngestionAtUtc: Nullable<string>;
+  latestAnalysisAtUtc: Nullable<string>;
+  ingestionLagMinutes: Nullable<number>;
+  analysisLagMinutes: Nullable<number>;
+  riskCounts: MarketRiskCounts;
+};
+
+export type SnapshotItem = {
+  id: number;
+  symbol: string;
+  riskLevel: RiskLevel;
+  confidence: string;
+  summary: string;
+  reasons: string[];
+  decision: 'ALLOW' | 'CAUTION' | 'BLOCK' | 'UNKNOWN';
+  createdAtUtc: string;
+  isHolding: boolean;
+};
+
+export type MarketDetail = {
+  market: MarketCode;
+  targetCount: number;
+  latestIngestionAtUtc: Nullable<string>;
+  latestAnalysisAtUtc: Nullable<string>;
+  ingestionLagMinutes: Nullable<number>;
+  analysisLagMinutes: Nullable<number>;
+  riskCounts: MarketRiskCounts;
+  items: SnapshotItem[];
+};
+
+export type PerformancePeriod = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ALL';
+
+export type PerformanceMetrics = {
+  totalTrades: number;
+  winTrades: number;
+  lossTrades: number;
+  pnlAmount: Nullable<string>;
+  pnlRatePct: Nullable<string>;
+};
+
+export type SnapshotPerformance = Record<PerformancePeriod, PerformanceMetrics>;
+
+export type OpsSnapshot = {
+  meta: SnapshotMeta;
+  markets: Record<MarketCode, MarketSummary>;
+  tabs: Record<MarketCode, MarketDetail>;
+  holdingsByMarket: Record<MarketCode, string[]>;
+  performance: SnapshotPerformance;
+};
