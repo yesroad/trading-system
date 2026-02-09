@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { normalizeUtcIso, toIsoString, type Nullable } from '@workspace/shared-utils';
 import { envServer } from '@/lib/env.server';
 import type {
+  MarketHealth,
   MarketCode,
   MarketPortfolioSummary,
   OpsSnapshot,
@@ -64,6 +65,12 @@ type DbUsPriceRow = {
   ts: string | null;
 };
 
+type DbWorkerStatusRow = {
+  service: string | null;
+  state: string | null;
+  last_event_at: string | null;
+};
+
 type PriceEntry = {
   price: Big;
   updatedAtUtc: string;
@@ -81,7 +88,13 @@ type CacheEntry = {
 };
 
 const CACHE_TTL_MS = 8_000;
+const HEALTH_STALE_MINUTES = 30;
 const MARKET_CODES: MarketCode[] = ['CRYPTO', 'KR', 'US'];
+const MARKET_SERVICE_MAP: Record<MarketCode, string> = {
+  CRYPTO: 'upbit-collector',
+  KR: 'kis-collector',
+  US: 'yf-collector',
+};
 
 let cacheEntry: CacheEntry | null = null;
 let supabase: ReturnType<typeof createClient> | null = null;
@@ -368,6 +381,67 @@ function formatMoney(value: Big): string {
   return value.toFixed(2);
 }
 
+function isHealthyWorkerState(raw: string | null | undefined): boolean {
+  const state = normalizeSymbol(raw);
+  return state === 'RUNNING' || state === 'SUCCESS' || state === 'SKIPPED';
+}
+
+function buildMarketHealth(rows: DbWorkerStatusRow[]): Record<MarketCode, MarketHealth> {
+  const now = DateTime.utc();
+  const out = {} as Record<MarketCode, MarketHealth>;
+  const byService = new Map<string, DbWorkerStatusRow>();
+
+  rows.forEach((row) => {
+    const service = String(row.service ?? '').trim();
+    if (!service) return;
+    byService.set(service, row);
+  });
+
+  MARKET_CODES.forEach((market) => {
+    const service = MARKET_SERVICE_MAP[market];
+    const row = byService.get(service);
+    const state = row?.state ?? null;
+    const lastEventAtUtc = row?.last_event_at ?? null;
+
+    if (!row) {
+      out[market] = {
+        market,
+        service,
+        state: null,
+        lastEventAtUtc: null,
+        healthy: false,
+        reason: 'worker_status 없음',
+      };
+      return;
+    }
+
+    const hasHealthyState = isHealthyWorkerState(state);
+    const eventTime = lastEventAtUtc
+      ? DateTime.fromISO(normalizeUtcIso(lastEventAtUtc), { zone: 'utc' })
+      : null;
+    const isFresh =
+      !!eventTime &&
+      eventTime.isValid &&
+      now.diff(eventTime, 'minutes').minutes <= HEALTH_STALE_MINUTES;
+    const healthy = hasHealthyState && isFresh;
+
+    out[market] = {
+      market,
+      service,
+      state,
+      lastEventAtUtc,
+      healthy,
+      reason: healthy
+        ? '정상'
+        : !hasHealthyState
+          ? `state=${state ?? 'unknown'}`
+          : `최근 이벤트 지연(>${HEALTH_STALE_MINUTES}m)`,
+    };
+  });
+
+  return out;
+}
+
 export async function GET(req: Request) {
   const force = new URL(req.url).searchParams.get('force') === '1';
   const nowMs = DateTime.utc().toMillis();
@@ -382,7 +456,7 @@ export async function GET(req: Request) {
   try {
     const client = getSupabaseClient();
 
-    const [positionsRes, tradeExecutionsRes, dailyRes] = await Promise.all([
+    const [positionsRes, tradeExecutionsRes, dailyRes, workersRes] = await Promise.all([
       client.from('positions').select('broker,market,symbol,qty,avg_price,updated_at').gt('qty', 0),
       client
         .from('trade_executions')
@@ -398,6 +472,7 @@ export async function GET(req: Request) {
         )
         .order('date', { ascending: false })
         .limit(180),
+      client.from('worker_status').select('service,state,last_event_at').limit(200),
     ]);
 
     if (positionsRes.error) throw new Error(`positions 조회 실패: ${positionsRes.error.message}`);
@@ -405,10 +480,12 @@ export async function GET(req: Request) {
       throw new Error(`trade_executions 조회 실패: ${tradeExecutionsRes.error.message}`);
     }
     if (dailyRes.error) throw new Error(`daily_trading_stats 조회 실패: ${dailyRes.error.message}`);
+    if (workersRes.error) throw new Error(`worker_status 조회 실패: ${workersRes.error.message}`);
 
     const positionRows = (positionsRes.data ?? []) as DbPositionRow[];
     const executionRows = (tradeExecutionsRes.data ?? []) as DbTradeExecutionRow[];
     const dailyRows = ((dailyRes.data ?? []) as DbDailyStatsRow[]) ?? [];
+    const workerRows = (workersRes.data ?? []) as DbWorkerStatusRow[];
 
     const symbolsByMarket: Record<MarketCode, Set<string>> = {
       CRYPTO: new Set<string>(),
@@ -626,6 +703,7 @@ export async function GET(req: Request) {
         weightPct,
       };
     });
+    const marketHealth = buildMarketHealth(workerRows);
 
     const body: OpsSnapshot = {
       meta: {
@@ -646,6 +724,7 @@ export async function GET(req: Request) {
         positionCount: positions.length,
       },
       byMarket,
+      marketHealth,
       positions,
       performance: computePerformance(dailyRows),
     };

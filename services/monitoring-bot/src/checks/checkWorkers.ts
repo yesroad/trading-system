@@ -29,6 +29,10 @@ function levelOfWorkerLag(mins: number): 'WARN' | 'CRIT' | null {
   return null;
 }
 
+function isSkippedState(state: string): boolean {
+  return state.trim().toUpperCase() === 'SKIPPED';
+}
+
 export async function checkWorkers(): Promise<AlertEvent[]> {
   const events: AlertEvent[] = [];
   const rows = (await fetchLatestWorkers()) as WorkerRow[];
@@ -50,6 +54,9 @@ export async function checkWorkers(): Promise<AlertEvent[]> {
       });
       continue;
     }
+
+    // 장외/휴장 등 의도된 SKIPPED 상태는 알림 대상에서 제외한다.
+    if (isSkippedState(row.state)) continue;
 
     const reference = row.last_success_at ?? row.last_event_at;
     if (!reference) {

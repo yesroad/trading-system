@@ -25,6 +25,15 @@ export type MarketPortfolioSummary = PortfolioMoney & {
   positionCount: number;
 };
 
+export type MarketHealth = {
+  market: MarketCode;
+  service: string;
+  state: Nullable<string>;
+  lastEventAtUtc: Nullable<string>;
+  healthy: boolean;
+  reason: string;
+};
+
 export type SnapshotPosition = {
   id: string;
   broker: string;
@@ -62,6 +71,7 @@ export type OpsSnapshot = {
     positionCount: number;
   };
   byMarket: Record<MarketCode, MarketPortfolioSummary>;
+  marketHealth: Record<MarketCode, MarketHealth>;
   positions: SnapshotPosition[];
   performance: SnapshotPerformance;
 };
