@@ -1,4 +1,4 @@
-import { checkDailyTradeLimit, checkSystemGuard, tryAutoRecoverSystemGuard } from '../db/guards';
+import { checkDailyTradeLimit, checkSystemGuard, tryAutoRecoverSystemGuard } from '../db/guards.js';
 
 export type AllGuardsResult = {
   allowed: boolean;

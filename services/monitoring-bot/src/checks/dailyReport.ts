@@ -1,10 +1,10 @@
-import { env } from '../config/env';
-import { toKstIso } from '../utils/time';
+import { env } from '../config/env.js';
+import { toKstIso } from '../utils/time.js';
 import {
   fetchLatestWorkers,
   fetchLatestAiResultsByMarket,
   fetchLatestIngestionSuccessByJobs,
-} from '../db/queries';
+} from '../db/queries.js';
 import { nowIso } from '@workspace/shared-utils';
 
 type WorkerRow = {

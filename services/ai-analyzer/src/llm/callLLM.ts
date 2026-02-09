@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
-import { env } from '../config/env';
-import { parseAiResult } from './parseResult';
-import type { AiLLMResult } from './resultSchema';
+import { env } from '../config/env.js';
+import { parseAiResult } from './parseResult.js';
+import type { AiLLMResult } from './resultSchema.js';
 
 const client = new OpenAI({
   apiKey: env.OPENAI_API_KEY,

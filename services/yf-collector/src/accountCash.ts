@@ -1,4 +1,4 @@
-import { fetchOverseasAccountBalance } from './kis';
+import { fetchOverseasAccountBalance } from './kis.js';
 import { nowIso } from '@workspace/shared-utils';
 
 export type AccountCashRow = {

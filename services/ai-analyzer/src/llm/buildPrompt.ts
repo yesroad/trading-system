@@ -1,6 +1,6 @@
-import type { Market } from '../config/markets';
-import type { MarketMode } from '../config/schedule';
-import type { SelectedTarget } from '../analysis/selectTargets';
+import type { Market } from '../config/markets.js';
+import type { MarketMode } from '../config/schedule.js';
+import type { SelectedTarget } from '../analysis/selectTargets.js';
 
 export type BuildPromptParams = {
   market: Market;

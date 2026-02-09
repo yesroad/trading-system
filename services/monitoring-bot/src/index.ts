@@ -1,13 +1,13 @@
-import { env } from './config/env';
-import { formatMessage } from './alert/formatMessage';
-import { sendTelegram } from './alert/sendTelegram';
-import { shouldSendAlert, recordAlertSent } from './alert/alertCooldown';
+import { env } from './config/env.js';
+import { formatMessage } from './alert/formatMessage.js';
+import { sendTelegram } from './alert/sendTelegram.js';
+import { shouldSendAlert, recordAlertSent } from './alert/alertCooldown.js';
 
-import { checkWorkers } from './checks/checkWorkers';
-import { checkIngestionRuns } from './checks/checkIngestionRuns';
-import { checkAiResults } from './checks/checkAiResults';
-import { checkNotificationEvents } from './checks/checkNotificationEvents';
-import { buildDailyReportText } from './checks/dailyReport';
+import { checkWorkers } from './checks/checkWorkers.js';
+import { checkIngestionRuns } from './checks/checkIngestionRuns.js';
+import { checkAiResults } from './checks/checkAiResults.js';
+import { checkNotificationEvents } from './checks/checkNotificationEvents.js';
+import { buildDailyReportText } from './checks/dailyReport.js';
 
 async function runChecksOnce() {
   const all = [

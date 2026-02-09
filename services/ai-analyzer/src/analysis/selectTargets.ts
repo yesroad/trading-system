@@ -1,5 +1,5 @@
 // analysis/selectTargets.ts
-import type { Snapshot } from './collectSnapshot';
+import type { Snapshot } from './collectSnapshot.js';
 
 export type SelectedTarget = {
   symbol: string;

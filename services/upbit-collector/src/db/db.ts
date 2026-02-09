@@ -1,5 +1,5 @@
-import { supabase } from './supabase';
-import type { UpbitMinuteCandle } from '../types/upbit';
+import { supabase } from './supabase.js';
+import type { UpbitMinuteCandle } from '../types/upbit.js';
 import { nowIso, normalizeUtcIso } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 

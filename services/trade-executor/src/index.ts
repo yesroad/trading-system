@@ -4,19 +4,19 @@ import { DateTime } from 'luxon';
 import { createLogger, sleep } from '@workspace/shared-utils';
 import { getSupabase } from '@workspace/db-client';
 
-import { EXECUTE_MARKETS, marketToBroker, type Market } from './config/markets';
-import { TRADING_CONFIG } from './config/trading';
+import { EXECUTE_MARKETS, marketToBroker, type Market } from './config/markets.js';
+import { TRADING_CONFIG } from './config/trading.js';
 
-import { checkAllGuards } from './decision/guards';
-import { pickCandidates } from './decision/candidates';
-import { applyTradingRules } from './decision/rules';
-import type { Position } from './decision/types';
+import { checkAllGuards } from './decision/guards.js';
+import { pickCandidates } from './decision/candidates.js';
+import { applyTradingRules } from './decision/rules.js';
+import type { Position } from './decision/types.js';
 
-import { getCurrentPrice, getLatestAIAnalysis, loadPositions } from './db/queries';
-import { enqueueNotificationEvent } from './db/notifications';
-import { executeOrders } from './execution/executor';
-import { KISClient } from './brokers/kis/client';
-import { UpbitClient } from './brokers/upbit/client';
+import { getCurrentPrice, getLatestAIAnalysis, loadPositions } from './db/queries.js';
+import { enqueueNotificationEvent } from './db/notifications.js';
+import { executeOrders } from './execution/executor.js';
+import { KISClient } from './brokers/kis/client.js';
+import { UpbitClient } from './brokers/upbit/client.js';
 
 const logger = createLogger('trade-executor');
 

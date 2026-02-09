@@ -1,11 +1,11 @@
-import { env } from '../config/env';
-import { sendTelegram } from '../alert/sendTelegram';
+import { env } from '../config/env.js';
+import { sendTelegram } from '../alert/sendTelegram.js';
 import {
   fetchPendingNotificationEvents,
   markNotificationEventFailed,
   markNotificationEventSent,
   type NotificationEventRow,
-} from '../db/queries';
+} from '../db/queries.js';
 
 function normalizeLevel(level: string): 'INFO' | 'WARNING' | 'ERROR' {
   if (level === 'ERROR') return 'ERROR';

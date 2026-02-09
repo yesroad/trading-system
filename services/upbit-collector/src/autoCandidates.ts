@@ -5,7 +5,7 @@
  * ✅ 보유 코인 제외한 나머지 중 상위 선정
  */
 
-import type { UpbitTicker } from './types/upbit';
+import type { UpbitTicker } from './types/upbit.js';
 import Big from 'big.js';
 
 export type AutoCandidate = {

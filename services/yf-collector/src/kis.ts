@@ -13,7 +13,7 @@ import {
   KIS_ACCOUNT_NO,
   KIS_ACCOUNT_PRODUCT_CD,
   KIS_TR_PREFIX,
-} from './kisConfig';
+} from './kisConfig.js';
 
 // 토큰 매니저 인스턴스 생성 (모듈 스코프)
 const tokenManager = new TokenManager('yf-collector');

@@ -1,4 +1,4 @@
-import type { UpbitMarket, UpbitTicker, UpbitMinuteCandle } from './types/upbit';
+import type { UpbitMarket, UpbitTicker, UpbitMinuteCandle } from './types/upbit.js';
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;

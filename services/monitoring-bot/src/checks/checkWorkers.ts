@@ -1,7 +1,7 @@
-import { env } from '../config/env';
-import { diffMinutes, toKstIso } from '../utils/time';
-import type { AlertEvent, AlertMarket } from '../types/status';
-import { fetchLatestWorkers } from '../db/queries';
+import { env } from '../config/env.js';
+import { diffMinutes, toKstIso } from '../utils/time.js';
+import type { AlertEvent, AlertMarket } from '../types/status.js';
+import { fetchLatestWorkers } from '../db/queries.js';
 import { nowIso } from '@workspace/shared-utils';
 
 type WorkerRow = {

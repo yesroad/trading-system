@@ -1,7 +1,7 @@
-import { Market } from './config/markets';
-import { getMarketMode } from './config/schedule';
-import { runAiAnalysis } from './analysis/runAiAnalysis';
-import { env } from './config/env';
+import { Market } from './config/markets.js';
+import { getMarketMode } from './config/schedule.js';
+import { runAiAnalysis } from './analysis/runAiAnalysis.js';
+import { env } from './config/env.js';
 
 async function main() {
   const markets: Market[] = [];

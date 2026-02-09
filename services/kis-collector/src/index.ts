@@ -6,11 +6,11 @@ import 'dotenv/config';
 import { DateTime } from 'luxon';
 import { requireEnv as env, createBackoff, nowIso, type Nullable } from '@workspace/shared-utils';
 import { upsertWorkerStatus } from '@workspace/db-client';
-import { fetchKrxPrice, fetchAccountBalance, TokenCooldownError } from './kis';
-import { insertTick } from './insertTick';
-import { bumpErrorCount, getSystemGuard, setTradingEnabled } from './systemGuard';
-import { loadActiveKisKrxSymbols, TrackedSymbol } from './trackedSymbols';
-import { createIngestionRun, finishIngestionRun, failIngestionRun } from './ingestionRuns';
+import { fetchKrxPrice, fetchAccountBalance, TokenCooldownError } from './kis.js';
+import { insertTick } from './insertTick.js';
+import { bumpErrorCount, getSystemGuard, setTradingEnabled } from './systemGuard.js';
+import { loadActiveKisKrxSymbols, TrackedSymbol } from './trackedSymbols.js';
+import { createIngestionRun, finishIngestionRun, failIngestionRun } from './ingestionRuns.js';
 
 // 실행 모드
 // - MARKET_ONLY: 정규장(09:00~15:30 KST)만 실행 (기본)

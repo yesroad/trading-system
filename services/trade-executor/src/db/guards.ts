@@ -1,6 +1,6 @@
 import { getSupabase } from '@workspace/db-client';
 import { DateTime } from 'luxon';
-import { TRADING_CONFIG } from '../config/trading';
+import { TRADING_CONFIG } from '../config/trading.js';
 
 type GuardRow = Record<string, unknown>;
 

@@ -1,4 +1,4 @@
-import { getSupabase } from './client';
+import { getSupabase } from './client.js';
 import { nowIso } from '@workspace/shared-utils';
 
 export type WorkerState = 'unknown' | 'running' | 'success' | 'failed' | 'skipped';

@@ -1,4 +1,4 @@
-import { supabase } from './db/supabase';
+import { supabase } from './db/supabase.js';
 
 /**
  * 보유 종목 로드 (positions 테이블)

@@ -1,12 +1,12 @@
 import Big from 'big.js';
 import { DateTime } from 'luxon';
-import type { Broker } from '../config/markets';
-import { TRADING_CONFIG } from '../config/trading';
-import type { BrokerClient, OrderRequest, OrderResult } from '../brokers/types';
-import { markSystemGuardFailure, markSystemGuardSuccess } from '../db/guards';
-import { enqueueNotificationEvent } from '../db/notifications';
-import { insertTradeExecution, updateDailyStats, updateTradeExecution } from '../db/trades';
-import type { Decision } from '../decision/types';
+import type { Broker } from '../config/markets.js';
+import { TRADING_CONFIG } from '../config/trading.js';
+import type { BrokerClient, OrderRequest, OrderResult } from '../brokers/types.js';
+import { markSystemGuardFailure, markSystemGuardSuccess } from '../db/guards.js';
+import { enqueueNotificationEvent } from '../db/notifications.js';
+import { insertTradeExecution, updateDailyStats, updateTradeExecution } from '../db/trades.js';
+import type { Decision } from '../decision/types.js';
 
 export type ExecuteOrdersParams = {
   decisions: Decision[];

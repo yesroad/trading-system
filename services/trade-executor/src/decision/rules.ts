@@ -1,6 +1,6 @@
 import Big from 'big.js';
-import { TRADING_CONFIG } from '../config/trading';
-import type { Candidate, Decision } from './types';
+import { TRADING_CONFIG } from '../config/trading.js';
+import type { Candidate, Decision } from './types.js';
 
 type PriceInput = number | string;
 

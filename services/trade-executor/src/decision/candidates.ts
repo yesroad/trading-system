@@ -1,8 +1,8 @@
 import Big from 'big.js';
-import { TRADING_CONFIG } from '../config/trading';
-import { marketToBroker } from '../config/markets';
-import type { AiAnalysisRow } from '../db/queries';
-import type { Candidate, Position, TradeAction } from './types';
+import { TRADING_CONFIG } from '../config/trading.js';
+import { marketToBroker } from '../config/markets.js';
+import type { AiAnalysisRow } from '../db/queries.js';
+import type { Candidate, Position, TradeAction } from './types.js';
 
 type PickCandidatesParams = {
   analyses: AiAnalysisRow[];

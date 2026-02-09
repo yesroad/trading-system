@@ -3,11 +3,11 @@ import { requireEnv as env, sleep, nowIso, normalizeUtcIso } from '@workspace/sh
 import { upsertWorkerStatus, insertIngestionRun, loadCryptoPositions } from '@workspace/db-client';
 import Big from 'big.js';
 import { DateTime } from 'luxon';
-import { fetchAllMarkets, fetchTickers, fetchMinuteCandles, fetchKRWBalance } from './api';
-import { upsertUpbitCandles } from './db/db';
-import { loadSymbolUniverse } from './symbolUniverse';
-import { selectAutoCandidates } from './autoCandidates';
-import type { UpbitTicker } from './types/upbit';
+import { fetchAllMarkets, fetchTickers, fetchMinuteCandles, fetchKRWBalance } from './api.js';
+import { upsertUpbitCandles } from './db/db.js';
+import { loadSymbolUniverse } from './symbolUniverse.js';
+import { selectAutoCandidates } from './autoCandidates.js';
+import type { UpbitTicker } from './types/upbit.js';
 
 function pickLaterIso(a: string | null, b: string | null): string | null {
   if (!a) return b;

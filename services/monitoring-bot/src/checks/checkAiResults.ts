@@ -1,7 +1,7 @@
-import { env } from '../config/env';
-import { diffMinutes, toKstIso } from '../utils/time';
-import type { AlertEvent, AlertLevel } from '../types/status';
-import { fetchLatestAiResultsByMarket } from '../db/queries';
+import { env } from '../config/env.js';
+import { diffMinutes, toKstIso } from '../utils/time.js';
+import type { AlertEvent, AlertLevel } from '../types/status.js';
+import { fetchLatestAiResultsByMarket } from '../db/queries.js';
 import { nowIso } from '@workspace/shared-utils';
 
 type AiLatest = {

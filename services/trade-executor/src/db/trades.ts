@@ -2,7 +2,7 @@ import Big from 'big.js';
 import { DateTime } from 'luxon';
 import { getSupabase } from '@workspace/db-client';
 import { nowIso } from '@workspace/shared-utils';
-import type { Broker } from '../config/markets';
+import type { Broker } from '../config/markets.js';
 
 export type TradeSide = 'BUY' | 'SELL';
 export type TradeOrderType = 'MARKET' | 'LIMIT';
