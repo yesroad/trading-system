@@ -1,5 +1,5 @@
-import { getSupabase } from './client';
-import type { Nullable } from './types';
+import { getSupabase } from './client.js';
+import type { Nullable } from './types.js';
 
 export type PositionRow = {
   broker: string;

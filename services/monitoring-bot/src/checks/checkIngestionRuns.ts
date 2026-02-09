@@ -1,7 +1,7 @@
-import { env } from '../config/env';
-import { toKstIso, diffMinutes } from '../utils/time';
-import type { AlertEvent, AlertLevel, AlertMarket } from '../types/status';
-import { fetchRecentIngestionRuns } from '../db/queries';
+import { env } from '../config/env.js';
+import { toKstIso, diffMinutes } from '../utils/time.js';
+import type { AlertEvent, AlertLevel, AlertMarket } from '../types/status.js';
+import { fetchRecentIngestionRuns } from '../db/queries.js';
 import { nowIso } from '@workspace/shared-utils';
 
 type IngestionRun = {

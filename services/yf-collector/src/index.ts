@@ -24,14 +24,14 @@
 import 'dotenv/config';
 import { DateTime } from 'luxon';
 import { env, envNumber, nowIso, type Nullable } from '@workspace/shared-utils';
-import { supabase } from './db/supabase';
-import { fetchYahooBars } from './fetchYahoo';
-import { upsertBars } from './db/db';
-import { loadAccountCash } from './accountCash';
-import { loadEnabledUniverseSymbols } from './symbolUniverse';
-import { loadAutoUsSymbols } from './autoCandidates';
-import { loadOpenPositionSymbols } from './positions';
-import { createGlobalThrottle } from './utils/throttle';
+import { supabase } from './db/supabase.js';
+import { fetchYahooBars } from './fetchYahoo.js';
+import { upsertBars } from './db/db.js';
+import { loadAccountCash } from './accountCash.js';
+import { loadEnabledUniverseSymbols } from './symbolUniverse.js';
+import { loadAutoUsSymbols } from './autoCandidates.js';
+import { loadOpenPositionSymbols } from './positions.js';
+import { createGlobalThrottle } from './utils/throttle.js';
 
 const TIMEFRAME = '15m';
 

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabase.js';
 import { nowIso } from '@workspace/shared-utils';
 
 export async function fetchRecentIngestionRuns(limit: number) {

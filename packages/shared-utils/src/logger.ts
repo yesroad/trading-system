@@ -1,4 +1,4 @@
-import { nowIso } from './date';
+import { nowIso } from './date.js';
 
 type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 

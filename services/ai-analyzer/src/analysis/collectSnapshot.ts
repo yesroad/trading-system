@@ -1,6 +1,6 @@
-import { supabase } from '../supabase';
-import { Market } from '../config/markets';
-import type { WorkerStatusRow, IngestionRunRow, AiResultRow } from '../types/db';
+import { supabase } from '../supabase.js';
+import { Market } from '../config/markets.js';
+import type { WorkerStatusRow, IngestionRunRow, AiResultRow } from '../types/db.js';
 import { nowIso } from '@workspace/shared-utils';
 
 export type Snapshot = {

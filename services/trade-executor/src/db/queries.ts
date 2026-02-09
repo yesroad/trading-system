@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { getSupabase, loadCryptoPositions } from '@workspace/db-client';
-import type { Market } from '../config/markets';
+import type { Market } from '../config/markets.js';
 
 export type AiDecision = 'ALLOW' | 'CAUTION' | 'BLOCK';
 

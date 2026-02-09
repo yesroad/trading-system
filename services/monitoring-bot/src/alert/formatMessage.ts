@@ -1,6 +1,6 @@
-import { LEVEL_EMOJI } from '../types/status';
-import type { AlertEvent } from '../types/status';
-import { env } from '../config/env';
+import { LEVEL_EMOJI } from '../types/status.js';
+import type { AlertEvent } from '../types/status.js';
+import { env } from '../config/env.js';
 
 export function formatMessage(event: AlertEvent) {
   const { level, title, message, market, service, runMode, at } = event;

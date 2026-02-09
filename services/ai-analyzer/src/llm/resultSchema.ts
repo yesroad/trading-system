@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MARKET_MODES } from '../config/schedule';
+import { MARKET_MODES } from '../config/schedule.js';
 
 export const MarketSchema = z.enum(['KR', 'US', 'CRYPTO']);
 export type Market = z.infer<typeof MarketSchema>;

@@ -1,4 +1,4 @@
-import { getSupabase } from './client';
+import { getSupabase } from './client.js';
 
 export type IngestionStatus = 'success' | 'running' | 'failed' | 'skipped';
 

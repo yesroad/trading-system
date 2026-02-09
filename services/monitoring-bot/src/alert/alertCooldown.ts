@@ -1,5 +1,5 @@
-import { env } from '../config/env';
-import type { AlertEvent, AlertLevel } from '../types/status';
+import { env } from '../config/env.js';
+import type { AlertEvent, AlertLevel } from '../types/status.js';
 import { DateTime } from 'luxon';
 
 const sentAt = new Map<string, { at: number; level: AlertLevel }>();

@@ -1,4 +1,4 @@
-import { supabase } from './db/supabase';
+import { supabase } from './db/supabase.js';
 
 /**
  * 가격 tick 1건을 DB에 저장한다.

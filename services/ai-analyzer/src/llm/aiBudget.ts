@@ -1,5 +1,5 @@
-import { Market } from '../config/markets';
-import type { MarketMode } from '../config/schedule';
+import { Market } from '../config/markets.js';
+import type { MarketMode } from '../config/schedule.js';
 import { DateTime } from 'luxon';
 
 type BudgetState = {

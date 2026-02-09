@@ -1,8 +1,8 @@
 import Big from 'big.js';
 import { env, requireEnv } from '@workspace/shared-utils';
 import { TokenManager } from '@workspace/kis-auth';
-import { TRADING_CONFIG } from '../../config/trading';
-import type { BrokerClient, OrderRequest, OrderResult } from '../types';
+import { TRADING_CONFIG } from '../../config/trading.js';
+import type { BrokerClient, OrderRequest, OrderResult } from '../types.js';
 
 type KisConfig = {
   baseUrl: string;

@@ -1,5 +1,5 @@
-import { validateAiLLMResult } from './resultSchema';
-import type { AiLLMResult } from './resultSchema';
+import { validateAiLLMResult } from './resultSchema.js';
+import type { AiLLMResult } from './resultSchema.js';
 
 /**
  * ✅ LLM 응답 문자열 → JSON 파싱 → 스키마 검증

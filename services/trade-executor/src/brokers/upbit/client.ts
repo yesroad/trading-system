@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import Big from 'big.js';
 import { requireEnv } from '@workspace/shared-utils';
-import { TRADING_CONFIG } from '../../config/trading';
-import type { BrokerClient, OrderRequest, OrderResult } from '../types';
+import { TRADING_CONFIG } from '../../config/trading.js';
+import type { BrokerClient, OrderRequest, OrderResult } from '../types.js';
 
 const BASE_URL = 'https://api.upbit.com/v1';
 

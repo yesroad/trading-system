@@ -2,7 +2,7 @@
  * system_guard 단일 row(id=1) 접근
  */
 
-import { supabase } from './db/supabase';
+import { supabase } from './db/supabase.js';
 import { DateTime } from 'luxon';
 import { nowIso, type Nullable } from '@workspace/shared-utils';
 

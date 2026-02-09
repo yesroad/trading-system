@@ -1,4 +1,4 @@
-import type { Broker, Market } from '../config/markets';
+import type { Broker, Market } from '../config/markets.js';
 
 export type OrderSide = 'BUY' | 'SELL';
 export type OrderType = 'MARKET' | 'LIMIT';

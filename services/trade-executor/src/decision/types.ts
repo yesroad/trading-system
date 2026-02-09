@@ -1,5 +1,5 @@
-import type { AiDecision } from '../db/queries';
-import type { Broker, Market } from '../config/markets';
+import type { AiDecision } from '../db/queries.js';
+import type { Broker, Market } from '../config/markets.js';
 
 export type TradeAction = 'BUY' | 'SELL' | 'SKIP';
 

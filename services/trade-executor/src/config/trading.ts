@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { env, envBoolean, envNumber } from '@workspace/shared-utils';
-import { EXECUTE_MARKETS } from './markets';
+import { EXECUTE_MARKETS } from './markets.js';
 
 export type RunMode = 'MARKET_ONLY' | 'EXTENDED' | 'ALWAYS';
 

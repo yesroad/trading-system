@@ -1,7 +1,7 @@
-import { supabase } from '../supabase';
-import type { Market } from '../config/markets';
-import type { MarketMode } from '../config/schedule';
-import type { AiLLMResult } from '../llm/resultSchema';
+import { supabase } from '../supabase.js';
+import type { Market } from '../config/markets.js';
+import type { MarketMode } from '../config/schedule.js';
+import type { AiLLMResult } from '../llm/resultSchema.js';
 
 type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 

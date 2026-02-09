@@ -1,4 +1,4 @@
-import { supabase } from './db/supabase';
+import { supabase } from './db/supabase.js';
 import type { Nullable } from '@workspace/shared-utils';
 
 export type UniverseSymbolRow = {

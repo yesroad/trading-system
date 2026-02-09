@@ -1,4 +1,4 @@
-import { Market, MARKET_CONFIG } from './markets';
+import { Market, MARKET_CONFIG } from './markets.js';
 import { DateTime } from 'luxon';
 
 export const MARKET_MODES = [

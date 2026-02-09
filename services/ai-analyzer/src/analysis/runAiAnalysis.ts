@@ -1,14 +1,14 @@
-import { Market } from '../config/markets';
-import type { MarketMode } from '../config/schedule';
-import { shouldConsiderAi } from '../config/schedule';
-import { env } from '../config/env';
-import { collectSnapshot } from './collectSnapshot';
-import { selectTargets } from './selectTargets';
-import { buildPrompt } from '../llm/buildPrompt';
-import { callLLM } from '../llm/callLLM';
-import { canCallLLM, recordLLMCall } from '../llm/aiBudget';
-import { saveAiResults } from '../db/saveAiResults';
-import { shouldCallAIBySnapshot } from './shouldCallAIBySnapshot';
+import { Market } from '../config/markets.js';
+import type { MarketMode } from '../config/schedule.js';
+import { shouldConsiderAi } from '../config/schedule.js';
+import { env } from '../config/env.js';
+import { collectSnapshot } from './collectSnapshot.js';
+import { selectTargets } from './selectTargets.js';
+import { buildPrompt } from '../llm/buildPrompt.js';
+import { callLLM } from '../llm/callLLM.js';
+import { canCallLLM, recordLLMCall } from '../llm/aiBudget.js';
+import { saveAiResults } from '../db/saveAiResults.js';
+import { shouldCallAIBySnapshot } from './shouldCallAIBySnapshot.js';
 import { nowIso } from '@workspace/shared-utils';
 
 export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<void> {

@@ -1,6 +1,6 @@
-import type { Market } from '../config/markets';
-import type { MarketMode } from '../config/schedule';
-import type { Snapshot } from './collectSnapshot';
+import type { Market } from '../config/markets.js';
+import type { MarketMode } from '../config/schedule.js';
+import type { Snapshot } from './collectSnapshot.js';
 import { DateTime } from 'luxon';
 
 type TargetLike = { symbol: string } | string;

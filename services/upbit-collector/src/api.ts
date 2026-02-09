@@ -1,5 +1,5 @@
-import { parseMarkets, parseTickers, parseMinuteCandles } from './guards';
-import type { UpbitMarket, UpbitTicker, UpbitMinuteCandle } from './types/upbit';
+import { parseMarkets, parseTickers, parseMinuteCandles } from './guards.js';
+import type { UpbitMarket, UpbitTicker, UpbitMinuteCandle } from './types/upbit.js';
 import { requireEnv as env } from '@workspace/shared-utils';
 import Big from 'big.js';
 import { v4 as uuidv4 } from 'uuid';

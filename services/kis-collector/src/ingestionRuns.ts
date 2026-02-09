@@ -2,7 +2,7 @@
  * ingestion_runs 테이블 관리
  */
 
-import { supabase } from './db/supabase';
+import { supabase } from './db/supabase.js';
 import { nowIso, type Nullable } from '@workspace/shared-utils';
 
 type IngestionRunStatus = 'success' | 'running' | 'failed' | 'skipped';
