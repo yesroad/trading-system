@@ -44,6 +44,12 @@ export type UpdateDailyStatsParams = {
   dateKst?: string;
 };
 
+type TradeExecutionRow = {
+  id?: unknown;
+  metadata?: unknown;
+};
+let tradeExecutionHasIdempotencyColumn: boolean | null = null;
+
 function toNumericString(value: BigInput): string {
   return new Big(value).toString();
 }
@@ -81,11 +87,81 @@ function toBig(value: unknown): Big {
   }
 }
 
+function isUuid(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object') return null;
+  return value as Record<string, unknown>;
+}
+
+async function findExistingByIdempotency(params: InsertTradeExecutionParams): Promise<string | null> {
+  if (!params.idempotencyKey) return null;
+
+  const supabase = getSupabase();
+  if (tradeExecutionHasIdempotencyColumn !== false) {
+    const idQuery = await supabase
+      .from('trade_executions')
+      .select('id')
+      .eq('idempotency_key', params.idempotencyKey)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!idQuery.error) {
+      tradeExecutionHasIdempotencyColumn = true;
+      const id = (idQuery.data as { id?: unknown } | null)?.id;
+      if (typeof id === 'string' && id.length > 0) return id;
+      return null;
+    }
+
+    if ((idQuery.error as { code?: string }).code !== '42703') {
+      throw new Error(`trade_executions 중복 조회 실패: ${idQuery.error.message}`);
+    }
+
+    tradeExecutionHasIdempotencyColumn = false;
+  }
+
+  const { data, error } = await supabase
+    .from('trade_executions')
+    .select('id,metadata')
+    .eq('broker', params.broker)
+    .eq('symbol', params.symbol)
+    .eq('side', params.side)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    throw new Error(`trade_executions 중복 조회 실패: ${error.message}`);
+  }
+
+  const rows = (Array.isArray(data) ? data : []) as TradeExecutionRow[];
+  for (const row of rows) {
+    const metadata = toRecord(row.metadata);
+    if (metadata?.idempotencyKey === params.idempotencyKey) {
+      const id = row.id;
+      if (typeof id === 'string' && id.length > 0) return id;
+    }
+  }
+
+  return null;
+}
+
 /**
  * trade_executions에 주문 실행 기록을 생성한다.
  */
 export async function insertTradeExecution(params: InsertTradeExecutionParams): Promise<string> {
+  const existingId = await findExistingByIdempotency(params);
+  if (existingId) return existingId;
+
   const supabase = getSupabase();
+  const metadata = {
+    ...(params.metadata ?? {}),
+    idempotencyKey: params.idempotencyKey ?? null,
+    aiAnalysisId: params.aiAnalysisId ?? null,
+  };
 
   const payload: Record<string, unknown> = {
     service_name: 'trade-executor',
@@ -98,12 +174,15 @@ export async function insertTradeExecution(params: InsertTradeExecutionParams): 
     status: params.status ?? 'PENDING',
     order_id: toNullableString(params.orderId),
     decision_reason: toNullableString(params.decisionReason),
-    ai_analysis_id: params.aiAnalysisId ?? null,
-    metadata: params.metadata ?? null,
+    metadata,
   };
 
   if (params.idempotencyKey) {
     payload.idempotency_key = params.idempotencyKey;
+  }
+
+  if (isUuid(params.aiAnalysisId)) {
+    payload.ai_analysis_id = params.aiAnalysisId;
   }
 
   const { data, error } = await supabase
@@ -113,26 +192,10 @@ export async function insertTradeExecution(params: InsertTradeExecutionParams): 
     .single();
 
   if (error) {
-    const errorCode = (error as { code?: string }).code;
-
-    // idempotency_key 중복이면 기존 레코드 id를 반환
-    if (errorCode === '23505' && params.idempotencyKey) {
-      const { data: existing, error: existingError } = await supabase
-        .from('trade_executions')
-        .select('id')
-        .eq('idempotency_key', params.idempotencyKey)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existingError) {
-        throw new Error(`trade_executions 중복 조회 실패: ${existingError.message}`);
-      }
-
-      const existingId = (existing as { id?: unknown } | null)?.id;
-      if (typeof existingId === 'string' && existingId.length > 0) {
-        return existingId;
-      }
+    // insert race 상황에서 기존 레코드를 한번 더 조회
+    const racedId = await findExistingByIdempotency(params);
+    if (racedId) {
+      return racedId;
     }
 
     throw new Error(`trade_executions insert 실패: ${error.message}`);

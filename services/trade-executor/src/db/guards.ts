@@ -61,6 +61,10 @@ function resolveTradingEnabled(row: GuardRow): boolean {
   return asBoolean(row.trading_enabled ?? row.is_trading_enabled);
 }
 
+function resolveCooldownUntil(row: GuardRow): string | null {
+  return asNullableString(row.cooldown_until ?? row.token_cooldown_until);
+}
+
 function buildGuardUpdate(row: GuardRow, patch: {
   tradingEnabled?: boolean;
   reason?: string | null;
@@ -81,8 +85,9 @@ function buildGuardUpdate(row: GuardRow, patch: {
     out.reason = patch.reason;
   }
 
-  if (patch.cooldownUntil !== undefined && hasColumn(row, 'cooldown_until')) {
-    out.cooldown_until = patch.cooldownUntil;
+  if (patch.cooldownUntil !== undefined) {
+    if (hasColumn(row, 'cooldown_until')) out.cooldown_until = patch.cooldownUntil;
+    if (hasColumn(row, 'token_cooldown_until')) out.token_cooldown_until = patch.cooldownUntil;
   }
 
   if (patch.errorCount !== undefined && hasColumn(row, 'error_count')) {
@@ -134,7 +139,7 @@ export async function checkSystemGuard(): Promise<SystemGuardCheckResult> {
   const row = await getSystemGuardRow();
 
   const tradingEnabled = resolveTradingEnabled(row);
-  const cooldownUntil = asNullableString(row.cooldown_until);
+  const cooldownUntil = resolveCooldownUntil(row);
   const reason = asNullableString(row.reason) ?? 'system_guard blocked';
   const errorCount = asNonNegativeInt(row.error_count);
 
@@ -273,7 +278,7 @@ export async function tryAutoRecoverSystemGuard(): Promise<AutoRecoveryResult> {
     return { recovered: false, reason: 'manual lock' };
   }
 
-  const cooldownUntil = asNullableString(row.cooldown_until);
+  const cooldownUntil = resolveCooldownUntil(row);
   if (cooldownUntil) {
     const until = DateTime.fromISO(cooldownUntil);
     if (until.isValid && until.toMillis() > DateTime.now().toMillis()) {

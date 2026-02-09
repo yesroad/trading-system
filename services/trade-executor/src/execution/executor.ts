@@ -139,13 +139,20 @@ export async function executeOrders(params: ExecuteOrdersParams): Promise<Execut
     let tradeExecutionId: string | undefined;
 
     try {
-      const marketPrice = await client.getCurrentPrice({
-        market: decision.market,
-        symbol: decision.symbol,
-      });
+      let marketPrice: number | null = null;
+      let marketPriceError: string | null = null;
+      try {
+        marketPrice = await client.getCurrentPrice({
+          market: decision.market,
+          symbol: decision.symbol,
+        });
+      } catch (priceError: unknown) {
+        marketPriceError = priceError instanceof Error ? priceError.message : String(priceError);
+      }
 
-      if (marketPrice === null) {
+      if (marketPrice === null || !Number.isFinite(marketPrice) || marketPrice <= 0) {
         skipped += 1;
+        const reason = marketPriceError ?? '현재가 미확보';
 
         await enqueueNotificationEvent({
           sourceService: 'trade-executor',
@@ -153,9 +160,9 @@ export async function executeOrders(params: ExecuteOrdersParams): Promise<Execut
           level: 'WARNING',
           market: decision.market,
           title: '주문 스킵(현재가 없음)',
-          message: `${decision.symbol} ${decision.action} 스킵: 현재가 미확보`,
+          message: `${decision.symbol} ${decision.action} 스킵: ${reason}`,
           dedupeKey: `price-missing:${decision.broker}:${decision.symbol}:${nowMinuteKey()}`,
-          payload: { decision },
+          payload: { decision, reason },
         });
 
         items.push({
@@ -170,9 +177,9 @@ export async function executeOrders(params: ExecuteOrdersParams): Promise<Execut
             requestedPrice: null,
             status: 'SKIPPED',
             dryRun,
-            message: '현재가 미확보로 주문 스킵',
+            message: `현재가 미확보로 주문 스킵 (${reason})`,
           },
-          error: 'current price not available',
+          error: reason,
         });
         continue;
       }
@@ -189,6 +196,7 @@ export async function executeOrders(params: ExecuteOrdersParams): Promise<Execut
         price: marketPrice,
         dryRun,
       });
+      const idempotencyKey = makeIdempotencyKey(decision);
 
       tradeExecutionId = await insertTradeExecution({
         broker: decision.broker,
@@ -200,11 +208,12 @@ export async function executeOrders(params: ExecuteOrdersParams): Promise<Execut
         status: 'PENDING',
         decisionReason: decision.reason,
         aiAnalysisId: decision.aiAnalysisId,
-        idempotencyKey: makeIdempotencyKey(decision),
+        idempotencyKey,
         metadata: {
           dryRun,
           confidence: decision.confidence,
           aiDecision: decision.aiDecision,
+          idempotencyKey,
         },
       });
 
@@ -218,7 +227,7 @@ export async function executeOrders(params: ExecuteOrdersParams): Promise<Execut
           executedQty: orderResult.executedQty ?? request.quantity,
           executedPrice: orderResult.executedPrice ?? request.price,
           decisionReason: orderResult.message,
-          metadata: { request, orderResult },
+          metadata: { request, orderResult, idempotencyKey },
         });
 
         await updateDailyStats({
@@ -249,7 +258,7 @@ export async function executeOrders(params: ExecuteOrdersParams): Promise<Execut
           executedQty: orderResult.executedQty ?? request.quantity,
           executedPrice: orderResult.executedPrice ?? request.price,
           decisionReason: orderResult.message,
-          metadata: { request, orderResult, skipped: true },
+          metadata: { request, orderResult, skipped: true, idempotencyKey },
         });
 
         skipped += 1;
@@ -261,7 +270,7 @@ export async function executeOrders(params: ExecuteOrdersParams): Promise<Execut
           executedQty: orderResult.executedQty ?? request.quantity,
           executedPrice: orderResult.executedPrice ?? request.price,
           decisionReason: orderResult.message,
-          metadata: { request, orderResult },
+          metadata: { request, orderResult, idempotencyKey },
         });
 
         await updateDailyStats({
@@ -300,7 +309,7 @@ export async function executeOrders(params: ExecuteOrdersParams): Promise<Execut
           id: tradeExecutionId,
           status: 'FAILED',
           decisionReason: message,
-          metadata: { error: message },
+          metadata: { error: message, idempotencyKey: makeIdempotencyKey(decision) },
         });
       }
 
