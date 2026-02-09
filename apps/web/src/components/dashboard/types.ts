@@ -2,8 +2,6 @@ import type { MarketCode, PerformancePeriod } from '@/types/api/snapshot';
 
 export type DashboardRouteKey = 'crypto' | 'kia' | 'yf';
 
-export type RiskFilter = 'ALL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'HOLDING';
-
 export const ROUTE_ORDER: DashboardRouteKey[] = ['crypto', 'kia', 'yf'];
 
 export const ROUTE_TO_MARKET: Record<DashboardRouteKey, MarketCode> = {

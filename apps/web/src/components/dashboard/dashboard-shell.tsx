@@ -2,27 +2,16 @@
 
 import * as React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { SnapshotItem } from '@/types/api/snapshot';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSnapshotQuery } from '@/queries/snapshot';
 import { MarketSummaryGrid } from './market-summary-grid';
 import { MarketTabs } from './market-tabs';
-import { RiskFilterBar } from './risk-filter-bar';
+import { PerformancePanel } from './performance-panel';
 import { SymbolAccordionList } from './symbol-accordion-list';
-import { formatLagMinutes, formatLocalDateTime } from './format';
-import { ROUTE_TO_MARKET, type DashboardRouteKey, type RiskFilter } from './types';
-
-function applyFilter(items: SnapshotItem[], filter: RiskFilter): SnapshotItem[] {
-  if (filter === 'ALL') return items;
-  if (filter === 'HOLDING') return items.filter((item) => item.isHolding);
-  return items.filter((item) => item.riskLevel === filter);
-}
-
-function parseRiskFilter(raw: string | null): RiskFilter {
-  if (raw === 'HIGH' || raw === 'MEDIUM' || raw === 'LOW' || raw === 'HOLDING') return raw;
-  return 'ALL';
-}
+import { formatCurrency, toPercentString } from './format';
+import { ROUTE_TO_MARKET, type DashboardRouteKey } from './types';
+import type { SnapshotPerformance } from '@/types/api/snapshot';
 
 function parsePositiveInt(raw: string | null, fallback: number): number {
   const value = Number(raw);
@@ -30,15 +19,20 @@ function parsePositiveInt(raw: string | null, fallback: number): number {
   return value;
 }
 
+function parsePerformancePeriod(raw: string | null): keyof SnapshotPerformance {
+  if (raw === 'DAILY' || raw === 'WEEKLY' || raw === 'MONTHLY' || raw === 'ALL') return raw;
+  return 'DAILY';
+}
+
 export function DashboardShell({ routeKey }: { routeKey: DashboardRouteKey }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const riskFilter = parseRiskFilter(searchParams.get('filter'));
+  const period = parsePerformancePeriod(searchParams.get('period'));
   const page = parsePositiveInt(searchParams.get('page'), 1);
   const openIdParam = searchParams.get('open');
-  const openId = openIdParam ? Number(openIdParam) : null;
+  const openId = openIdParam ? String(openIdParam) : null;
 
   const market = ROUTE_TO_MARKET[routeKey];
 
@@ -81,13 +75,12 @@ export function DashboardShell({ routeKey }: { routeKey: DashboardRouteKey }) {
   }
 
   const snapshot = snapshotQuery.data;
-  const detail = snapshot.tabs[market];
-  const filteredItems = applyFilter(detail.items, riskFilter);
+  const marketSummary = snapshot.byMarket[market];
+  const marketPositions = snapshot.positions.filter((item) => item.market === market);
 
-  const handleRiskFilterChange = (next: RiskFilter) => {
+  const handlePerformancePeriodChange = (next: keyof SnapshotPerformance) => {
     updateSearch({
-      filter: next === 'ALL' ? null : next,
-      period: null,
+      period: next === 'DAILY' ? null : next,
       page: null,
       open: null,
     });
@@ -100,68 +93,75 @@ export function DashboardShell({ routeKey }: { routeKey: DashboardRouteKey }) {
     });
   };
 
-  const handleOpenChange = (next: number | null) => {
+  const handleOpenChange = (next: string | null) => {
     updateSearch({
-      open: next ? String(next) : null,
+      open: next,
     });
   };
 
   return (
     <div className="space-y-4">
       <MarketSummaryGrid snapshot={snapshot} />
+      <PerformancePanel
+        period={period}
+        onChange={handlePerformancePeriodChange}
+        performance={snapshot.performance}
+      />
 
       <Card>
         <CardContent className="p-4">
           <MarketTabs active={routeKey} />
-          <div className="mt-3 grid gap-2 text-xs text-slate-600 md:grid-cols-3">
+          <div className="mt-3 grid gap-2 text-xs text-slate-600 md:grid-cols-4">
             <p>
-              분석 대상 종목:{' '}
-              <span className="font-semibold text-slate-900">{detail.targetCount}</span>
-            </p>
-            <p>
-              최근 수집:{' '}
+              총 자산:{' '}
               <span className="font-semibold text-slate-900">
-                {formatLagMinutes(detail.ingestionLagMinutes)} (
-                {formatLocalDateTime(detail.latestIngestionAtUtc)})
+                {formatCurrency(snapshot.total.asset)}
               </span>
             </p>
             <p>
-              최근 분석:{' '}
+              시장 자산:{' '}
               <span className="font-semibold text-slate-900">
-                {formatLagMinutes(detail.analysisLagMinutes)} (
-                {formatLocalDateTime(detail.latestAnalysisAtUtc)})
+                {formatCurrency(marketSummary.asset)}
+              </span>
+            </p>
+            <p>
+              총 손익:{' '}
+              <span className="font-semibold text-slate-900">
+                {formatCurrency(snapshot.total.pnl)}
+              </span>
+            </p>
+            <p>
+              총 수익률:{' '}
+              <span className="font-semibold text-slate-900">
+                {toPercentString(snapshot.total.pnlRatePct)}
               </span>
             </p>
           </div>
 
           <div className="mt-3 grid gap-2 text-xs md:grid-cols-3">
-            <div className="rounded-xl bg-rose-50 p-3 text-rose-700">
-              <Badge variant="secondary" className="bg-rose-100 text-rose-700">
-                HIGH {detail.riskCounts.HIGH}
-              </Badge>
-            </div>
-            <div className="rounded-xl bg-amber-50 p-3 text-amber-700">
-              <Badge variant="secondary" className="bg-amber-100 text-amber-700">
-                MEDIUM {detail.riskCounts.MEDIUM}
+            <div className="rounded-xl bg-slate-50 p-3 text-slate-700">
+              <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+                포지션 {marketSummary.positionCount}
               </Badge>
             </div>
             <div className="rounded-xl bg-emerald-50 p-3 text-emerald-700">
               <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
-                LOW {detail.riskCounts.LOW}
+                미실현 {formatCurrency(marketSummary.unrealizedPnl)}
               </Badge>
             </div>
-          </div>
-
-          <div className="mt-3">
-            <RiskFilterBar filter={riskFilter} onChange={handleRiskFilterChange} />
+            <div className="rounded-xl bg-blue-50 p-3 text-blue-700">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                시장 비중 {toPercentString(marketSummary.weightPct)}
+              </Badge>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       <SymbolAccordionList
-        items={filteredItems}
+        items={marketPositions}
         page={page}
-        openId={Number.isFinite(openId) ? openId : null}
+        openId={openId}
         onPageChange={handlePageChange}
         onOpenChange={handleOpenChange}
       />

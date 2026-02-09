@@ -1,5 +1,6 @@
-import type { RiskFilter } from './types';
 import { Button } from '@/components/ui/button';
+
+type RiskFilter = 'ALL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'HOLDING';
 
 const FILTERS: Array<{ key: RiskFilter; label: string }> = [
   { key: 'ALL', label: '전체' },
