@@ -169,7 +169,7 @@ yarn --version  # 4.9.2
 ### 2. 저장소 클론
 
 ```bash
-git clone https://github.com/your-username/trading-system.git
+git clone https://github.com/yesroad/trading-system.git
 cd trading-system
 ```
 
