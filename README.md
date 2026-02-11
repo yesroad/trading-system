@@ -2,7 +2,11 @@
 
 > 다중 시장 자동매매 시스템 (국내주식 · 미국주식 · 암호화폐)
 
-**⚠️ 현재 상태:** 개발 중 (실전 투입 전 테스트 및 검증 필요)
+**🤖 AI 바이브코딩 프로젝트**
+
+이 프로젝트는 **ChatGPT**, **Claude Code**, **Codex**와 소통하며 설계하고 구현한 자동매매 시스템입니다. AI 페어 프로그래밍을 통해 아키텍처를 설계하고, 바이브코딩으로 빠르게 구현하며, 현대적인 개발 방법론을 실험합니다.
+
+**⚠️ 현재 상태:** 개발 중 (테스트 및 검증 필요)
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org/)
@@ -27,7 +31,14 @@
 
 ## 🎯 개요
 
-**Trading System**은 국내주식(KRX), 미국주식(US), 암호화폐(Crypto) 시장에서 자동으로 데이터를 수집하고, AI 분석을 통해 매매 신호를 생성하며, 의사결정에 따라 주문을 실행하는 자동매매 시스템입니다.
+**Trading System**은 AI 도구와의 협업을 통해 설계하고 구현한 자동매매 시스템입니다. 국내주식(KRX), 미국주식(US), 암호화폐(Crypto) 시장에서 자동으로 데이터를 수집하고, AI 분석을 통해 매매 신호를 생성하며, 의사결정에 따라 주문을 실행합니다.
+
+### 개발 방식
+
+- 🤖 **AI 페어 프로그래밍** - AI와 대화하며 설계 및 구현
+- 💬 **바이브코딩** - Claude Code, Codex와 협업
+- 🏗️ **아키텍처 우선** - 마이크로서비스, DB 중심 설계
+- 🛠️ **현대적 도구** - TypeScript strict, Turborepo, Supabase
 
 ### 핵심 철학
 
@@ -447,16 +458,34 @@ Private - All Rights Reserved
 
 ## 🙏 Acknowledgments
 
-이 프로젝트는 다음 도구와 기술을 활용하여 개발되었습니다:
+### AI 도구와 함께한 개발
 
-- **AI-Assisted Development** - Claude Code 등 과 함께 개발
+이 프로젝트는 AI 바이브코딩으로 개발되었습니다:
+
+- 🤖 **ChatGPT** - 아키텍처 설계, 문제 해결
+- 💻 **Claude Code**, **Codex** - 실시간 페어 프로그래밍, 코드 생성
+
+### 기술 스택 및 서비스
+
 - **한국투자증권** - 국내/미국주식 API 제공
 - **Upbit** - 암호화폐 API 제공
-- **Supabase** - 데이터베이스 및 인프라
-- **Vercel** - 배포 및 호스팅
+- **OpenAI** - AI 분석 API
+- **Supabase** - PostgreSQL 데이터베이스 및 Realtime
+- **Vercel** - Next.js 대시보드 호스팅
+- **Turborepo** - 모노레포 빌드 시스템
+
+### 학습 자료
+
+이 프로젝트를 통해 다음을 학습하고 실험했습니다:
+
+- TypeScript strict mode의 실전 적용
+- 마이크로서비스 아키텍처 설계
+- DB 중심 서비스 통신 패턴
+- Zod를 활용한 런타임 타입 검증
+- AI 페어 프로그래밍 워크플로우
 
 ---
 
 **⚠️ 면책 조항**
 
-실제 투자에 사용할 경우 발생하는 손실에 대해 개발자는 책임지지 않습니다. 투자는 본인의 판단과 책임 하에 진행하시기 바랍니다.
+이 소프트웨어는 학습용으로 개발 중이며, 실제 투자에 사용할 경우 발생하는 손실에 대해 개발자는 책임지지 않습니다. 투자는 본인의 판단과 책임 하에 진행하시기 바랍니다.
