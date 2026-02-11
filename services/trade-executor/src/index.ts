@@ -49,7 +49,7 @@ function asNumber(value: unknown): number | null {
 
 function isMarketOpen(market: Market): boolean {
   if (!TRADING_CONFIG.enableMarketHoursGuard) return true;
-  if (TRADING_CONFIG.tradeExecutorRunMode === 'ALWAYS') return true;
+  if (TRADING_CONFIG.tradeExecutorRunMode === 'NO_CHECK') return true;
   if (market === 'CRYPTO') return true;
 
   if (market === 'KR') {
@@ -60,6 +60,12 @@ function isMarketOpen(market: Market): boolean {
     if (TRADING_CONFIG.tradeExecutorRunMode === 'EXTENDED') {
       return minutes >= 8 * 60 && minutes <= 16 * 60;
     }
+    if (TRADING_CONFIG.tradeExecutorRunMode === 'PREMARKET') {
+      return minutes >= 8 * 60 && minutes <= 9 * 60;
+    }
+    if (TRADING_CONFIG.tradeExecutorRunMode === 'AFTERMARKET') {
+      return minutes >= 15 * 60 + 30 && minutes <= 16 * 60;
+    }
     return minutes >= 9 * 60 && minutes <= 15 * 60 + 30;
   }
 
@@ -69,6 +75,12 @@ function isMarketOpen(market: Market): boolean {
   const minutes = now.hour * 60 + now.minute;
   if (TRADING_CONFIG.tradeExecutorRunMode === 'EXTENDED') {
     return minutes >= 4 * 60 && minutes <= 20 * 60;
+  }
+  if (TRADING_CONFIG.tradeExecutorRunMode === 'PREMARKET') {
+    return minutes >= 4 * 60 && minutes <= 9 * 60 + 30;
+  }
+  if (TRADING_CONFIG.tradeExecutorRunMode === 'AFTERMARKET') {
+    return minutes >= 16 * 60 && minutes <= 20 * 60;
   }
   return minutes >= 9 * 60 + 30 && minutes <= 16 * 60;
 }

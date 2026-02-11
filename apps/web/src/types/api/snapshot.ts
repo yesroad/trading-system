@@ -29,6 +29,7 @@ export type MarketHealth = {
   market: MarketCode;
   service: string;
   state: Nullable<string>;
+  displayStatus: 'MARKET' | 'SKIPPED' | 'STOP';
   lastEventAtUtc: Nullable<string>;
   healthy: boolean;
   reason: string;

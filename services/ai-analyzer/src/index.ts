@@ -2,6 +2,23 @@ import { Market } from './config/markets.js';
 import { getMarketMode } from './config/schedule.js';
 import { runAiAnalysis } from './analysis/runAiAnalysis.js';
 import { env } from './config/env.js';
+import type { MarketMode } from './config/schedule.js';
+
+function shouldRunBySession(mode: MarketMode): boolean {
+  if (env.AI_RUN_MODE === 'NO_CHECK') return true;
+  if (env.AI_RUN_MODE === 'EXTENDED') {
+    return (
+      mode === 'PRE_OPEN' ||
+      mode === 'INTRADAY' ||
+      mode === 'CLOSE' ||
+      mode === 'POST_CLOSE' ||
+      mode === 'CRYPTO'
+    );
+  }
+  if (env.AI_RUN_MODE === 'PREMARKET') return mode === 'PRE_OPEN';
+  if (env.AI_RUN_MODE === 'AFTERMARKET') return mode === 'POST_CLOSE';
+  return mode === 'INTRADAY' || mode === 'CLOSE' || mode === 'CRYPTO';
+}
 
 async function main() {
   const markets: Market[] = [];
@@ -17,6 +34,10 @@ async function main() {
 
   for (const market of markets) {
     const mode = getMarketMode(market);
+    if (!shouldRunBySession(mode)) {
+      console.log(`[AI] 세션 외 스킵 | runMode=${env.AI_RUN_MODE} | market=${market} | mode=${mode}`);
+      continue;
+    }
     await runAiAnalysis(market, mode);
   }
 }

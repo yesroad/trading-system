@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { DateTime } from 'luxon';
 import { diffMinutes, toKstIso } from '../utils/time.js';
 import type { AlertEvent, AlertMarket } from '../types/status.js';
 import { fetchLatestWorkers } from '../db/queries.js';
@@ -33,6 +34,46 @@ function isSkippedState(state: string): boolean {
   return state.trim().toUpperCase() === 'SKIPPED';
 }
 
+function normalizeRunMode(raw: string | null | undefined): 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK' {
+  const normalized = String(raw ?? '')
+    .trim()
+    .toUpperCase();
+  if (normalized === 'NO_CHECK' || normalized === 'ALWAYS') return 'NO_CHECK';
+  if (normalized === 'EXTENDED') return 'EXTENDED';
+  if (normalized === 'PREMARKET') return 'PREMARKET';
+  if (normalized === 'AFTERMARKET') return 'AFTERMARKET';
+  if (normalized === 'MARKET_ONLY' || normalized === 'MARKET') return 'MARKET';
+  return 'MARKET';
+}
+
+function isOutsideWindow(market: AlertMarket, runModeRaw: string | null | undefined): boolean {
+  const runMode = normalizeRunMode(runModeRaw);
+  if (runMode === 'NO_CHECK') return false;
+  if (market === 'CRYPTO') return false;
+
+  if (market === 'KR') {
+    const now = DateTime.now().setZone('Asia/Seoul');
+    if (now.weekday >= 6) return true;
+    const minutes = now.hour * 60 + now.minute;
+    if (runMode === 'PREMARKET') return minutes < 8 * 60 || minutes > 9 * 60;
+    if (runMode === 'AFTERMARKET') return minutes < 15 * 60 + 30 || minutes > 16 * 60;
+    if (runMode === 'EXTENDED') return minutes < 8 * 60 || minutes > 16 * 60;
+    return minutes < 9 * 60 || minutes > 15 * 60 + 30;
+  }
+
+  if (market === 'US') {
+    const now = DateTime.now().setZone('America/New_York');
+    if (now.weekday >= 6) return true;
+    const minutes = now.hour * 60 + now.minute;
+    if (runMode === 'PREMARKET') return minutes < 4 * 60 || minutes > 9 * 60 + 30;
+    if (runMode === 'AFTERMARKET') return minutes < 16 * 60 || minutes > 20 * 60;
+    if (runMode === 'EXTENDED') return minutes < 4 * 60 || minutes > 20 * 60;
+    return minutes < 9 * 60 + 30 || minutes > 16 * 60;
+  }
+
+  return false;
+}
+
 export async function checkWorkers(): Promise<AlertEvent[]> {
   const events: AlertEvent[] = [];
   const rows = (await fetchLatestWorkers()) as WorkerRow[];
@@ -57,6 +98,7 @@ export async function checkWorkers(): Promise<AlertEvent[]> {
 
     // 장외/휴장 등 의도된 SKIPPED 상태는 알림 대상에서 제외한다.
     if (isSkippedState(row.state)) continue;
+    if (isOutsideWindow(cfg.market, row.run_mode)) continue;
 
     const reference = row.last_success_at ?? row.last_event_at;
     if (!reference) {

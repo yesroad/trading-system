@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { env, envBoolean, envNumber } from '@workspace/shared-utils';
 import { EXECUTE_MARKETS } from './markets.js';
 
-export type RunMode = 'MARKET_ONLY' | 'EXTENDED' | 'ALWAYS';
+export type RunMode = 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK';
 
 export type TradingConfig = {
   enabled: boolean;
@@ -27,12 +27,16 @@ export type TradingConfig = {
 
 function parseRunMode(value: string | undefined): RunMode {
   const normalized = value?.trim().toUpperCase();
-  if (normalized === 'ALWAYS') return 'ALWAYS';
+  if (normalized === 'NO_CHECK' || normalized === 'ALWAYS') return 'NO_CHECK';
   if (normalized === 'EXTENDED') return 'EXTENDED';
-  if (normalized === 'MARKET_ONLY' || normalized === undefined || normalized === '') {
-    return 'MARKET_ONLY';
+  if (normalized === 'PREMARKET') return 'PREMARKET';
+  if (normalized === 'AFTERMARKET') return 'AFTERMARKET';
+  if (normalized === 'MARKET_ONLY' || normalized === 'MARKET' || normalized === undefined || normalized === '') {
+    return 'MARKET';
   }
-  throw new Error(`TRADE_EXECUTOR_RUN_MODE must be one of MARKET_ONLY|EXTENDED|ALWAYS, got: ${value}`);
+  throw new Error(
+    `TRADE_EXECUTOR_RUN_MODE must be one of MARKET|PREMARKET|AFTERMARKET|EXTENDED|NO_CHECK, got: ${value}`,
+  );
 }
 
 function mustPositiveInt(name: string, value: number): number {

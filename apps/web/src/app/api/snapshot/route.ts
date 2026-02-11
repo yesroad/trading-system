@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeUtcIso, toIsoString, type Nullable } from '@workspace/shared-utils';
-import { envServer } from '@/lib/env.server';
+import { envBooleanServer, envServer } from '@/lib/env.server';
 import type {
   MarketHealth,
   MarketCode,
@@ -68,7 +68,15 @@ type DbUsPriceRow = {
 type DbWorkerStatusRow = {
   service: string | null;
   state: string | null;
+  run_mode: string | null;
   last_event_at: string | null;
+};
+
+type DbAccountCashRow = {
+  market: string | null;
+  cash_available: number | string | null;
+  as_of: string | null;
+  created_at: string | null;
 };
 
 type PriceEntry = {
@@ -94,6 +102,11 @@ const MARKET_SERVICE_MAP: Record<MarketCode, string> = {
   CRYPTO: 'upbit-collector',
   KR: 'kis-collector',
   US: 'yf-collector',
+};
+const MARKET_ENABLED_BY_ENV: Record<MarketCode, boolean> = {
+  KR: envBooleanServer('ENABLE_KR', true),
+  US: envBooleanServer('ENABLE_US', true),
+  CRYPTO: envBooleanServer('ENABLE_CRYPTO', true),
 };
 
 let cacheEntry: CacheEntry | null = null;
@@ -386,6 +399,145 @@ function isHealthyWorkerState(raw: string | null | undefined): boolean {
   return state === 'RUNNING' || state === 'SUCCESS' || state === 'SKIPPED';
 }
 
+function normalizeRunMode(
+  raw: string | null | undefined,
+): 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK' {
+  const mode = normalizeSymbol(raw);
+  if (mode === 'NO_CHECK' || mode === 'ALWAYS') return 'NO_CHECK';
+  if (mode === 'EXTENDED') return 'EXTENDED';
+  if (mode === 'PREMARKET') return 'PREMARKET';
+  if (mode === 'AFTERMARKET') return 'AFTERMARKET';
+  if (mode === 'MARKET' || mode === 'MARKET_ONLY') return 'MARKET';
+  return 'MARKET';
+}
+
+function isOutsideTradingWindow(nowUtc: DateTime, market: MarketCode, runMode: string): boolean {
+  const mode = normalizeRunMode(runMode);
+  if (mode === 'NO_CHECK') return false;
+  if (market === 'CRYPTO') return false;
+
+  if (market === 'KR') {
+    const nowKst = nowUtc.setZone('Asia/Seoul');
+    if (nowKst.weekday >= 6) return true;
+    const minute = nowKst.hour * 60 + nowKst.minute;
+    if (mode === 'PREMARKET') return minute < 8 * 60 || minute > 9 * 60;
+    if (mode === 'AFTERMARKET') return minute < 15 * 60 + 30 || minute > 16 * 60;
+    if (mode === 'EXTENDED') return minute < 8 * 60 || minute > 16 * 60;
+    return minute < 9 * 60 || minute > 15 * 60 + 30;
+  }
+
+  const nowNy = nowUtc.setZone('America/New_York');
+  if (nowNy.weekday >= 6) return true;
+  const minute = nowNy.hour * 60 + nowNy.minute;
+  if (mode === 'PREMARKET') return minute < 4 * 60 || minute > 9 * 60 + 30;
+  if (mode === 'AFTERMARKET') return minute < 16 * 60 || minute > 20 * 60;
+  if (mode === 'EXTENDED') return minute < 4 * 60 || minute > 20 * 60;
+  return minute < 9 * 60 + 30 || minute > 16 * 60;
+}
+
+function getSessionStatus(
+  nowUtc: DateTime,
+  market: MarketCode,
+): 'MARKET' | 'SKIPPED' {
+  if (market === 'CRYPTO') return 'MARKET';
+
+  if (market === 'KR') {
+    const now = nowUtc.setZone('Asia/Seoul');
+    if (now.weekday >= 6) return 'SKIPPED';
+    const m = now.hour * 60 + now.minute;
+    if (m >= 9 * 60 && m <= 15 * 60 + 30) return 'MARKET';
+    return 'SKIPPED';
+  }
+
+  const now = nowUtc.setZone('America/New_York');
+  if (now.weekday >= 6) return 'SKIPPED';
+  const m = now.hour * 60 + now.minute;
+  if (m >= 9 * 60 + 30 && m <= 16 * 60) return 'MARKET';
+  return 'SKIPPED';
+}
+
+function toCashTimestamp(row: DbAccountCashRow): number {
+  const source = row.as_of ?? row.created_at;
+  if (!source) return -1;
+  return toUtcMillis(source) ?? -1;
+}
+
+async function fetchLatestAccountCashByMarket(
+  client: ReturnType<typeof createClient>,
+): Promise<Partial<Record<MarketCode, Big>>> {
+  let rows: DbAccountCashRow[] = [];
+
+  const primary = await client
+    .from('account_cash')
+    .select('market,cash_available,as_of,created_at')
+    .order('as_of', { ascending: false })
+    .limit(500);
+
+  if (primary.error) {
+    const code = (primary.error as { code?: string }).code;
+
+    // 테이블이 없거나 컬럼이 달라도 API 전체 장애를 내지 않고 기존 추정치로 폴백.
+    if (code === '42P01' || code === '42703') {
+      return {};
+    }
+    return {};
+  }
+
+  rows = (primary.data ?? []) as DbAccountCashRow[];
+
+  const latest = new Map<MarketCode, { cash: Big; ts: number }>();
+  rows.forEach((row) => {
+    const market = normalizeMarket(row.market);
+    if (!market) return;
+    const ts = toCashTimestamp(row);
+    const cash = asBigOrZero(row.cash_available);
+    if (cash.lt(0)) return;
+
+    const prev = latest.get(market);
+    if (prev && prev.ts > ts) return;
+    latest.set(market, { cash, ts });
+  });
+
+  const out: Partial<Record<MarketCode, Big>> = {};
+  latest.forEach((v, k) => {
+    out[k] = v.cash;
+  });
+  return out;
+}
+
+async function fetchWorkerRows(client: ReturnType<typeof createClient>): Promise<DbWorkerStatusRow[]> {
+  const withRunMode = await client
+    .from('worker_status')
+    .select('service,state,run_mode,last_event_at')
+    .limit(200);
+
+  if (!withRunMode.error) {
+    return (withRunMode.data ?? []) as DbWorkerStatusRow[];
+  }
+
+  const code = (withRunMode.error as { code?: string }).code;
+  if (code !== '42703') {
+    throw new Error(`worker_status 조회 실패: ${withRunMode.error.message}`);
+  }
+
+  const withoutRunMode = await client
+    .from('worker_status')
+    .select('service,state,last_event_at')
+    .limit(200);
+  if (withoutRunMode.error) {
+    throw new Error(`worker_status 조회 실패: ${withoutRunMode.error.message}`);
+  }
+
+  return ((withoutRunMode.data ?? []) as Array<{
+    service: string | null;
+    state: string | null;
+    last_event_at: string | null;
+  }>).map((row) => ({
+    ...row,
+    run_mode: null,
+  }));
+}
+
 function buildMarketHealth(rows: DbWorkerStatusRow[]): Record<MarketCode, MarketHealth> {
   const now = DateTime.utc();
   const out = {} as Record<MarketCode, MarketHealth>;
@@ -399,8 +551,24 @@ function buildMarketHealth(rows: DbWorkerStatusRow[]): Record<MarketCode, Market
 
   MARKET_CODES.forEach((market) => {
     const service = MARKET_SERVICE_MAP[market];
+    const enabled = MARKET_ENABLED_BY_ENV[market];
+
+    if (!enabled) {
+      out[market] = {
+        market,
+        service,
+        state: 'disabled',
+        displayStatus: 'STOP',
+        lastEventAtUtc: null,
+        healthy: false,
+        reason: '환경변수로 사용 안함',
+      };
+      return;
+    }
+
     const row = byService.get(service);
     const state = row?.state ?? null;
+    const runMode = row?.run_mode ?? 'MARKET_ONLY';
     const lastEventAtUtc = row?.last_event_at ?? null;
 
     if (!row) {
@@ -408,14 +576,16 @@ function buildMarketHealth(rows: DbWorkerStatusRow[]): Record<MarketCode, Market
         market,
         service,
         state: null,
+        displayStatus: 'STOP',
         lastEventAtUtc: null,
         healthy: false,
-        reason: 'worker_status 없음',
+        reason: '중지됨(상태 레코드 없음)',
       };
       return;
     }
 
     const hasHealthyState = isHealthyWorkerState(state);
+    const isOutsideHours = isOutsideTradingWindow(now, market, runMode);
     const eventTime = lastEventAtUtc
       ? DateTime.fromISO(normalizeUtcIso(lastEventAtUtc), { zone: 'utc' })
       : null;
@@ -423,16 +593,27 @@ function buildMarketHealth(rows: DbWorkerStatusRow[]): Record<MarketCode, Market
       !!eventTime &&
       eventTime.isValid &&
       now.diff(eventTime, 'minutes').minutes <= HEALTH_STALE_MINUTES;
-    const healthy = hasHealthyState && isFresh;
+    const sessionStatus = getSessionStatus(now, market);
+    const isStoppedState =
+      !hasHealthyState &&
+      ['STOPPED', 'STOP', 'DISABLED', 'OFFLINE'].includes(normalizeSymbol(state));
+    const healthy = hasHealthyState && (isFresh || isOutsideHours);
+    const effectiveState = hasHealthyState && isOutsideHours ? 'skipped' : state;
+    const displayStatus = isStoppedState ? 'STOP' : sessionStatus;
 
     out[market] = {
       market,
       service,
-      state,
+      state: effectiveState,
+      displayStatus,
       lastEventAtUtc,
       healthy,
-      reason: healthy
-        ? '정상'
+      reason: isStoppedState
+        ? '중지됨(사용 안함)'
+        : healthy
+        ? isOutsideHours
+          ? `장외(${normalizeRunMode(runMode)})`
+          : '정상'
         : !hasHealthyState
           ? `state=${state ?? 'unknown'}`
           : `최근 이벤트 지연(>${HEALTH_STALE_MINUTES}m)`,
@@ -456,7 +637,7 @@ export async function GET(req: Request) {
   try {
     const client = getSupabaseClient();
 
-    const [positionsRes, tradeExecutionsRes, dailyRes, workersRes] = await Promise.all([
+    const [positionsRes, tradeExecutionsRes, dailyRes, workerRows] = await Promise.all([
       client.from('positions').select('broker,market,symbol,qty,avg_price,updated_at').gt('qty', 0),
       client
         .from('trade_executions')
@@ -472,7 +653,7 @@ export async function GET(req: Request) {
         )
         .order('date', { ascending: false })
         .limit(180),
-      client.from('worker_status').select('service,state,last_event_at').limit(200),
+      fetchWorkerRows(client),
     ]);
 
     if (positionsRes.error) throw new Error(`positions 조회 실패: ${positionsRes.error.message}`);
@@ -480,12 +661,10 @@ export async function GET(req: Request) {
       throw new Error(`trade_executions 조회 실패: ${tradeExecutionsRes.error.message}`);
     }
     if (dailyRes.error) throw new Error(`daily_trading_stats 조회 실패: ${dailyRes.error.message}`);
-    if (workersRes.error) throw new Error(`worker_status 조회 실패: ${workersRes.error.message}`);
 
     const positionRows = (positionsRes.data ?? []) as DbPositionRow[];
     const executionRows = (tradeExecutionsRes.data ?? []) as DbTradeExecutionRow[];
     const dailyRows = ((dailyRes.data ?? []) as DbDailyStatsRow[]) ?? [];
-    const workerRows = (workersRes.data ?? []) as DbWorkerStatusRow[];
 
     const symbolsByMarket: Record<MarketCode, Set<string>> = {
       CRYPTO: new Set<string>(),
@@ -500,10 +679,11 @@ export async function GET(req: Request) {
       symbolsByMarket[market].add(symbol);
     });
 
-    const [kisPrices, upbitPrices, usPrices] = await Promise.all([
+    const [kisPrices, upbitPrices, usPrices, realCashByMarket] = await Promise.all([
       fetchLatestKisPrices(client, Array.from(symbolsByMarket.KR)),
       fetchLatestUpbitPrices(client, Array.from(symbolsByMarket.CRYPTO)),
       fetchLatestUsPrices(client, Array.from(symbolsByMarket.US)),
+      fetchLatestAccountCashByMarket(client),
     ]);
 
     const pnlStateByKey = new Map<string, PnlState>();
@@ -647,12 +827,10 @@ export async function GET(req: Request) {
       const marketRealized = asBigOrZero(target.realizedPnl).plus(asBigOrZero(realizedPnl));
       const marketUnrealized = asBigOrZero(target.unrealizedPnl).plus(unrealizedPnl ?? new Big(0));
       const marketInvested = asBigOrZero(target.invested).plus(invested);
-      const marketCash = cashByMarket[market];
       const marketPnl = marketRealized.plus(marketUnrealized);
 
-      target.asset = asset.plus(marketCash).toFixed(2);
+      target.asset = asset.toFixed(2);
       target.invested = marketInvested.toFixed(2);
-      target.cash = marketCash.toFixed(2);
       target.realizedPnl = marketRealized.toFixed(2);
       target.unrealizedPnl = marketUnrealized.toFixed(2);
       target.pnl = marketPnl.toFixed(2);
@@ -660,6 +838,13 @@ export async function GET(req: Request) {
         ? marketPnl.div(marketInvested).times(100).toFixed(2)
         : null;
       target.positionCount += 1;
+    });
+
+    MARKET_CODES.forEach((market) => {
+      const target = byMarketAccumulator[market];
+      const resolvedCash = realCashByMarket[market] ?? cashByMarket[market];
+      target.cash = resolvedCash.toFixed(2);
+      target.asset = asBigOrZero(target.asset).plus(resolvedCash).toFixed(2);
     });
 
     positions.sort((a, b) => {

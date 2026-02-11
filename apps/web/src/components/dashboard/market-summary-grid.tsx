@@ -1,9 +1,29 @@
 import type { OpsSnapshot } from '@/types/api/snapshot';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency, toPercentString } from './format';
+import { formatCurrency, formatLocalDateTime, toPercentString } from './format';
 
 export function MarketSummaryGrid({ snapshot }: { snapshot: OpsSnapshot }) {
+  const statusText = (status: 'MARKET' | 'SKIPPED' | 'STOP'): string => {
+    if (status === 'MARKET') return '장중';
+    if (status === 'SKIPPED') return '스킵(장종료)';
+    return 'STOP';
+  };
+
+  const workerStateText = (state: string | null): string => {
+    const normalized = String(state ?? '')
+      .trim()
+      .toUpperCase();
+    if (!normalized) return '미확인';
+    if (normalized === 'RUNNING') return '수집 중';
+    if (normalized === 'SUCCESS') return '정상 완료';
+    if (normalized === 'SKIPPED') return '스킵';
+    if (normalized === 'FAILED') return '오류';
+    if (normalized === 'UNKNOWN') return '초기화 중';
+    if (normalized === 'DISABLED' || normalized === 'STOPPED' || normalized === 'STOP') return '중지';
+    return normalized;
+  };
+
   return (
     <div className="grid gap-3 md:grid-cols-3">
       {(['CRYPTO', 'KR', 'US'] as const).map((market) => {
@@ -19,12 +39,14 @@ export function MarketSummaryGrid({ snapshot }: { snapshot: OpsSnapshot }) {
                   <Badge
                     variant="secondary"
                     className={
-                      health.healthy
+                      health.displayStatus === 'STOP'
+                        ? 'bg-slate-200 text-slate-700'
+                        : health.healthy
                         ? 'bg-emerald-100 text-emerald-700'
                         : 'bg-rose-100 text-rose-700'
                     }
                   >
-                    {health.healthy ? '정상 동작' : '점검 필요'}
+                    {statusText(health.displayStatus)}
                   </Badge>
                 </div>
               </div>
@@ -33,10 +55,14 @@ export function MarketSummaryGrid({ snapshot }: { snapshot: OpsSnapshot }) {
               <div className="mt-3 space-y-1 text-xs text-slate-600">
                 <p>자산: {formatCurrency(summary.asset)}</p>
                 <p>원금: {formatCurrency(summary.invested)}</p>
+                <p>잔고: {formatCurrency(summary.cash)}</p>
                 <p>실현 손익: {formatCurrency(summary.realizedPnl)}</p>
                 <p>미실현 손익: {formatCurrency(summary.unrealizedPnl)}</p>
                 <p>
-                  워커 상태: {health.state ?? '-'} ({health.reason})
+                  워커 상태: {workerStateText(health.state)} ({health.reason})
+                </p>
+                <p>
+                  마지막 이벤트: {formatLocalDateTime(health.lastEventAtUtc)}
                 </p>
               </div>
               <div className="mt-3 flex items-center gap-2 text-xs">

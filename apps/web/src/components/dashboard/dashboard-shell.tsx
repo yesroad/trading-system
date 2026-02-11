@@ -111,7 +111,7 @@ export function DashboardShell({ routeKey }: { routeKey: DashboardRouteKey }) {
       <Card>
         <CardContent className="p-4">
           <MarketTabs active={routeKey} />
-          <div className="mt-3 grid gap-2 text-xs text-slate-600 md:grid-cols-4">
+          <div className="mt-3 grid gap-2 text-xs text-slate-600 md:grid-cols-6">
             <p>
               총 자산:{' '}
               <span className="font-semibold text-slate-900">
@@ -122,6 +122,18 @@ export function DashboardShell({ routeKey }: { routeKey: DashboardRouteKey }) {
               시장 자산:{' '}
               <span className="font-semibold text-slate-900">
                 {formatCurrency(marketSummary.asset)}
+              </span>
+            </p>
+            <p>
+              총 잔고:{' '}
+              <span className="font-semibold text-slate-900">
+                {formatCurrency(snapshot.total.cash)}
+              </span>
+            </p>
+            <p>
+              시장 잔고:{' '}
+              <span className="font-semibold text-slate-900">
+                {formatCurrency(marketSummary.cash)}
               </span>
             </p>
             <p>
