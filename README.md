@@ -37,6 +37,7 @@
 
 - 🤖 **AI 페어 프로그래밍** - AI와 대화하며 설계 및 구현
 - 💬 **바이브코딩** - Claude Code, Codex와 협업
+- 📋 **코드 품질 관리** - `.claude/rules`와 `skills`로 일관된 코딩 규칙 적용
 - 🏗️ **아키텍처 우선** - 마이크로서비스, DB 중심 설계
 - 🛠️ **현대적 도구** - TypeScript strict, Turborepo, Supabase
 
@@ -408,18 +409,24 @@ pm2 logs
 - [SYSTEM-EVALUATION.md](./SYSTEM-EVALUATION.md) - 시스템 평가 및 로드맵
 - [.claude/documentation-index.md](./.claude/documentation-index.md) - 전체 문서 인덱스
 
-### 규칙 및 가이드
+### 규칙 및 가이드 (`.claude/rules/`)
+
+AI가 일관된 코드를 생성하도록 가이드하는 규칙 문서:
 
 - [Immutable Rules](./.claude/rules/immutable-rules.md) - 불변 규칙
 - [Architecture Guide](./.claude/rules/architecture-guide.md) - 아키텍처 상세
 - [Database Guide](./.claude/rules/database-guide.md) - DB 스키마 및 쿼리
 
-### 스킬
+### 스킬 (`.claude/skills/`)
+
+AI가 작업 시 참조하는 Lean 스타일 체크리스트 (토큰 최적화):
 
 - [Error Handling Patterns](./.claude/skills/error-handling-patterns/SKILL.md)
 - [External API Integration](./.claude/skills/external-api-integration/SKILL.md)
 - [Coding Standards](./.claude/skills/coding-standards/SKILL.md)
 - [Common Packages](./.claude/skills/common-packages/SKILL.md)
+- [Database Operations](./.claude/skills/database-operations/SKILL.md)
+- [Dashboard UI](./.claude/skills/dashboard-ui-skill/SKILL.md)
 
 ### 패키지 문서
 
@@ -483,6 +490,7 @@ Private - All Rights Reserved
 - DB 중심 서비스 통신 패턴
 - Zod를 활용한 런타임 타입 검증
 - AI 페어 프로그래밍 워크플로우
+- `.claude/` 디렉토리를 통한 AI 가이드라인 관리 (rules, skills)
 
 ---
 
