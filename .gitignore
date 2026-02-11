@@ -2,9 +2,12 @@
 
 .vscode
 
-#claude
+# claude
 mcp.json
 settings.local.json
+
+# md
+SYSTEM-EVALUATION.md
 
 # Dependencies
 node_modules
