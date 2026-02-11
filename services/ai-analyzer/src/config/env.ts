@@ -1,5 +1,19 @@
 import 'dotenv/config';
-import { requireEnv, envBoolean, envNumber } from '@workspace/shared-utils';
+import { requireEnv, envBoolean, envNumber, env as readEnv } from '@workspace/shared-utils';
+
+export type AiRunMode = 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK';
+
+function parseAiRunMode(raw: string | undefined): AiRunMode {
+  const normalized = raw?.trim().toUpperCase();
+  if (!normalized || normalized === 'MARKET_ONLY' || normalized === 'MARKET') return 'MARKET';
+  if (normalized === 'PREMARKET') return 'PREMARKET';
+  if (normalized === 'AFTERMARKET') return 'AFTERMARKET';
+  if (normalized === 'EXTENDED') return 'EXTENDED';
+  if (normalized === 'NO_CHECK' || normalized === 'ALWAYS') return 'NO_CHECK';
+  throw new Error(
+    `AI_RUN_MODE must be one of MARKET|PREMARKET|AFTERMARKET|EXTENDED|NO_CHECK, got: ${raw}`,
+  );
+}
 
 export const env = {
   /** ===============================
@@ -12,6 +26,7 @@ export const env = {
   /** ===============================
    * AI 실행 제어
    * =============================== */
+  AI_RUN_MODE: parseAiRunMode(readEnv('AI_RUN_MODE')),
   AI_MAX_TARGETS_PER_MARKET: envNumber('AI_MAX_TARGETS_PER_MARKET', 30) ?? 30,
 
   /** ===============================

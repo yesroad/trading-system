@@ -6,6 +6,20 @@ function str(key: string, def: string) {
   return v ? String(v) : def;
 }
 
+export type MonitoringRunMode = 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK';
+
+function parseMonitoringRunMode(raw: string | undefined): MonitoringRunMode {
+  const normalized = raw?.trim().toUpperCase();
+  if (!normalized || normalized === 'MARKET_ONLY' || normalized === 'MARKET') return 'MARKET';
+  if (normalized === 'PREMARKET') return 'PREMARKET';
+  if (normalized === 'AFTERMARKET') return 'AFTERMARKET';
+  if (normalized === 'EXTENDED') return 'EXTENDED';
+  if (normalized === 'NO_CHECK' || normalized === 'ALWAYS') return 'NO_CHECK';
+  throw new Error(
+    `MONITORING_RUN_MODE must be one of MARKET|PREMARKET|AFTERMARKET|EXTENDED|NO_CHECK, got: ${raw}`,
+  );
+}
+
 export const env = {
   WORKER_LAG_WARN_MIN: envNumber('WORKER_LAG_WARN_MIN', 3) ?? 3,
   WORKER_LAG_CRIT_MIN: envNumber('WORKER_LAG_CRIT_MIN', 10) ?? 10,
@@ -24,6 +38,7 @@ export const env = {
   ENABLE_KR: envBoolean('ENABLE_KR', true),
   ENABLE_US: envBoolean('ENABLE_US', true),
   ENABLE_CRYPTO: envBoolean('ENABLE_CRYPTO', true),
+  MONITORING_RUN_MODE: parseMonitoringRunMode(readEnv('MONITORING_RUN_MODE')),
 
   TELEGRAM_BOT_TOKEN: requireEnv('TELEGRAM_BOT_TOKEN'),
   TELEGRAM_CHAT_ID: requireEnv('TELEGRAM_CHAT_ID'),

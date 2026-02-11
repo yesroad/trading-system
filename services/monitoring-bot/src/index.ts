@@ -1,4 +1,5 @@
 import { env } from './config/env.js';
+import { DateTime } from 'luxon';
 import { formatMessage } from './alert/formatMessage.js';
 import { sendTelegram } from './alert/sendTelegram.js';
 import { shouldSendAlert, recordAlertSent } from './alert/alertCooldown.js';
@@ -9,7 +10,43 @@ import { checkAiResults } from './checks/checkAiResults.js';
 import { checkNotificationEvents } from './checks/checkNotificationEvents.js';
 import { buildDailyReportText } from './checks/dailyReport.js';
 
+function isSessionActiveForEnabledMarkets(): boolean {
+  if (env.MONITORING_RUN_MODE === 'NO_CHECK') return true;
+
+  const nowKst = DateTime.now().setZone('Asia/Seoul');
+  const nowNy = DateTime.now().setZone('America/New_York');
+
+  const isKrActive = (() => {
+    if (!env.ENABLE_KR) return false;
+    if (nowKst.weekday >= 6) return false;
+    const m = nowKst.hour * 60 + nowKst.minute;
+    if (env.MONITORING_RUN_MODE === 'PREMARKET') return m >= 8 * 60 && m <= 9 * 60;
+    if (env.MONITORING_RUN_MODE === 'AFTERMARKET') return m >= 15 * 60 + 30 && m <= 16 * 60;
+    if (env.MONITORING_RUN_MODE === 'EXTENDED') return m >= 8 * 60 && m <= 16 * 60;
+    return m >= 9 * 60 && m <= 15 * 60 + 30;
+  })();
+
+  const isUsActive = (() => {
+    if (!env.ENABLE_US) return false;
+    if (nowNy.weekday >= 6) return false;
+    const m = nowNy.hour * 60 + nowNy.minute;
+    if (env.MONITORING_RUN_MODE === 'PREMARKET') return m >= 4 * 60 && m <= 9 * 60 + 30;
+    if (env.MONITORING_RUN_MODE === 'AFTERMARKET') return m >= 16 * 60 && m <= 20 * 60;
+    if (env.MONITORING_RUN_MODE === 'EXTENDED') return m >= 4 * 60 && m <= 20 * 60;
+    return m >= 9 * 60 + 30 && m <= 16 * 60;
+  })();
+
+  const isCryptoActive = env.ENABLE_CRYPTO;
+
+  return isKrActive || isUsActive || isCryptoActive;
+}
+
 async function runChecksOnce() {
+  if (!isSessionActiveForEnabledMarkets()) {
+    console.log(`[TRADING] 세션 외 스킵 (MONITORING_RUN_MODE=${env.MONITORING_RUN_MODE})`);
+    return;
+  }
+
   const all = [
     ...(await checkWorkers()),
     ...(await checkIngestionRuns()),

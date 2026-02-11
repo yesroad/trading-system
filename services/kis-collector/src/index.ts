@@ -5,7 +5,7 @@
 import 'dotenv/config';
 import { DateTime } from 'luxon';
 import { requireEnv as env, createBackoff, nowIso, type Nullable } from '@workspace/shared-utils';
-import { upsertWorkerStatus } from '@workspace/db-client';
+import { upsertAccountCash, upsertWorkerStatus } from '@workspace/db-client';
 import { fetchKrxPrice, fetchAccountBalance, TokenCooldownError } from './kis.js';
 import { insertTick } from './insertTick.js';
 import { bumpErrorCount, getSystemGuard, setTradingEnabled } from './systemGuard.js';
@@ -13,11 +13,13 @@ import { loadActiveKisKrxSymbols, TrackedSymbol } from './trackedSymbols.js';
 import { createIngestionRun, finishIngestionRun, failIngestionRun } from './ingestionRuns.js';
 
 // 실행 모드
-// - MARKET_ONLY: 정규장(09:00~15:30 KST)만 실행 (기본)
-// - EXTENDED: 08:00~16:00 KST
-// - ALWAYS: 24시간 실행
+// - MARKET: 정규장(09:00~15:30 KST)만 실행 (기본)
+// - PREMARKET: 08:00~09:00 KST
+// - AFTERMARKET: 15:30~16:00 KST
+// - EXTENDED: 08:00~16:00 KST (레거시 호환)
+// - NO_CHECK: 장시간 확인 안 함 (레거시 ALWAYS와 동일)
 
-type RunMode = 'MARKET_ONLY' | 'EXTENDED' | 'ALWAYS';
+type RunMode = 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK';
 
 type SymbolState = {
   nextRunAt: number;
@@ -25,9 +27,19 @@ type SymbolState = {
   backoff: ReturnType<typeof createBackoff>;
 };
 
-const KIS_RUN_MODE = env('KIS_RUN_MODE');
+function parseRunMode(raw: string | undefined): RunMode {
+  const normalized = raw?.trim().toUpperCase();
+  if (!normalized || normalized === 'MARKET_ONLY' || normalized === 'MARKET') return 'MARKET';
+  if (normalized === 'PREMARKET') return 'PREMARKET';
+  if (normalized === 'AFTERMARKET') return 'AFTERMARKET';
+  if (normalized === 'EXTENDED') return 'EXTENDED';
+  if (normalized === 'ALWAYS' || normalized === 'NO_CHECK') return 'NO_CHECK';
+  throw new Error(
+    `KIS_RUN_MODE must be one of MARKET|PREMARKET|AFTERMARKET|EXTENDED|NO_CHECK, got: ${raw}`,
+  );
+}
 
-const RUN_MODE = ((KIS_RUN_MODE as RunMode | undefined) || 'MARKET_ONLY') as RunMode;
+const RUN_MODE = parseRunMode(env('KIS_RUN_MODE'));
 
 console.log('[kis-collector] KIS 가격 수집 시작');
 
@@ -87,7 +99,7 @@ function isWeekendKst(d: DateTime) {
 }
 
 function shouldSkipNow(): { skip: boolean; reason: string } {
-  if (RUN_MODE === 'ALWAYS') return { skip: false, reason: '' };
+  if (RUN_MODE === 'NO_CHECK') return { skip: false, reason: '' };
 
   const d = nowKst();
 
@@ -95,18 +107,23 @@ function shouldSkipNow(): { skip: boolean; reason: string } {
 
   const m = minutesOfDay(d);
 
-  // MARKET_ONLY: 09:00 ~ 15:30
-  if (RUN_MODE === 'MARKET_ONLY') {
-    const open = 9 * 60; // 540
-    const close = 15 * 60 + 30; // 930
-    if (m < open || m > close) return { skip: true, reason: '장외(정규장 아님)' };
+  if (RUN_MODE === 'PREMARKET') {
+    if (m < 8 * 60 || m > 9 * 60) return { skip: true, reason: '장외(프리마켓 아님)' };
     return { skip: false, reason: '' };
   }
 
-  // EXTENDED: 08:00 ~ 16:00
-  const openEx = 8 * 60; // 480
-  const closeEx = 16 * 60; // 960
-  if (m < openEx || m > closeEx) return { skip: true, reason: '장외(확장시간 아님)' };
+  if (RUN_MODE === 'AFTERMARKET') {
+    if (m < 15 * 60 + 30 || m > 16 * 60) return { skip: true, reason: '장외(애프터마켓 아님)' };
+    return { skip: false, reason: '' };
+  }
+
+  if (RUN_MODE === 'EXTENDED') {
+    if (m < 8 * 60 || m > 16 * 60) return { skip: true, reason: '장외(확장시간 아님)' };
+    return { skip: false, reason: '' };
+  }
+
+  // MARKET: 09:00 ~ 15:30
+  if (m < 9 * 60 || m > 15 * 60 + 30) return { skip: true, reason: '장외(정규장 아님)' };
   return { skip: false, reason: '' };
 }
 
@@ -181,7 +198,16 @@ async function refreshSymbols() {
 // 예수금 조회 함수
 async function checkAccountBalance() {
   try {
-    await fetchAccountBalance();
+    const balance = await fetchAccountBalance();
+    if (balance !== null) {
+      await upsertAccountCash({
+        broker: 'KIS',
+        market: 'KR',
+        currency: 'KRW',
+        cash_available: balance,
+        as_of: nowIso(),
+      });
+    }
   } catch (e) {
     // 토큰 쿨다운 에러는 조용히 스킵 (1분간 요청 스킵, 다음 주기에 자동 재시도)
     if (e instanceof TokenCooldownError) {

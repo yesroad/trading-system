@@ -1,6 +1,11 @@
 import 'dotenv/config';
 import { requireEnv as env, sleep, nowIso, normalizeUtcIso } from '@workspace/shared-utils';
-import { upsertWorkerStatus, insertIngestionRun, loadCryptoPositions } from '@workspace/db-client';
+import {
+  upsertWorkerStatus,
+  insertIngestionRun,
+  loadCryptoPositions,
+  upsertAccountCash,
+} from '@workspace/db-client';
 import Big from 'big.js';
 import { DateTime } from 'luxon';
 import { fetchAllMarkets, fetchTickers, fetchMinuteCandles, fetchKRWBalance } from './api.js';
@@ -73,6 +78,14 @@ async function mainLoop(): Promise<void> {
         try {
           krwBalance = await fetchKRWBalance();
           console.log(`[업비트 수집기] KRW 잔액: ${Math.floor(krwBalance).toLocaleString()}원`);
+
+          await upsertAccountCash({
+            broker: 'UPBIT',
+            market: 'CRYPTO',
+            currency: 'KRW',
+            cash_available: krwBalance,
+            as_of: nowIso(),
+          });
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
           console.error(`[업비트 수집기] KRW 잔액 조회 실패: ${msg}`);

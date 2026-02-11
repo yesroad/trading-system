@@ -3,9 +3,11 @@
  * - 기본: 15분 주기
  * - 실패 시: 지수 백오프(최대 15분)
  * - 실행 조건(옵션):
- *   - MARKET_ONLY: 미국 정규장(09:30~16:00 ET) + 휴일/주말 스킵
+ *   - MARKET: 미국 정규장(09:30~16:00 ET) + 휴일/주말 스킵
+ *   - PREMARKET: 프리마켓(04:00~09:30 ET) + 휴일/주말 스킵
+ *   - AFTERMARKET: 애프터마켓(16:00~20:00 ET) + 휴일/주말 스킵
  *   - EXTENDED: 프리/애프터 포함(04:00~20:00 ET) + 휴일/주말 스킵
- *   - ALWAYS: 24시간 실행(휴일도 실행)
+ *   - NO_CHECK: 장시간 확인 안 함 (휴일도 실행)
  *
  * ✅ 타겟 구성 규칙 (우선순위 + 중복 제거)
  * 1) positions (보유 종목)        : 항상 포함 / 절대 cash-skip 하지 않음
@@ -57,11 +59,21 @@ const CASH_REFRESH_MS = 60_000;
 // RPS 제한 (Yahoo Finance는 비공식 API이므로 보수적으로)
 const YF_RPS = Math.floor(envNumber('YF_RPS', 2) ?? 2);
 
-type RunMode = 'MARKET_ONLY' | 'EXTENDED' | 'ALWAYS';
+type RunMode = 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK';
 
-const YF_RUN_MODE = env('YF_RUN_MODE') ?? '';
+function parseRunMode(raw: string | undefined): RunMode {
+  const normalized = raw?.trim().toUpperCase();
+  if (!normalized || normalized === 'MARKET_ONLY' || normalized === 'MARKET') return 'MARKET';
+  if (normalized === 'PREMARKET') return 'PREMARKET';
+  if (normalized === 'AFTERMARKET') return 'AFTERMARKET';
+  if (normalized === 'EXTENDED') return 'EXTENDED';
+  if (normalized === 'ALWAYS' || normalized === 'NO_CHECK') return 'NO_CHECK';
+  throw new Error(
+    `YF_RUN_MODE must be one of MARKET|PREMARKET|AFTERMARKET|EXTENDED|NO_CHECK, got: ${raw}`,
+  );
+}
 
-const RUN_MODE = (YF_RUN_MODE || 'MARKET_ONLY') as RunMode;
+const RUN_MODE = parseRunMode(env('YF_RUN_MODE'));
 
 const SERVICE_NAME = 'yf-collector' as const;
 
@@ -148,7 +160,7 @@ function isInExtendedHours(dt: DateTime) {
 async function shouldSkipNow() {
   const dt = nowNy();
 
-  if (RUN_MODE === 'ALWAYS') {
+  if (RUN_MODE === 'NO_CHECK') {
     return { skip: false as const, reason: '' };
   }
 
@@ -167,12 +179,24 @@ async function shouldSkipNow() {
     }
   }
 
+  if (RUN_MODE === 'PREMARKET') {
+    const m = minutesOfDay(dt);
+    if (m < 4 * 60 || m > 9 * 60 + 30) return { skip: true as const, reason: '장외(프리마켓 아님)' };
+    return { skip: false as const, reason: '' };
+  }
+
+  if (RUN_MODE === 'AFTERMARKET') {
+    const m = minutesOfDay(dt);
+    if (m < 16 * 60 || m > 20 * 60) return { skip: true as const, reason: '장외(애프터마켓 아님)' };
+    return { skip: false as const, reason: '' };
+  }
+
   if (RUN_MODE === 'EXTENDED') {
     if (!isInExtendedHours(dt)) return { skip: true as const, reason: '장외(확장시간 아님)' };
     return { skip: false as const, reason: '' };
   }
 
-  // MARKET_ONLY
+  // MARKET
   if (!isInMarketHours(dt)) return { skip: true as const, reason: '장외(정규장 아님)' };
   return { skip: false as const, reason: '' };
 }
