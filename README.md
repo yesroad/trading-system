@@ -1,214 +1,40 @@
 # Trading System
 
-> AI 협업을 통한 복잡한 시스템 설계 프로젝트
+> 다중 시장 자동매매 시스템 (국내주식 · 미국주식 · 암호화폐)
 
-**Project Focus**: Microservices Architecture Design · AI-Assisted Development · Type-Safe Financial System
+**⚠️ 현재 상태:** 개발 중 (실전 투입 전 테스트 및 검증 필요)
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org/)
 [![Turborepo](https://img.shields.io/badge/Turborepo-2.x-orange.svg)](https://turbo.build/)
-![Architecture](https://img.shields.io/badge/Architecture-Microservices-blue)
-![AI Assisted](https://img.shields.io/badge/Built%20with-Claude%20Code-blueviolet)
 
 ---
 
 ## 📋 목차
 
 - [개요](#-개요)
-- [설계 하이라이트](#-설계-하이라이트)
-- [AI 협업 프로세스](#-ai-협업-프로세스)
-- [기술적 의사결정](#-기술적-의사결정)
 - [주요 기능](#-주요-기능)
 - [시스템 아키텍처](#-시스템-아키텍처)
 - [기술 스택](#-기술-스택)
 - [시작하기](#-시작하기)
 - [프로젝트 구조](#-프로젝트-구조)
 - [개발 가이드](#-개발-가이드)
+- [배포](#-배포)
 - [문서](#-문서)
+- [라이선스](#-라이선스)
 
 ---
 
 ## 🎯 개요
 
-**Trading System**은 국내주식(KRX), 미국주식(US), 암호화폐(Crypto) 시장을 다루는 자동매매 시스템의 아키텍처 설계 프로젝트입니다. Claude Code와의 협업을 통해 복잡한 마이크로서비스 구조를 설계하고, 타입 안전성과 확장 가능성을 중심으로 시스템을 구축했습니다.
+**Trading System**은 국내주식(KRX), 미국주식(US), 암호화폐(Crypto) 시장에서 자동으로 데이터를 수집하고, AI 분석을 통해 매매 신호를 생성하며, 의사결정에 따라 주문을 실행하는 자동매매 시스템입니다.
 
-### 프로젝트 목표
+### 핵심 철학
 
-1. **복잡한 시스템 설계** - 다중 시장 데이터 수집부터 AI 분석, 주문 실행까지의 전체 파이프라인
-2. **AI 협업 워크플로우** - Claude Code를 활용한 효율적인 개발 프로세스 구축
-3. **타입 안전 금융 시스템** - TypeScript strict + Zod를 통한 런타임 안전성
-4. **모노레포 설계** - Turborepo 기반 확장 가능한 서비스 아키텍처
-
----
-
-## 💡 설계 하이라이트
-
-### 1. 서비스 격리 아키텍처
-
-6개의 독립적인 서비스를 DB 중심 통신으로 느슨하게 결합했습니다.
-
-```
-Collectors (3종) → DB → AI Analyzer → DB → Trade Executor → DB → Monitoring Bot
-```
-
-**설계 원칙:**
-- ✅ 서비스 간 직접 import 금지 (DB를 통한 통신)
-- ✅ 각 서비스 독립 배포 가능
-- ✅ 장애 격리 (한 서비스 실패가 전체 시스템에 영향 없음)
-
-### 2. 타입 안전성
-
-금융 시스템에서 타입 오류는 실제 손실로 이어질 수 있습니다.
-
-```typescript
-// 컴파일 타임 안전성
-TypeScript 5.9 strict mode
-
-// 런타임 안전성
-Zod 스키마 검증 (모든 외부 API 응답)
-
-// 금융 계산 정밀도
-big.js (부동소수점 오차 제거)
-```
-
-### 3. 공통 패키지 추상화
-
-재사용 가능한 로직을 `@workspace/*` 패키지로 분리했습니다.
-
-- `@workspace/shared-utils` - 환경변수, 날짜, 로깅, 백오프
-- `@workspace/db-client` - Supabase 클라이언트, 공통 쿼리
-- `@workspace/kis-auth` - 한국투자증권 토큰 관리
-
-### 4. AI 최적화 전략
-
-AI 분석 비용을 최소화하면서 효과성을 유지하는 전략:
-- 시장 모드별 분석 (장 시작 전/장중/장 마감/장 마감 후)
-- 쿨다운 메커니즘 (불필요한 호출 방지)
-- 예산 제한 (일일 API 비용 관리)
-
----
-
-## 🤖 AI 협업 프로세스
-
-이 프로젝트는 Claude Code를 활용한 AI-Assisted Development의 실제 사례입니다.
-
-### 협업 방식
-
-**개발자 역할 (설계 및 의사결정)**
-- 시스템 아키텍처 설계
-- 기술 스택 선정 및 트레이드오프 분석
-- 코딩 규칙 및 가이드라인 정의
-- 코드 리뷰 및 품질 관리
-
-**Claude Code 역할 (구현 및 문서화)**
-- 보일러플레이트 코드 생성
-- 정의된 규칙에 따른 일관된 코드 작성
-- API 통합 및 타입 정의
-- 문서 자동 생성
-
-### 설정 파일 기반 관리
-
-```
-.claude/
-├── rules/
-│   ├── immutable-rules.md      # 절대 변경 불가 규칙
-│   ├── architecture-guide.md   # 아키텍처 원칙
-│   └── database-guide.md       # DB 스키마 및 쿼리
-│
-├── skills/
-│   ├── error-handling-patterns/
-│   ├── external-api-integration/
-│   └── coding-standards/
-│
-└── documentation-index.md
-```
-
-**핵심 파일:**
-- `AGENTS.md` - AI 에이전트가 참고하는 전체 가이드
-- `.claude/rules/` - 프로젝트의 불변 규칙
-- `.claude/skills/` - 반복적인 패턴의 스킬화
-
-### 개발 효율성 향상
-
-- ⚡ **개발 속도 3배 향상** - 반복적인 코드 작성 자동화
-- 🎯 **일관성 유지** - 모든 서비스에서 동일한 패턴 적용
-- 📚 **자동 문서화** - 코드와 함께 문서 업데이트
-- 🔒 **타입 안전성** - AI가 strict mode 규칙 준수
-
----
-
-## 🏗️ 기술적 의사결정
-
-### 1. Turborepo 모노레포 선택
-
-**선택 이유:**
-- 서비스 간 코드 공유 용이 (`@workspace/*` 패키지)
-- 각 서비스 독립 배포 가능 (Docker 이미지 분리)
-- 타입 안전한 의존성 관리
-- 빌드 캐싱으로 개발 속도 향상
-
-**고려한 대안:**
-- **Nx**: 더 많은 기능이지만 복잡도 증가
-- **Lerna**: 빌드 최적화 부족
-- **멀티레포**: 코드 공유 어려움
-
-**선택 기준:**
-- 프로젝트 규모 (6개 서비스 + 5개 패키지)
-- 팀 규모 (1-2명)
-- 학습 곡선 vs 생산성
-
-### 2. DB 중심 통신 패턴
-
-**선택 이유:**
-- ✅ **느슨한 결합** - 서비스 간 직접 의존성 제거
-- ✅ **비동기 처리** - 자연스러운 이벤트 기반 아키텍처
-- ✅ **디버깅 용이** - DB에 모든 상태 기록
-- ✅ **독립 배포** - 서비스 버전 간 호환성 문제 최소화
-
-**트레이드오프:**
-- ❌ 실시간성 약간 희생 (수초 지연)
-- ❌ DB 부하 증가
-
-**선택 기준:**
-- 자동매매에서 수초 지연은 허용 범위
-- 안정성 > 실시간성
-
-### 3. TypeScript Strict Mode
-
-**선택 이유:**
-- 금융 계산 오류는 실제 손실로 연결
-- 외부 API 응답 타입 보장 필수
-- 리팩토링 시 안전성
-
-**구현 전략:**
-```typescript
-// 1. 컴파일 타임: TypeScript strict
-{
-  "strict": true,
-  "noImplicitAny": true,
-  "strictNullChecks": true
-}
-
-// 2. 런타임: Zod 검증
-const Schema = z.object({ ... });
-const result = Schema.safeParse(apiResponse);
-
-// 3. 금융 계산: big.js
-const total = new Big(price).times(quantity);
-```
-
-### 4. Supabase 선택
-
-**선택 이유:**
-- PostgreSQL 기반 (복잡한 쿼리 지원)
-- Row-level security (보안)
-- 실시간 구독 (WebSocket)
-- 관리형 서비스 (운영 부담 감소)
-
-**고려한 대안:**
-- **직접 PostgreSQL 운영**: 운영 부담 큼
-- **MongoDB**: 금융 데이터는 RDBMS가 적합
-- **Redis**: 영속성 부족
+1. **서비스 격리** - 각 기능을 독립적인 서비스로 분리
+2. **DB 중심 통신** - 서비스 간 느슨한 결합
+3. **타입 안전** - TypeScript strict mode + 런타임 검증
+4. **AI 절제** - 의미 있을 때만 정확하게 호출
 
 ---
 
@@ -331,7 +157,7 @@ yarn --version  # 4.9.2
 ### 2. 저장소 클론
 
 ```bash
-git clone https://github.com/yesroad/trading-system.git
+git clone https://github.com/your-username/trading-system.git
 cd trading-system
 ```
 
@@ -509,6 +335,58 @@ if (!result.success) {
 }
 ```
 
+### 새 서비스 추가
+
+1. `services/` 에 디렉토리 생성
+2. `package.json` 설정
+3. TypeScript 설정 (`@workspace/typescript-config` 상속)
+4. 환경변수 정의
+5. `README.md` 작성
+6. 루트 `AGENTS.md` 업데이트
+
+### 테스트 작성 (TODO)
+
+```bash
+# 단위 테스트
+yarn test
+
+# 특정 패키지 테스트
+yarn workspace @workspace/db-client test
+```
+
+---
+
+## 🚢 배포 (TODO)
+
+### Docker (권장)
+
+```bash
+# Docker 이미지 빌드
+docker build -t trading-system/upbit-collector services/upbit-collector
+
+# Docker Compose 실행
+docker-compose up -d
+```
+
+### PM2
+
+```bash
+# PM2로 서비스 실행
+pm2 start ecosystem.config.js
+
+# 상태 확인
+pm2 status
+
+# 로그 확인
+pm2 logs
+```
+
+### 환경 설정
+
+- **Development**: `.env.development`
+- **Staging**: `.env.staging`
+- **Production**: `.env.production`
+
 ---
 
 ## 📚 문서
@@ -540,6 +418,27 @@ if (!result.success) {
 
 ---
 
+## ⚠️ 주의사항
+
+### 실전 투입 전 필수 확인
+
+1. ✅ **모든 테스트 통과** (단위/통합/백테스팅)
+2. ✅ **리스크 관리 구현** (손절/익절/한도)
+3. ✅ **3개월 이상 Paper Trading 성공**
+4. ✅ **모니터링 시스템 구축**
+5. ✅ **백업 및 복구 계획**
+
+### 현재 상태
+
+**⚠️ 개발 중 - 실전 투입 금지**
+
+- 아키텍처: 완성 ✅
+- 테스트: 미완성 ❌
+- 리스크 관리: 미완성 ❌
+- 운영 인프라: 미완성 ❌
+
+---
+
 ## 📄 라이선스
 
 Private - All Rights Reserved
@@ -550,11 +449,14 @@ Private - All Rights Reserved
 
 이 프로젝트는 다음 도구와 기술을 활용하여 개발되었습니다:
 
-- **AI-Assisted Development** - Claude Code와 함께 설계 및 구현
+- **AI-Assisted Development** - Claude Code 등 과 함께 개발
 - **한국투자증권** - 국내/미국주식 API 제공
 - **Upbit** - 암호화폐 API 제공
 - **Supabase** - 데이터베이스 및 인프라
+- **Vercel** - 배포 및 호스팅
 
 ---
 
-**Note**: 이 프로젝트는 시스템 설계 및 AI 협업 방법론을 연구하기 위한 교육 목적의 프로젝트입니다. 실제 금융 투자에 사용할 경우 추가적인 검증과 리스크 관리가 필요합니다.
+**⚠️ 면책 조항**
+
+실제 투자에 사용할 경우 발생하는 손실에 대해 개발자는 책임지지 않습니다. 투자는 본인의 판단과 책임 하에 진행하시기 바랍니다.
