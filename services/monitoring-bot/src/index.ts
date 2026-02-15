@@ -8,6 +8,9 @@ import { checkWorkers } from './checks/checkWorkers.js';
 import { checkIngestionRuns } from './checks/checkIngestionRuns.js';
 import { checkAiResults } from './checks/checkAiResults.js';
 import { checkNotificationEvents } from './checks/checkNotificationEvents.js';
+import { checkTradingSignals } from './checks/checkTradingSignals.js';
+import { checkRiskEvents } from './checks/checkRiskEvents.js';
+import { checkTrades } from './checks/checkTrades.js';
 import { buildDailyReportText } from './checks/dailyReport.js';
 
 function isSessionActiveForEnabledMarkets(): boolean {
@@ -51,6 +54,9 @@ async function runChecksOnce() {
     ...(await checkWorkers()),
     ...(await checkIngestionRuns()),
     ...(await checkAiResults()),
+    ...(await checkTradingSignals()),
+    ...(await checkRiskEvents()),
+    ...(await checkTrades()),
   ];
 
   // WARN/CRIT만 알림

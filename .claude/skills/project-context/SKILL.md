@@ -17,32 +17,40 @@ metadata:
 - `packages/shared-utils`: env/date/logger/backoff
 - `packages/db-client`: Supabase 접근 레이어
 - `packages/kis-auth`: KIS 토큰 관리
-- `packages/trading-utils`: 기술적 지표/리스크 계산 (Phase 2)
+- `packages/trading-utils`: 기술적 지표/리스크 계산/신호 생성 (Phase 2-3)
+  - `indicators/`: 기술적 지표 (MA, MACD, RSI, Volume, S/R)
+  - `atr/`: ATR 계산 및 손절가
+  - `confidence/`: 신뢰도 계산
+  - `risk/`: 리스크 관리 (포지션 사이징, 레버리지, 노출도)
+  - `signals/`: 신호 생성 (AI + 기술적 분석 블렌딩)
 - `services/upbit-collector`: 업비트 수집
 - `services/kis-collector`: KIS 국내주식 수집
 - `services/yf-collector`: Yahoo Finance 수집
-- `services/ai-analyzer`: AI 분석 + 신호 생성
-- `services/trade-executor`: 리스크 관리 + 주문 실행 (Phase 3-7)
-  - `signals/`: 신호 생성 (AI + 기술적 분석)
-  - `risk/`: 리스크 관리 (포지션 사이징, 서킷 브레이커)
+- `services/ai-analyzer`: AI 분석 → trading_signals 생성
+- `services/trade-executor`: 신호 기반 리스크 검증 + 주문 실행 (Phase 4-7)
+  - `risk/`: 리스크 검증 (서킷 브레이커, 레버리지, 노출도)
   - `compliance/`: ACE 로깅 (감사 추적)
   - `execution/`: 주문 실행
-- `services/monitoring-bot`: 모니터링/알림
+- `services/monitoring-bot`: 모니터링/알림 (워커, 수집, AI, 신호, 리스크, 거래)
 
 ## Data Flow
 ```
 Collectors → Supabase (candles)
     ↓
-AI Analyzer → trading_signals (Phase 3)
+AI Analyzer → ai_analysis_results
     ↓
-Trade Executor:
-  - Risk Validation (Phase 4)
-  - ACE Logging (Phase 5)
-  - Order Execution (Phase 7)
+    → @workspace/trading-utils (신호 생성)
+        ↓
+        → trading_signals (Phase 3)
+            ↓
+Trade Executor (신호 폴링):
+  - Risk Validation (Phase 4) → risk_events
+  - ACE Logging (Phase 5) → ace_logs
+  - Order Execution (Phase 7) → trades
     ↓
-Supabase (trades, ace_logs)
+Monitoring Bot (모든 테이블 체크)
     ↓
-Monitoring/Web
+Telegram 알림 / Web 대시보드
 ```
 
 ## Fast Start Commands

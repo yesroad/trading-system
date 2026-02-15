@@ -40,16 +40,21 @@ metadata:
 - KIS 토큰 획득은 패키지 재사용
 - 서비스에서 토큰 발급 로직 재구현 금지
 
-## 4) @workspace/trading-utils (Phase 2)
+## 4) @workspace/trading-utils (Phase 2-3)
 주요 사용:
-- 기술적 지표: `calculateMA`, `calculateMACD`, `calculateRSI`, `calculateATR`
-- 신뢰도 계산: `calculateConfidence`, `calculateMultiTimeframeConfidence`
-- 리스크: `calculatePositionSize`, `calculateATRStopLoss`
-- 레버리지/노출도: `validateLeverage`, `checkTotalExposure`
+- **기술적 지표**: `calculateMA`, `calculateMACD`, `calculateRSI`, `calculateATR`, `analyzeVolume`, `findSupportResistanceLevels`
+- **신뢰도 계산**: `calculateWeightedConfidence`, `calculateTechnicalConfidence`, `blendConfidence`
+- **리스크 관리**: `calculatePositionSize`, `calculateATRStopLoss`, `validateLeverage`, `checkTotalExposure`
+- **신호 생성** (Phase 3, services/ 간 직접 import 금지 해결):
+  - `generateSignalFromAIAnalysis`: AI 분석 + 기술적 지표 → 거래 신호 생성
+  - `analyzeTechnicalIndicators`: 캔들 데이터로부터 모든 지표 계산
+  - `validateSignal`: 신호 검증 (R/R, 손절 범위, 신뢰도)
+  - 타입: `Market`, `Broker`, `GeneratedSignal`, `TechnicalSnapshot`, `SignalValidation`
 
 규칙:
 - 모든 계산은 `big.js` 사용
-- 기술적 지표는 이 패키지 재사용, 직접 구현 금지
+- 기술적 지표/신호 생성은 이 패키지 재사용, 직접 구현 금지
+- ai-analyzer, trade-executor 모두 `@workspace/trading-utils`에서 import
 
 ## New Service Checklist
 1. `package.json`에 필요한 `@workspace/*` 의존성 추가

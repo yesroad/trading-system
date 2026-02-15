@@ -2,7 +2,7 @@ import { supabase } from '../supabase.js';
 import type { Market } from '../config/markets.js';
 import type { MarketMode } from '../config/schedule.js';
 import type { AiLLMResult } from '../llm/resultSchema.js';
-import { generateSignalFromAIAnalysis } from '../../../trade-executor/src/signals/index.js';
+import { generateSignalFromAIAnalysis } from '@workspace/trading-utils';
 
 type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 

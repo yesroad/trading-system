@@ -7,7 +7,7 @@ import type {
   MarketAnalysis,
   RiskAssessment,
 } from './types.js';
-import type { GeneratedSignal } from '../signals/types.js';
+import type { GeneratedSignal } from '@workspace/trading-utils';
 import type { RiskValidationResult } from '../risk/types.js';
 
 /**

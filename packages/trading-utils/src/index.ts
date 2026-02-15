@@ -29,3 +29,8 @@ export * from './confidence/calculator.js';
 export * from './risk/position-sizing.js';
 export * from './risk/leverage.js';
 export * from './risk/exposure.js';
+
+// =============================================================================
+// Signal Generation
+// =============================================================================
+export * from './signals/index.js';

@@ -9,7 +9,16 @@ export type AlertCategory =
   | 'ingestion_missing'
   | 'ai_missing'
   | 'ai_stale'
-  | 'notification_event';
+  | 'notification_event'
+  | 'trading_signals_error'
+  | 'trading_signals_stale'
+  | 'risk_events_error'
+  | 'circuit_breaker'
+  | 'leverage_violation'
+  | 'exposure_limit'
+  | 'trades_error'
+  | 'trades_high_failure'
+  | 'trades_no_ace';
 
 export type AlertEvent = {
   level: AlertLevel;

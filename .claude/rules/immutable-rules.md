@@ -17,6 +17,11 @@
 - `services/*` 간 직접 import 금지
 - 서비스 간 데이터 공유는 Supabase(DB) 경유
 - 공통 로직은 `packages/*`로 이동 후 `@workspace/*`로 참조
+- `packages/*` 의존성 정책:
+  - `shared-utils`: 의존성 없음 (기초 레이어)
+  - `db-client`: shared-utils만 의존
+  - `kis-auth`: shared-utils + db-client 의존
+  - `trading-utils`: shared-utils + db-client 의존 (신호 생성, 기술적 지표, 리스크 계산 포함)
 
 ## 4) 타입/검증
 - 모든 워크스페이스 TypeScript strict 유지

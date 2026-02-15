@@ -2,7 +2,7 @@ import { createLogger } from '@workspace/shared-utils';
 import { createACELog, updateACEOutcome } from '@workspace/db-client';
 import { buildAspiration, buildCapability, buildExecution, buildOutcome } from './builders.js';
 import type { CreateACELogParams, UpdateOutcomeParams, ACELog } from './types.js';
-import type { GeneratedSignal } from '../signals/types.js';
+import type { GeneratedSignal } from '@workspace/trading-utils';
 import type { RiskValidationResult } from '../risk/types.js';
 import type Big from 'big.js';
 
