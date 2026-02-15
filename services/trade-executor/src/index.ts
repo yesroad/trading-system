@@ -11,11 +11,12 @@ import { enqueueNotificationEvent } from './db/notifications.js';
 import { KISClient } from './brokers/kis/client.js';
 import { UpbitClient } from './brokers/upbit/client.js';
 
-// ✨ Phase 3-5: 새로운 모듈 import
+// ✨ Phase 3-6: 새로운 모듈 import
 import { validateTradeRisk } from './risk/validator.js';
 import { checkCircuitBreaker } from './risk/circuit-breaker.js';
 import { logACEEntry } from './compliance/ace-logger.js';
 import { startOutcomeTracking } from './compliance/outcome-tracker.js';
+import { executeOrder } from './execution/order-executor.js';
 
 const logger = createLogger('trade-executor');
 
@@ -214,26 +215,40 @@ async function runMarketLoop(market: Market): Promise<void> {
           aceLogId,
         });
 
-        // 4-3. ✨ 주문 실행
-        // TODO: 실제 주문 실행 로직 구현
-        // const trade = await executeMarketOrder({
-        //   broker: signal.broker,
-        //   symbol: signal.symbol,
-        //   side: signal.signal_type,
-        //   qty: riskValidation.positionSize.toString(),
-        //   dryRun: TRADING_CONFIG.dryRun,
-        // });
+        // 4-3. ✨ 주문 실행 (Phase 7)
+        const orderResult = await executeOrder(
+          {
+            symbol: signal.symbol,
+            broker: signal.broker,
+            market: signal.market,
+            side: signal.signal_type as 'BUY' | 'SELL',
+            qty: riskValidation.positionSize,
+            price: new Big(signal.entry_price),
+            orderType: 'market',
+            dryRun: TRADING_CONFIG.dryRun,
+            aceLogId,
+          },
+          clients
+        );
 
-        if (TRADING_CONFIG.dryRun) {
-          logger.info('DRY RUN: 주문 실행 시뮬레이션', {
+        if (orderResult.success) {
+          logger.info('주문 실행 성공', {
             signalId: signal.id,
             symbol: signal.symbol,
-            side: signal.signal_type,
-            qty: riskValidation.positionSize.toString(),
+            tradeId: orderResult.tradeId,
+            orderId: orderResult.orderId,
+            executedPrice: orderResult.executedPrice,
+            dryRun: orderResult.dryRun,
           });
+          executedCount++;
+        } else {
+          logger.error('주문 실행 실패', {
+            signalId: signal.id,
+            symbol: signal.symbol,
+            error: orderResult.error,
+          });
+          errorCount++;
         }
-
-        executedCount++;
 
         // 4-4. ✨ 신호 소비 표시
         await markSignalConsumed(signal.id);
