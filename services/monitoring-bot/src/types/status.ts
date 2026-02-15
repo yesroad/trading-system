@@ -18,7 +18,9 @@ export type AlertCategory =
   | 'exposure_limit'
   | 'trades_error'
   | 'trades_high_failure'
-  | 'trades_no_ace';
+  | 'trades_no_ace'
+  | 'signal_failures_error'
+  | 'signal_failure_rate_high';
 
 export type AlertEvent = {
   level: AlertLevel;

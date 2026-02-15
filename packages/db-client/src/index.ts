@@ -11,3 +11,7 @@ export * from './risk-events.js';
 export * from './ace-logs.js';
 export * from './market-breadth.js';
 export * from './news-events.js';
+
+// AI Monitoring - Phase 3 Enhancement
+export * from './ai-budget.js';
+export * from './signal-failures.js';

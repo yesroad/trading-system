@@ -42,7 +42,7 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
   }
 
   // ✅ 쿨다운/예산 게이트(최종)
-  if (!canCallLLM(market, mode)) {
+  if (!(await canCallLLM(market, mode))) {
     console.log(`[AI] 쿨다운/예산으로 스킵 | market=${market} | mode=${mode}`);
     return;
   }
@@ -61,7 +61,10 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
 
   // 저장(targets별 N건) + 호출 기록
   await saveAiResults(market, mode, result);
-  recordLLMCall(market);
+
+  // 비용 추정: 평균 1500 tokens @ $0.005/1K tokens = $0.0075
+  const estimatedCostUsd = 0.0075;
+  await recordLLMCall(market, estimatedCostUsd);
 
   console.log(`[AI] ${market} | ${mode} 완료 (${result.results.length}개 대상)`);
 }

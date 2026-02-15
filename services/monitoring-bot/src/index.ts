@@ -11,6 +11,7 @@ import { checkNotificationEvents } from './checks/checkNotificationEvents.js';
 import { checkTradingSignals } from './checks/checkTradingSignals.js';
 import { checkRiskEvents } from './checks/checkRiskEvents.js';
 import { checkTrades } from './checks/checkTrades.js';
+import { checkSignalFailures } from './checks/checkSignalFailures.js';
 import { buildDailyReportText } from './checks/dailyReport.js';
 
 function isSessionActiveForEnabledMarkets(): boolean {
@@ -57,6 +58,7 @@ async function runChecksOnce() {
     ...(await checkTradingSignals()),
     ...(await checkRiskEvents()),
     ...(await checkTrades()),
+    ...(await checkSignalFailures()),
   ];
 
   // WARN/CRIT만 알림

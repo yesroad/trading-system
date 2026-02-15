@@ -3,6 +3,7 @@ import type { Market } from '../config/markets.js';
 import type { MarketMode } from '../config/schedule.js';
 import type { AiLLMResult } from '../llm/resultSchema.js';
 import { generateSignalFromAIAnalysis } from '@workspace/trading-utils';
+import { logSignalGenerationFailure } from '@workspace/db-client';
 
 type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -138,10 +139,36 @@ export async function saveAiResults(
             `[Signal] 신호 생성 성공 | symbol=${symbol} | id=${signal.id} | confidence=${signal.confidence.toFixed(2)}`,
           );
         } else {
+          // 신호 생성 실패 - 추적 기록
           skipCount++;
+          await logSignalGenerationFailure({
+            aiAnalysisId: String(aiAnalysisId),
+            symbol,
+            market,
+            failureReason: '신호 검증 실패 또는 기술적 지표 부족',
+            failureType: 'validation_failed',
+          }).catch((err) => {
+            console.error(`[Signal] 실패 추적 기록 오류`, err);
+          });
         }
       } catch (error) {
         console.error(`[Signal] 신호 생성 실패 | symbol=${symbol}`, error);
+        skipCount++;
+
+        // 예외 발생 - 추적 기록
+        await logSignalGenerationFailure({
+          aiAnalysisId: String(aiAnalysisId),
+          symbol,
+          market,
+          failureReason: error instanceof Error ? error.message : '알 수 없는 에러',
+          failureType: 'error',
+          errorDetails: {
+            name: error instanceof Error ? error.name : 'UnknownError',
+            stack: error instanceof Error ? error.stack : undefined,
+          },
+        }).catch((err) => {
+          console.error(`[Signal] 실패 추적 기록 오류`, err);
+        });
       }
     }
 
