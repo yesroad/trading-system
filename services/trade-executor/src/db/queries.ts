@@ -83,7 +83,7 @@ export async function getLatestAIAnalysis(params: {
     const createdAt = (row as { created_at?: unknown }).created_at;
 
     if (!(typeof id === 'number' || typeof id === 'string')) continue;
-    if (market !== 'KR' && market !== 'US' && market !== 'CRYPTO') continue;
+    if (market !== 'KRX' && market !== 'US' && market !== 'CRYPTO') continue;
     if (typeof mode !== 'string') continue;
     if (typeof symbol !== 'string' || symbol.length === 0) continue;
     if (decision !== 'ALLOW' && decision !== 'CAUTION' && decision !== 'BLOCK') continue;
@@ -139,7 +139,7 @@ export async function getCurrentPrice(params: {
     return asNumber(priceRaw);
   }
 
-  if (params.market === 'KR') {
+  if (params.market === 'KRX') {
     const { data, error } = await supabase
       .from('kis_price_ticks')
       .select('price,ts')
