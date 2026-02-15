@@ -229,8 +229,15 @@ export function calculateTechnicalConfidence(
     return 0.5;
   }
 
+  // 가중치 정규화 (일부 지표만 있을 경우 가중치 합이 1.0이 되도록 조정)
+  const totalWeight = indicators.reduce((sum, indicator) => sum + indicator.weight, 0);
+  const normalizedIndicators = indicators.map((indicator) => ({
+    ...indicator,
+    weight: indicator.weight / totalWeight,
+  }));
+
   // 가중 평균 계산
-  const technicalConfidence = calculateWeightedConfidence(indicators);
+  const technicalConfidence = calculateWeightedConfidence(normalizedIndicators);
 
   logger.info('기술적 신뢰도 계산 완료', {
     direction,
