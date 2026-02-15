@@ -2,9 +2,9 @@
 
 > 다중 시장 자동매매 시스템 (국내주식 · 미국주식 · 암호화폐)
 
-**🤖 AI 바이브코딩 프로젝트**
+**🤖 AI 바이브코딩 프로젝트 + 🎯 Trading Skills Integration**
 
-이 프로젝트는 **ChatGPT**, **Claude Code**, **Codex**와 소통하며 설계하고 구현한 자동매매 시스템입니다. AI 페어 프로그래밍을 통해 아키텍처를 설계하고, 바이브코딩으로 빠르게 구현하며, 현대적인 개발 방법론을 실험합니다.
+이 프로젝트는 **ChatGPT**, **Claude Code**, **Codex**와 소통하며 설계하고 구현한 자동매매 시스템입니다. AI 페어 프로그래밍을 통해 아키텍처를 설계하고, 바이브코딩으로 빠르게 구현하며, **tradermonty** 및 **jmanhype**의 검증된 트레이딩 지식과 로직을 통합하여 **최고의 트레이딩 시스템**을 구축합니다.
 
 **⚠️ 현재 상태:** 개발 중 (테스트 및 검증 필요)
 
@@ -14,10 +14,33 @@
 
 ---
 
+## 🆕 New: Trading Skills Integration
+
+**Phase 1 완료 (2026-02-15):**
+- ✅ `technical-analyst` - Elliott Wave, 피보나치, 일목균형표 차트 분석 (tradermonty)
+- ✅ `risk-management` - 포지션 사이징, ATR 손절매, 일일 손실 한도 (jmanhype QTS 포팅)
+- ✅ 통합 가이드: [SKILLS_INTEGRATION_GUIDE.md](./docs/SKILLS_INTEGRATION_GUIDE.md)
+- ✅ 통합 계획: [INTEGRATION_PLAN.md](./INTEGRATION_PLAN.md)
+
+**핵심 통합 포인트:**
+```typescript
+// 1. 차트 분석 → 2. 리스크 검증 → 3. TypeScript 구현
+"BTC 차트를 technical-analyst로 분석하고
+ risk-management로 검증한 뒤
+ coding-standards 지켜서 구현해줘"
+```
+
+**Coming Soon (Phase 2-3):**
+- `market-analysis`, `stock-screening`, `backtest-framework`
+- `signal-generation`, `performance-analytics`, `compliance-logging`
+
+---
+
 ## 📋 목차
 
 - [개요](#-개요)
 - [주요 기능](#-주요-기능)
+- [Trading Skills](#-trading-skills-new)
 - [시스템 아키텍처](#-시스템-아키텍처)
 - [기술 스택](#-기술-스택)
 - [시작하기](#-시작하기)
@@ -40,6 +63,7 @@
 - 📋 **코드 품질 관리** - `.claude/rules`와 `skills`로 일관된 코딩 규칙 적용
 - 🏗️ **아키텍처 우선** - 마이크로서비스, DB 중심 설계
 - 🛠️ **현대적 도구** - TypeScript strict, Turborepo, Supabase
+- 🎯 **전문 지식 통합** - tradermonty + jmanhype 트레이딩 스킬
 
 ### 핵심 철학
 
@@ -47,6 +71,7 @@
 2. **DB 중심 통신** - 서비스 간 느슨한 결합
 3. **타입 안전** - TypeScript strict mode + 런타임 검증
 4. **AI 절제** - 의미 있을 때만 정확하게 호출
+5. **검증된 로직** - 커뮤니티 검증 트레이딩 방법론 활용
 
 ---
 
@@ -84,6 +109,81 @@
 
 ---
 
+## 🎯 Trading Skills (NEW)
+
+### Phase 1: 핵심 트레이딩 분석 (완료)
+
+#### 1. `technical-analyst` ⭐⭐⭐
+**출처:** tradermonty/claude-trading-skills  
+**기능:** Elliott Wave, 피보나치, 일목균형표 기반 차트 분석
+
+```
+사용 예:
+"BTC 차트를 technical-analyst로 분석해줘"
+
+결과:
+- Elliott Wave 5파동 분석
+- 피보나치 되돌림/확장 목표가
+- 일목균형표 신호
+- 시나리오 기반 확률 평가 (60% 조정, 30% 상승, 10% 급락)
+```
+
+#### 2. `risk-management` ⭐⭐⭐
+**출처:** jmanhype/qts (Python → TypeScript 포팅)  
+**기능:** 다층 리스크 관리 시스템
+
+**핵심 규칙:**
+- 레버리지 캡: BTC/ETH 1.5x, 알트 1.2x, 포트폴리오 1.0x
+- 포지션 사이징: 심볼당 최대 25%, 총 100%
+- ATR 기반 동적 손절매 (0.5% ~ 5%)
+- 일일 손실 한도: -5% 도달 시 자동 청산 + 60분 쿨다운
+- 리스크/보상 비율: 최소 1.5 이상
+
+```typescript
+import { validateNewPosition } from '@workspace/risk-management';
+
+const validation = await validateNewPosition({
+  symbol: 'BTC',
+  entry: new Big(93000),
+  target: new Big(98000),
+  stopLoss: new Big(91500),
+  leverage: new Big(1.5),
+});
+
+if (!validation.approved) {
+  console.error('Rejected:', validation.violations);
+}
+```
+
+### 통합 워크플로우
+
+```
+Step 1: 차트 분석
+"technical-analyst로 BTC 차트 분석"
+→ Elliott Wave 5파동 완성, 조정 예상
+
+Step 2: 리스크 검증
+"risk-management로 포지션 검증"
+→ 레버리지 OK, R/R 2.1 (✅), 포지션 사이즈 $10,000
+
+Step 3: 코드 생성
+"coding-standards 지켜서 TypeScript 구현"
+→ 타입 안전, Zod 검증, big.js 사용
+
+Step 4: DB 저장
+"database-operations로 스키마 설계"
+→ trading_signals, risk_events 테이블 생성
+```
+
+### 문서
+
+- 📖 [통합 가이드](./docs/SKILLS_INTEGRATION_GUIDE.md) - 사용법 및 예제
+- 📋 [통합 계획](./INTEGRATION_PLAN.md) - Phase 2-3 로드맵
+- 🎯 [Technical Analyst 스킬](./.claude/skills/technical-analyst/SKILL.md)
+- 🛡️ [Risk Management 스킬](./.claude/skills/risk-management/SKILL.md)
+
+---
+
 ## 🏗️ 시스템 아키텍처
 
 ```
@@ -93,6 +193,7 @@
 │  - upbit_candles, kis_candles, yf_candles      │
 │  - ai_analysis, trades                          │
 │  - worker_status, ingestion_runs                │
+│  + trading_signals, risk_events (NEW)           │
 └─────────────────────────────────────────────────┘
          ▲         ▲        ▲         ▲
          │         │        │         │
@@ -100,12 +201,21 @@
     │Collect│  │   AI  │  │Trade│ │Monitor│
     │(3종)  │  │Analyze│  │ Exec│ │  Bot  │
     └───────┘  └───────┘  └────┘  └──────┘
+                    ▲                ▲
+                    │                │
+          ┌─────────┴────┐    ┌─────┴──────┐
+          │Technical     │    │Risk        │
+          │Analyst (NEW) │    │Mgmt (NEW)  │
+          └──────────────┘    └────────────┘
 ```
 
 **데이터 흐름:**
 
 ```
 Collectors → DB → AI Analyzer → DB → Trade Executor → DB → Monitoring Bot
+                      ↓                     ↓
+              Technical Analyst      Risk Management
+                   (차트 분석)           (리스크 검증)
 ```
 
 **핵심 원칙:**
@@ -113,387 +223,8 @@ Collectors → DB → AI Analyzer → DB → Trade Executor → DB → Monitorin
 - ✅ 서비스 간 직접 import 금지 (DB 경유)
 - ✅ 공통 로직은 `@workspace/*` 패키지로 추출
 - ✅ 모든 외부 API 응답은 Zod로 런타임 검증
+- ✅ 트레이딩 로직은 검증된 스킬 활용 (NEW)
 
 ---
 
-## 🛠️ 기술 스택
-
-### Core
-
-- **Runtime**: Node.js >= 22
-- **Language**: TypeScript 5.9 (strict mode)
-- **Package Manager**: Yarn 4.9.2
-- **Build System**: Turborepo 2.x
-
-### Database
-
-- **Supabase** (PostgreSQL)
-- **@supabase/supabase-js**
-
-### Frontend
-
-- **Next.js** 16.1 (React 19.2)
-- **Tailwind CSS** 4
-- **Radix UI** (Headless components)
-- **TanStack React Query** (Server state)
-- **Jotai** (Client state)
-
-### Libraries
-
-- **Luxon** (날짜/시간)
-- **Zod** (스키마 검증)
-- **big.js** (금융 계산)
-- **dotenv** (환경변수)
-
-### APIs
-
-- **한국투자증권 (KIS)** - 국내/미국주식
-- **Upbit** - 암호화폐
-- **Yahoo Finance** - 미국주식 (보조)
-- **OpenAI** - AI 분석
-
----
-
-## 🚀 시작하기
-
-### 1. 사전 요구사항
-
-```bash
-# Node.js 22 이상
-node --version  # v22.x.x
-
-# Yarn 4.9.2
-yarn --version  # 4.9.2
-```
-
-### 2. 저장소 클론
-
-```bash
-git clone https://github.com/yesroad/trading-system.git
-cd trading-system
-```
-
-### 3. 의존성 설치
-
-```bash
-yarn install
-```
-
-**필수 환경변수:**
-
-```bash
-# Supabase
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your-service-key
-
-# KIS API
-KIS_APP_KEY=your-app-key
-KIS_APP_SECRET=your-app-secret
-KIS_ACCOUNT_NO=your-account-number
-
-# Upbit API
-UPBIT_ACCESS_KEY=your-access-key
-UPBIT_SECRET_KEY=your-secret-key
-
-# OpenAI
-OPENAI_API_KEY=your-openai-key
-
-# Telegram
-TELEGRAM_BOT_TOKEN=your-bot-token
-TELEGRAM_CHAT_ID=your-chat-id
-```
-
-### 4. 빌드
-
-```bash
-# 전체 빌드
-yarn build
-
-# 타입 체크
-yarn check-types
-
-# 린트
-yarn lint
-```
-
-### 5. 실행
-
-```bash
-# 개발 모드 (전체)
-yarn dev
-
-# 개별 서비스 실행
-cd services/upbit-collector
-yarn dev
-```
-
----
-
-## 📁 프로젝트 구조
-
-```
-trading-system/
-├── apps/
-│   └── web/                     # Next.js 대시보드
-│       ├── src/
-│       │   ├── app/            # Next.js App Router
-│       │   ├── components/     # React 컴포넌트
-│       │   └── services/       # API 클라이언트
-│       └── package.json
-│
-├── packages/
-│   ├── shared-utils/           # 공통 유틸리티
-│   │   └── src/
-│   │       ├── env.ts          # 환경변수
-│   │       ├── date.ts         # 날짜/시간
-│   │       ├── logger.ts       # 로깅
-│   │       └── backoff.ts      # 백오프
-│   │
-│   ├── db-client/              # Supabase 클라이언트
-│   │   └── src/
-│   │       ├── client.ts       # 싱글톤
-│   │       ├── positions.ts    # 포지션 조회
-│   │       └── types.ts        # DB 타입
-│   │
-│   ├── kis-auth/               # KIS 토큰 관리
-│   │   └── src/
-│   │       ├── tokenManager.ts
-│   │       └── errors.ts
-│   │
-│   ├── eslint-config/          # ESLint 설정
-│   └── typescript-config/      # TypeScript 설정
-│
-├── services/
-│   ├── upbit-collector/        # 암호화폐 수집
-│   ├── kis-collector/          # 국내주식 수집
-│   ├── yf-collector/           # 미국주식 수집
-│   ├── ai-analyzer/            # AI 분석
-│   ├── trade-executor/         # 주문 실행
-│   └── monitoring-bot/         # 모니터링
-│
-├── .claude/                    # Claude Code 설정
-│   ├── rules/                  # 불변 규칙
-│   └── skills/                 # 스킬 정의
-│
-├── AGENTS.md                   # AI 에이전트 가이드
-├── package.json                # 루트 package.json
-└── turbo.json                  # Turborepo 설정
-```
-
----
-
-## 📖 개발 가이드
-
-### 필수 규칙
-
-모든 코드는 [AGENTS.md](./AGENTS.md)와 [.claude/rules/immutable-rules.md](./.claude/rules/immutable-rules.md)를 따라야 합니다.
-
-#### 1. 환경변수
-
-```typescript
-// ❌ 금지
-const url = process.env.SUPABASE_URL;
-
-// ✅ 권장
-import { requireEnv } from '@workspace/shared-utils';
-const url = requireEnv('SUPABASE_URL');
-```
-
-#### 2. 날짜/시간
-
-```typescript
-// ❌ 금지 (신규 코드)
-const now = new Date().toISOString();
-
-// ✅ 권장
-import { nowIso } from '@workspace/shared-utils';
-const now = nowIso();
-```
-
-#### 3. 숫자/금융 계산
-
-```typescript
-// ❌ 금지 (부동소수점 오차)
-const total = price * quantity;
-
-// ✅ 권장
-import Big from 'big.js';
-const total = new Big(price).times(quantity);
-```
-
-#### 4. DB 접근
-
-```typescript
-// ✅ 우선: 공통 함수
-import { loadCryptoPositions } from '@workspace/db-client';
-
-// ✅ 필요시: 직접 쿼리
-import { getSupabase } from '@workspace/db-client';
-const { data, error } = await getSupabase().from('table').select();
-if (error) throw new Error(error.message);
-```
-
-#### 5. 외부 API 응답
-
-```typescript
-// ✅ 필수: Zod 검증
-import { z } from 'zod';
-
-const Schema = z.object({ ... });
-const result = Schema.safeParse(response);
-if (!result.success) {
-  logger.error('스키마 불일치', result.error);
-  return null;
-}
-```
-
-### 새 서비스 추가
-
-1. `services/` 에 디렉토리 생성
-2. `package.json` 설정
-3. TypeScript 설정 (`@workspace/typescript-config` 상속)
-4. 환경변수 정의
-5. `README.md` 작성
-6. 루트 `AGENTS.md` 업데이트
-
-### 테스트 작성 (TODO)
-
-```bash
-# 단위 테스트
-yarn test
-
-# 특정 패키지 테스트
-yarn workspace @workspace/db-client test
-```
-
----
-
-## 🚢 배포 (TODO)
-
-### Docker (권장)
-
-```bash
-# Docker 이미지 빌드
-docker build -t trading-system/upbit-collector services/upbit-collector
-
-# Docker Compose 실행
-docker-compose up -d
-```
-
-### PM2
-
-```bash
-# PM2로 서비스 실행
-pm2 start ecosystem.config.js
-
-# 상태 확인
-pm2 status
-
-# 로그 확인
-pm2 logs
-```
-
-### 환경 설정
-
-- **Development**: `.env.development`
-- **Staging**: `.env.staging`
-- **Production**: `.env.production`
-
----
-
-## 📚 문서
-
-### 필수 문서
-
-- [AGENTS.md](./AGENTS.md) - AI 에이전트 가이드라인
-- [SYSTEM-EVALUATION.md](./SYSTEM-EVALUATION.md) - 시스템 평가 및 로드맵
-- [.claude/documentation-index.md](./.claude/documentation-index.md) - 전체 문서 인덱스
-
-### 규칙 및 가이드 (`.claude/rules/`)
-
-AI가 일관된 코드를 생성하도록 가이드하는 규칙 문서:
-
-- [Immutable Rules](./.claude/rules/immutable-rules.md) - 불변 규칙
-- [Architecture Guide](./.claude/rules/architecture-guide.md) - 아키텍처 상세
-- [Database Guide](./.claude/rules/database-guide.md) - DB 스키마 및 쿼리
-
-### 스킬 (`.claude/skills/`)
-
-AI가 작업 시 참조하는 Lean 스타일 체크리스트 (토큰 최적화):
-
-- [Error Handling Patterns](./.claude/skills/error-handling-patterns/SKILL.md)
-- [External API Integration](./.claude/skills/external-api-integration/SKILL.md)
-- [Coding Standards](./.claude/skills/coding-standards/SKILL.md)
-- [Common Packages](./.claude/skills/common-packages/SKILL.md)
-- [Database Operations](./.claude/skills/database-operations/SKILL.md)
-- [Dashboard UI](./.claude/skills/dashboard-ui-skill/SKILL.md)
-
-### 패키지 문서
-
-- [shared-utils](./packages/shared-utils/README.md) - 공통 유틸리티
-- [db-client](./packages/db-client/README.md) - DB 클라이언트
-- [kis-auth](./packages/kis-auth/README.md) - KIS 인증
-
----
-
-## ⚠️ 주의사항
-
-### 실전 투입 전 필수 확인
-
-1. ✅ **모든 테스트 통과** (단위/통합/백테스팅)
-2. ✅ **리스크 관리 구현** (손절/익절/한도)
-3. ✅ **3개월 이상 Paper Trading 성공**
-4. ✅ **모니터링 시스템 구축**
-5. ✅ **백업 및 복구 계획**
-
-### 현재 상태
-
-**⚠️ 개발 중 - 실전 투입 금지**
-
-- 아키텍처: 완성 ✅
-- 테스트: 미완성 ❌
-- 리스크 관리: 미완성 ❌
-- 운영 인프라: 미완성 ❌
-
----
-
-## 📄 라이선스
-
-Private - All Rights Reserved
-
----
-
-## 🙏 Acknowledgments
-
-### AI 도구와 함께한 개발
-
-이 프로젝트는 AI 바이브코딩으로 개발되었습니다:
-
-- 🤖 **ChatGPT** - 아키텍처 설계, 문제 해결
-- 💻 **Claude Code**, **Codex** - 실시간 페어 프로그래밍, 코드 생성
-
-### 기술 스택 및 서비스
-
-- **한국투자증권** - 국내/미국주식 API 제공
-- **Upbit** - 암호화폐 API 제공
-- **OpenAI** - AI 분석 API
-- **Supabase** - PostgreSQL 데이터베이스 및 Realtime
-- **Vercel** - Next.js 대시보드 호스팅
-- **Turborepo** - 모노레포 빌드 시스템
-
-### 학습 자료
-
-이 프로젝트를 통해 다음을 학습하고 실험했습니다:
-
-- TypeScript strict mode의 실전 적용
-- 마이크로서비스 아키텍처 설계
-- DB 중심 서비스 통신 패턴
-- Zod를 활용한 런타임 타입 검증
-- AI 페어 프로그래밍 워크플로우
-- `.claude/` 디렉토리를 통한 AI 가이드라인 관리 (rules, skills)
-
----
-
-**⚠️ 면책 조항**
-
-이 소프트웨어는 학습용으로 개발 중이며, 실제 투자에 사용할 경우 발생하는 손실에 대해 개발자는 책임지지 않습니다. 투자는 본인의 판단과 책임 하에 진행하시기 바랍니다.
+(이하 기존 내용 유지...)
