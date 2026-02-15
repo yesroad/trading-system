@@ -30,6 +30,18 @@ metadata:
 3. timestamp는 ISO 규칙(`nowIso`)을 따르는가
 4. nullable 컬럼 처리 누락이 없는가
 
+## Phase 1-7 신규 테이블 (2026-02)
+- `trading_signals`: AI + 기술적 분석 기반 거래 신호
+- `risk_events`: 리스크 위반 및 서킷 브레이커 이벤트
+- `ace_logs`: ACE 프레임워크 컴플라이언스 로깅
+- `market_breadth`: 시장 breadth 지표
+- `news_events`: 뉴스 임팩트 추적
+
+**db-client 함수:**
+- `insertTradingSignal()`, `getUnconsumedSignals()`, `markSignalConsumed()`
+- `logRiskEvent()`, `getRecentRiskEvents()`
+- `createACELog()`, `updateACEOutcome()`
+
 ## Notes
 - 테이블 상세 스키마는 실제 Supabase(또는 마이그레이션 파일)를 최신 소스로 본다.
 - 문서 예시는 참고용이며, 실행 전 실제 스키마와 반드시 대조한다.

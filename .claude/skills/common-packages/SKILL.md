@@ -40,6 +40,17 @@ metadata:
 - KIS 토큰 획득은 패키지 재사용
 - 서비스에서 토큰 발급 로직 재구현 금지
 
+## 4) @workspace/trading-utils (Phase 2)
+주요 사용:
+- 기술적 지표: `calculateMA`, `calculateMACD`, `calculateRSI`, `calculateATR`
+- 신뢰도 계산: `calculateConfidence`, `calculateMultiTimeframeConfidence`
+- 리스크: `calculatePositionSize`, `calculateATRStopLoss`
+- 레버리지/노출도: `validateLeverage`, `checkTotalExposure`
+
+규칙:
+- 모든 계산은 `big.js` 사용
+- 기술적 지표는 이 패키지 재사용, 직접 구현 금지
+
 ## New Service Checklist
 1. `package.json`에 필요한 `@workspace/*` 의존성 추가
 2. env 읽기 유틸 적용 (`requireEnv`)
