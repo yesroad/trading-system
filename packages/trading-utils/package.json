@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@types/big.js": "^6.2.2",
+    "@vitest/coverage-v8": "^2.1.8",
     "@workspace/eslint-config": "*",
     "eslint": "^9.39.2",
     "typescript": "^5.9.2",

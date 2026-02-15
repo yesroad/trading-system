@@ -1,7 +1,7 @@
 import Big from 'big.js';
 import { createLogger } from '@workspace/shared-utils';
 import { insertTradingSignal } from '@workspace/db-client';
-import { calculateATRStopLoss } from '@workspace/trading-utils';
+import { calculateATRStopLoss, calculateATRStopLossShort } from '@workspace/trading-utils';
 import type {
   SignalGenerationParams,
   GeneratedSignal,
@@ -43,13 +43,22 @@ function calculateSignalPrices(params: {
   }
 
   // 손절가: ATR 기반 계산 (2.0x ATR, 0.5%~5% 범위)
-  const stopLossResult = calculateATRStopLoss({
-    entry,
-    atr,
-    multiplier: 2.0,
-    minPct: 0.005,
-    maxPct: 0.05,
-  });
+  const stopLossResult =
+    direction === 'BUY'
+      ? calculateATRStopLoss({
+          entry,
+          atr,
+          multiplier: 2.0,
+          minPct: 0.005,
+          maxPct: 0.05,
+        })
+      : calculateATRStopLossShort({
+          entry,
+          atr,
+          multiplier: 2.0,
+          minPct: 0.005,
+          maxPct: 0.05,
+        });
 
   const stopLoss = stopLossResult.stopLoss;
 
