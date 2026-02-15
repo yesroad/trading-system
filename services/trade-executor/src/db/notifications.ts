@@ -6,7 +6,7 @@ export async function enqueueNotificationEvent(params: {
   sourceService: string;
   eventType: string;
   level: NotificationLevel;
-  market: 'KR' | 'US' | 'CRYPTO' | 'GLOBAL';
+  market: 'KRX' | 'US' | 'CRYPTO' | 'GLOBAL';
   title: string;
   message: string;
   payload?: Record<string, unknown>;

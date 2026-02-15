@@ -120,11 +120,11 @@ export interface GeneratedSignal {
   /** 최종 신뢰도 */
   confidence: number;
   /** 신호 생성 근거 */
-  reason: string;
+  reason: string | null;
   /** 기술적 지표 스냅샷 */
-  indicators: Record<string, unknown>;
+  indicators: Record<string, unknown> | null;
   /** AI 분석 ID */
-  ai_analysis_id: string;
+  ai_analysis_id: string | null;
   /** 생성 시각 */
   created_at: string;
 }

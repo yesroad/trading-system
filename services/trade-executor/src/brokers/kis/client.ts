@@ -71,7 +71,7 @@ export class KISClient implements BrokerClient {
   }): Promise<number | null> {
     const cfg = getKisConfig();
 
-    if (params.market !== 'KR') {
+    if (params.market !== 'KRX') {
       return null;
     }
 
@@ -113,7 +113,7 @@ export class KISClient implements BrokerClient {
     const dryRun = request.dryRun ?? TRADING_CONFIG.dryRun;
     const requestedPrice = request.price ?? null;
 
-    if (request.market !== 'KR') {
+    if (request.market !== 'KRX') {
       return {
         broker: this.broker,
         market: request.market,

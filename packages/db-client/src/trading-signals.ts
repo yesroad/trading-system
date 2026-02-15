@@ -48,7 +48,7 @@ export async function insertTradingSignal(
  * Optionally filter by market and minimum confidence
  */
 export async function getUnconsumedSignals(params?: {
-  market?: 'KRW' | 'KRX' | 'US';
+  market?: 'CRYPTO' | 'KRX' | 'US';
   minConfidence?: number;
 }): Promise<TradingSignal[]> {
   const supabase = getSupabase();

@@ -3,11 +3,11 @@ import { env } from '@workspace/shared-utils';
 export const BROKERS = ['KIS', 'UPBIT'] as const;
 export type Broker = (typeof BROKERS)[number];
 
-export const MARKETS = ['KR', 'US', 'CRYPTO'] as const;
+export const MARKETS = ['KRX', 'US', 'CRYPTO'] as const;
 export type Market = (typeof MARKETS)[number];
 
 const MARKET_TO_BROKER: Record<Market, Broker> = {
-  KR: 'KIS',
+  KRX: 'KIS',
   US: 'KIS',
   CRYPTO: 'UPBIT',
 };
