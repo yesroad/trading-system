@@ -1,0 +1,32 @@
+{
+  "name": "@workspace/trading-utils",
+  "version": "1.0.0",
+  "packageManager": "yarn@4.9.2",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "check-types": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "big.js": "^6.2.2"
+  },
+  "devDependencies": {
+    "@types/big.js": "^6.2.2",
+    "@workspace/eslint-config": "*",
+    "eslint": "^9.39.2",
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.8"
+  }
+}
