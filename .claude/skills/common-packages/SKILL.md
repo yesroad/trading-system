@@ -1,6 +1,6 @@
 ---
 name: common-packages
-description: @workspace/shared-utils, @workspace/db-client, @workspace/kis-auth 사용 패턴을 빠르게 적용할 때 사용.
+description: "@workspace/shared-utils, @workspace/db-client, @workspace/kis-auth 사용 패턴을 빠르게 적용할 때 사용"
 metadata:
   author: yesroad
   version: 1.1.0
