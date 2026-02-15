@@ -76,18 +76,45 @@ if (!validation.approved) {
 - 일일 손실 한도 도달
 - 시장 방향 반대 (M component)
 
-## 사용 예시
+## 구현 위치
+
+**실제 코드 위치:** `services/trade-executor/lib/signal-generator.ts`
 
 ```typescript
-import { generateSignal } from '@workspace/signal-generation';
-import { analyzeTechnical } from '@workspace/technical-analyst';
+// services/trade-executor/lib/signal-generator.ts
+import { getSupabase } from '@workspace/db-client';
+import Big from 'big.js';
 
-const analysis = await analyzeTechnical('BTC', chartData);
-const signal = await generateSignal(analysis);
+interface TradingSignal {
+  symbol: string;
+  type: 'BUY' | 'SELL' | 'HOLD';
+  entry: Big;
+  target: Big;
+  stopLoss: Big;
+  confidence: number;
+  reason: string;
+}
 
-if (signal) {
-  console.log('신호 생성:', signal.type, signal.confidence);
-  await executeTrade(signal);
+export async function generateSignalFromAnalysis(
+  analysis: AIAnalysisResult
+): Promise<TradingSignal | null> {
+  // 신뢰도 필터
+  if (analysis.confidence < 0.4) {
+    return null;
+  }
+
+  // 신호 생성 로직
+  const signal: TradingSignal = {
+    symbol: analysis.symbol,
+    type: analysis.decision,
+    entry: analysis.price_at_analysis,
+    target: calculateTarget(analysis),
+    stopLoss: calculateStopLoss(analysis),
+    confidence: analysis.confidence,
+    reason: analysis.reasoning,
+  };
+
+  return signal;
 }
 ```
 

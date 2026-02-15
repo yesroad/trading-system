@@ -74,12 +74,37 @@ CREATE TABLE ace_logs (
 );
 ```
 
-## 사용 예시
+## 구현 위치
+
+**실제 코드 위치:** `services/trade-executor/lib/ace-logger.ts`
 
 ```typescript
-import { logACE } from '@workspace/compliance-logging';
+// services/trade-executor/lib/ace-logger.ts
+import { getSupabase } from '@workspace/db-client';
 
+export async function logACE(params: {
+  symbol: string;
+  aspiration: Record<string, unknown>;
+  capability: Record<string, unknown>;
+  execution: Record<string, unknown>;
+}): Promise<void> {
+  const supabase = getSupabase();
+
+  const { error } = await supabase.from('ace_logs').insert({
+    symbol: params.symbol,
+    aspiration: params.aspiration,
+    capability: params.capability,
+    execution: params.execution,
+  });
+
+  if (error) {
+    throw new Error(`ACE logging failed: ${error.message}`);
+  }
+}
+
+// 사용 예시
 await logACE({
+  symbol: 'BTC',
   aspiration: {
     strategy: 'Elliott Wave reversal',
     targetProfit: '5%',

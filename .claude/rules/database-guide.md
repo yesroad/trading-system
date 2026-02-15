@@ -453,6 +453,247 @@ const { error: markError } = await supabase
   .eq('id', eventId);
 ```
 
+### 2.6 트레이딩 분석 및 리스크 관리
+
+#### `trading_signals` - 매매 신호
+
+| 컬럼 | 타입 | 설명 | 제약 |
+|------|------|------|------|
+| id | uuid | PK | PRIMARY KEY |
+| symbol | text | 심볼 | NOT NULL |
+| market | text | 시장 | NOT NULL, 'KRW' \| 'KRX' \| 'US' |
+| type | text | 신호 유형 | NOT NULL, 'BUY' \| 'SELL' \| 'HOLD' |
+| entry | decimal | 진입가 | NOT NULL |
+| target | decimal | 목표가 | NOT NULL |
+| stop_loss | decimal | 손절가 | NOT NULL |
+| confidence | decimal | 신뢰도 (0~1) | NOT NULL, >= 0, <= 1 |
+| reason | text | 근거 | NULL |
+| indicators | jsonb | 기술적 지표 | NULL |
+| created_at | timestamptz | 생성 시각 | DEFAULT NOW() |
+
+**인덱스:**
+- `idx_trading_signals_symbol_created_at` ON (symbol, created_at DESC)
+- `idx_trading_signals_type` ON (type)
+- `idx_trading_signals_confidence` ON (confidence DESC)
+
+**쿼리 예시:**
+```typescript
+// 최근 고신뢰도 BUY 신호 조회
+const { data } = await supabase
+  .from('trading_signals')
+  .select('*')
+  .eq('type', 'BUY')
+  .gte('confidence', 0.7)
+  .gte('created_at', new Date(Date.now() - 3600000).toISOString())
+  .order('confidence', { ascending: false });
+
+// 신호 생성
+const { error } = await supabase
+  .from('trading_signals')
+  .insert({
+    symbol: 'BTC',
+    market: 'KRW',
+    type: 'BUY',
+    entry: 93000,
+    target: 98000,
+    stop_loss: 91500,
+    confidence: 0.85,
+    reason: 'Elliott Wave 5파동 완성, RSI 과매도',
+    indicators: { rsi: 28, macd: { signal: 'bullish' } },
+  });
+```
+
+#### `ace_logs` - ACE 프레임워크 거래 로그
+
+| 컬럼 | 타입 | 설명 | 제약 |
+|------|------|------|------|
+| id | uuid | PK | PRIMARY KEY |
+| symbol | text | 심볼 | NOT NULL |
+| aspiration | jsonb | 목표 | NOT NULL |
+| capability | jsonb | 능력 | NOT NULL |
+| execution | jsonb | 실행 | NOT NULL |
+| outcome | jsonb | 결과 | NULL |
+| created_at | timestamptz | 생성 시각 | DEFAULT NOW() |
+| updated_at | timestamptz | 업데이트 시각 | DEFAULT NOW() |
+
+**인덱스:**
+- `idx_ace_logs_symbol` ON (symbol)
+- `idx_ace_logs_created_at` ON (created_at DESC)
+
+**쿼리 예시:**
+```typescript
+// ACE 로그 저장
+const { error } = await supabase
+  .from('ace_logs')
+  .insert({
+    symbol: 'AAPL',
+    aspiration: {
+      strategy: 'Elliott Wave reversal',
+      targetProfit: '5%',
+      maxLoss: '2%',
+      timeHorizon: '3일',
+    },
+    capability: {
+      signals: [{ type: 'technical', method: 'Elliott Wave', confidence: 0.65 }],
+      marketAnalysis: { breadth: 'Narrowing', sectorMomentum: 'Mixed' },
+      riskAssessment: { rr_ratio: 2.1, leverage: 1.5 },
+    },
+    execution: {
+      decision: 'BUY',
+      actualEntry: 150.50,
+      actualTarget: 158.00,
+      actualStopLoss: 147.50,
+      size: 10,
+      timestamp: new Date().toISOString(),
+      reason: '모든 리스크 체크 통과',
+    },
+  });
+
+// 결과 업데이트
+const { error: updateError } = await supabase
+  .from('ace_logs')
+  .update({
+    outcome: {
+      actualProfit: '4.8%',
+      actualDuration: '2일',
+      lessons: '목표가 근접 달성, 예상보다 빠른 진입',
+    },
+    updated_at: new Date().toISOString(),
+  })
+  .eq('id', logId);
+```
+
+#### `risk_events` - 리스크 이벤트
+
+| 컬럼 | 타입 | 설명 | 제약 |
+|------|------|------|------|
+| id | uuid | PK | PRIMARY KEY |
+| event_type | text | 이벤트 유형 | NOT NULL |
+| symbol | text | 심볼 | NULL |
+| violation_type | text | 위반 유형 | NULL |
+| violation_details | jsonb | 위반 상세 | NULL |
+| severity | text | 심각도 | NOT NULL, 'low' \| 'medium' \| 'high' \| 'critical' |
+| created_at | timestamptz | 생성 시각 | DEFAULT NOW() |
+
+**인덱스:**
+- `idx_risk_events_event_type` ON (event_type)
+- `idx_risk_events_severity` ON (severity)
+- `idx_risk_events_created_at` ON (created_at DESC)
+
+**쿼리 예시:**
+```typescript
+// 리스크 이벤트 기록
+const { error } = await supabase
+  .from('risk_events')
+  .insert({
+    event_type: 'leverage_violation',
+    symbol: 'BTC',
+    violation_type: 'max_leverage_exceeded',
+    violation_details: {
+      requested: 2.0,
+      maximum: 1.5,
+      denied: true,
+    },
+    severity: 'high',
+  });
+
+// 최근 critical 이벤트 조회
+const { data } = await supabase
+  .from('risk_events')
+  .select('*')
+  .eq('severity', 'critical')
+  .gte('created_at', new Date(Date.now() - 86400000).toISOString())
+  .order('created_at', { ascending: false });
+```
+
+#### `market_breadth` - 시장 폭 지표
+
+| 컬럼 | 타입 | 설명 | 제약 |
+|------|------|------|------|
+| id | uuid | PK | PRIMARY KEY |
+| date | date | 날짜 | NOT NULL |
+| market | text | 시장 | NOT NULL, 'US' \| 'KRX' |
+| sp500_breadth_pct | decimal | S&P 500 Breadth % | NULL |
+| uptrend_ratio_pct | decimal | 상승 추세 비율 % | NULL |
+| new_highs | integer | 신고가 종목 수 | NULL |
+| new_lows | integer | 신저가 종목 수 | NULL |
+| created_at | timestamptz | 생성 시각 | DEFAULT NOW() |
+
+**인덱스:**
+- `idx_market_breadth_date` ON (date DESC)
+- `idx_market_breadth_market_date` ON (market, date DESC)
+
+**유니크 제약:**
+- `uq_market_breadth_market_date` UNIQUE (market, date)
+
+**쿼리 예시:**
+```typescript
+// Breadth 데이터 저장
+const { error } = await supabase
+  .from('market_breadth')
+  .upsert({
+    date: '2026-02-15',
+    market: 'US',
+    sp500_breadth_pct: 75.5,
+    uptrend_ratio_pct: 55.2,
+    new_highs: 45,
+    new_lows: 12,
+  }, {
+    onConflict: 'market,date',
+  });
+
+// 최근 30일 Breadth 추세 조회
+const { data } = await supabase
+  .from('market_breadth')
+  .select('*')
+  .eq('market', 'US')
+  .gte('date', new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0])
+  .order('date', { ascending: false });
+```
+
+#### `news_events` - 뉴스 이벤트
+
+| 컬럼 | 타입 | 설명 | 제약 |
+|------|------|------|------|
+| id | uuid | PK | PRIMARY KEY |
+| title | text | 제목 | NOT NULL |
+| summary | text | 요약 | NULL |
+| source | text | 출처 | NULL |
+| impact_score | integer | 임팩트 점수 (1-10) | CHECK (impact_score >= 1 AND impact_score <= 10) |
+| affected_sectors | text[] | 영향받은 섹터 | NULL |
+| price_impact_pct | decimal | 가격 영향 % | NULL |
+| published_at | timestamptz | 발행 시각 | NOT NULL |
+| created_at | timestamptz | 생성 시각 | DEFAULT NOW() |
+
+**인덱스:**
+- `idx_news_events_published_at` ON (published_at DESC)
+- `idx_news_events_impact_score` ON (impact_score DESC)
+- `idx_news_events_source` ON (source)
+
+**쿼리 예시:**
+```typescript
+// 뉴스 이벤트 저장
+const { error } = await supabase
+  .from('news_events')
+  .insert({
+    title: 'FOMC 금리 동결 결정',
+    summary: '연준이 기준금리를 현 수준으로 유지',
+    source: 'Federal Reserve',
+    impact_score: 9,
+    affected_sectors: ['Financials', 'Real Estate', 'Utilities'],
+    price_impact_pct: 2.5,
+    published_at: '2026-02-15T14:00:00Z',
+  });
+
+// 최근 10일 고임팩트 뉴스 조회
+const { data } = await supabase
+  .from('news_events')
+  .select('*')
+  .gte('impact_score', 7)
+  .gte('published_at', new Date(Date.now() - 10 * 86400000).toISOString())
+  .order('published_at', { ascending: false });
+```
+
 ## 3. 공통 쿼리 패턴
 
 ### 3.1 에러 처리

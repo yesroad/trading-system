@@ -83,17 +83,28 @@ CREATE TABLE risk_events (
 - `references/atr-calculation.md`: ATR 상세
 - `references/leverage-rules.md`: 레버리지 근거
 
-## 사용 예시
+## 구현 위치
+
+**실제 코드 위치:** `services/trade-executor/lib/risk.ts`
+
+**예제 코드:** `.claude/skills/risk-management/examples/`
+- `risk-calculator.ts`: 포지션 사이징 계산
+- `atr-stop-loss.ts`: ATR 기반 손절매
+- `circuit-breaker.ts`: 일일 손실 한도 체크
 
 ```typescript
-import { validateNewPosition } from '@workspace/risk-management';
+// services/trade-executor/lib/risk.ts
+import { validateNewPosition } from './risk-calculator';
 
 const result = await validateNewPosition({
   symbol: 'BTC',
+  broker: 'UPBIT',
+  market: 'KRW',
   entry: new Big(93000),
-  target: new Big(98000),
   stopLoss: new Big(91500),
-  leverage: new Big(1.5),
+  accountSize: new Big(100000),
+  currentPositions: [],
+  riskPercentage: 0.01,
 });
 
 if (!result.approved) {
