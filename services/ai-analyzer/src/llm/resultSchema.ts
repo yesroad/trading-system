@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { MARKET_MODES } from '../config/schedule.js';
 
-export const MarketSchema = z.enum(['KR', 'US', 'CRYPTO']);
+export const MarketSchema = z.enum(['KRX', 'US', 'CRYPTO']);
 export type Market = z.infer<typeof MarketSchema>;
 
 export const MarketModeSchema = z.enum(MARKET_MODES);
 export type MarketMode = z.infer<typeof MarketModeSchema>;
 
-export const AiDecisionSchema = z.enum(['ALLOW', 'CAUTION', 'BLOCK']);
+export const AiDecisionSchema = z.enum(['BUY', 'SELL', 'HOLD', 'SKIP']);
 export type AiDecision = z.infer<typeof AiDecisionSchema>;
 
 // ✅ LLM은 "시장 1회 호출"에 대해 targets별 결과 배열을 반환한다.

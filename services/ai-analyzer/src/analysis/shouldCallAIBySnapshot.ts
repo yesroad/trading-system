@@ -28,7 +28,7 @@ function normalizeSymbols(targets: TargetLike[]): string[] {
 
 /** 시장별로 어떤 ingestion job이 "의미있는 변화"인지 정의 */
 function getMarketJobs(market: Market): string[] {
-  if (market === 'KR') return ['kis-equity'];
+  if (market === 'KRX') return ['kis-equity'];
   if (market === 'US') return ['yfinance-equity'];
   return ['upbit-candle'];
 }

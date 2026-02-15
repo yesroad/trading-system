@@ -29,7 +29,7 @@ function uniqueStrings(arr: string[]): string[] {
  * 시장별로 “어떤 서비스/잡을 봐야 하는지”를 여기서 고정
  */
 function getMarketDeps(market: Market): { services: string[]; jobs: string[] } {
-  if (market === Market.KR) {
+  if (market === Market.KRX) {
     return {
       services: ['kis-collector', 'ai-analyzer', 'trade-executor'],
       jobs: ['kis-equity'],

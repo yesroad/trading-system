@@ -23,7 +23,7 @@ function shouldRunBySession(mode: MarketMode): boolean {
 async function main() {
   const markets: Market[] = [];
 
-  if (env.AI_ENABLE_KR) markets.push(Market.KR);
+  if (env.AI_ENABLE_KR) markets.push(Market.KRX);
   if (env.AI_ENABLE_US) markets.push(Market.US);
   if (env.AI_ENABLE_CRYPTO) markets.push(Market.CRYPTO);
 

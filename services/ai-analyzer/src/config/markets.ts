@@ -2,9 +2,9 @@
  * Market 식별자
  * =============================== */
 export enum Market {
-  KR = 'KR',
-  US = 'US',
-  CRYPTO = 'CRYPTO',
+  KRX = 'KRX',     // 국내 주식 (KOSPI/KOSDAQ)
+  US = 'US',       // 미국 주식 (NYSE/NASDAQ)
+  CRYPTO = 'CRYPTO', // 암호화폐 (Upbit KRW 마켓)
 }
 
 /** ===============================
@@ -21,7 +21,7 @@ export type MarketConfig = {
  * 시장 설정 맵
  * =============================== */
 export const MARKET_CONFIG: Record<Market, MarketConfig> = {
-  [Market.KR]: {
+  [Market.KRX]: {
     label: '국내 주식',
     hasTradingHours: true,
     timezone: 'Asia/Seoul',

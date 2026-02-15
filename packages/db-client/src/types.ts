@@ -6,7 +6,7 @@ export type { Nullable } from '@workspace/shared-utils';
 export interface TradingSignal {
   id: string;
   symbol: string;
-  market: 'KRW' | 'KRX' | 'US';
+  market: 'CRYPTO' | 'KRX' | 'US';
   broker: 'KIS' | 'UPBIT';
   signal_type: 'BUY' | 'SELL' | 'HOLD';
   entry_price: string;
@@ -22,7 +22,7 @@ export interface TradingSignal {
 
 export interface InsertTradingSignalParams {
   symbol: string;
-  market: 'KRW' | 'KRX' | 'US';
+  market: 'CRYPTO' | 'KRX' | 'US';
   broker: 'KIS' | 'UPBIT';
   signal_type: 'BUY' | 'SELL' | 'HOLD';
   entry_price: string;
@@ -61,7 +61,7 @@ export interface LogRiskEventParams {
 export interface ACELog {
   id: string;
   symbol: string;
-  market: 'KRW' | 'KRX' | 'US';
+  market: 'CRYPTO' | 'KRX' | 'US';
   broker: 'KIS' | 'UPBIT';
   aspiration: Record<string, unknown>;
   capability: Record<string, unknown>;
@@ -74,7 +74,7 @@ export interface ACELog {
 
 export interface CreateACELogParams {
   symbol: string;
-  market: 'KRW' | 'KRX' | 'US';
+  market: 'CRYPTO' | 'KRX' | 'US';
   broker: 'KIS' | 'UPBIT';
   aspiration: Record<string, unknown>;
   capability: Record<string, unknown>;

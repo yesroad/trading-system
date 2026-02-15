@@ -102,7 +102,7 @@ export function getMarketMode(market: Market, now: DateTime = DateTime.now()): M
   if (isWeekend(dow)) return 'OFF';
 
   const nowMin = toMin(hour, minute);
-  const windows = market === Market.KR ? KR_WINDOWS : US_WINDOWS;
+  const windows = market === Market.KRX ? KR_WINDOWS : US_WINDOWS;
 
   if (inRange(nowMin, windows.preOpen.start, windows.preOpen.end)) return 'PRE_OPEN';
   if (inRange(nowMin, windows.intraday.start, windows.intraday.end)) return 'INTRADAY';
