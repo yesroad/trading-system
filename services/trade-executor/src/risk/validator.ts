@@ -1,6 +1,6 @@
 import Big from 'big.js';
 import { createLogger } from '@workspace/shared-utils';
-import { logRiskEvent } from '@workspace/db-client';
+import { logRiskEvent, checkEventRisk, getRecommendation } from '@workspace/db-client';
 import { checkCircuitBreaker } from './circuit-breaker.js';
 import { calculatePositionSizeForBroker } from './position-sizer.js';
 import { validateLeverage, validatePortfolioLeverage } from './leverage-manager.js';
@@ -16,10 +16,11 @@ const logger = createLogger('risk-validator');
  *
  * 검증 항목:
  * 1. 서킷 브레이커 체크 (-5% 일일 손실 한도)
- * 2. 포지션 크기 계산 (1% 리스크 기반)
- * 3. 레버리지 검증 (심볼별 + 포트폴리오)
- * 4. 노출도 검증 (심볼별 25%, 총 100%)
- * 5. 손절 범위 검증 (0.5% ~ 5%)
+ * 2. 이벤트 리스크 체크 (실적 발표 등)
+ * 3. 포지션 크기 계산 (1% 리스크 기반)
+ * 4. 레버리지 검증 (심볼별 + 포트폴리오)
+ * 5. 노출도 검증 (심볼별 25%, 총 100%)
+ * 6. 손절 범위 검증 (0.5% ~ 5%)
  *
  * @param params - 리스크 검증 파라미터
  * @returns 종합 리스크 검증 결과
@@ -64,9 +65,48 @@ export async function validateTradeRisk(params: RiskValidationParams): Promise<R
     }
 
     // ========================================
-    // 2. 포지션 크기 계산
+    // 2. 이벤트 리스크 체크
     // ========================================
-    logger.debug('2. 포지션 크기 계산 중...');
+    logger.debug('2. 이벤트 리스크 체크 중...');
+    const eventRisk = await checkEventRisk(symbol);
+
+    if (eventRisk.hasRisk) {
+      const recommendation = getRecommendation(eventRisk.riskLevel);
+
+      if (recommendation === 'block') {
+        violations.push(`고위험 이벤트로 거래 차단: ${eventRisk.reason}`);
+        logger.warn('고위험 이벤트로 거래 차단', {
+          symbol,
+          eventRisk,
+        });
+
+        return {
+          approved: false,
+          positionSize: new Big(0),
+          positionValue: new Big(0),
+          violations,
+          warnings,
+          circuitBreakerState,
+          eventRisk,
+        };
+      } else if (recommendation === 'reduce_size') {
+        warnings.push(`중위험 이벤트로 포지션 크기 50% 축소: ${eventRisk.reason}`);
+        logger.warn('중위험 이벤트로 포지션 크기 축소 예정', {
+          symbol,
+          eventRisk,
+        });
+      } else {
+        logger.debug('이벤트 리스크 낮음', {
+          symbol,
+          eventRisk,
+        });
+      }
+    }
+
+    // ========================================
+    // 3. 포지션 크기 계산
+    // ========================================
+    logger.debug('3. 포지션 크기 계산 중...');
     const positionSizingResult = await calculatePositionSizeForBroker(
       {
         symbol,
@@ -80,6 +120,17 @@ export async function validateTradeRisk(params: RiskValidationParams): Promise<R
     positionSize = positionSizingResult.positionSize;
     positionValue = positionSizingResult.positionValue;
 
+    // 이벤트 리스크에 따른 포지션 크기 조정
+    if (eventRisk.hasRisk && getRecommendation(eventRisk.riskLevel) === 'reduce_size') {
+      positionSize = positionSize.times(0.5);
+      positionValue = positionValue.times(0.5);
+      logger.info('이벤트 리스크로 포지션 크기 50% 축소', {
+        symbol,
+        adjustedSize: positionSize.toString(),
+        adjustedValue: positionValue.toString(),
+      });
+    }
+
     if (positionSizingResult.limitedByMaxExposure) {
       warnings.push('최대 포지션 크기 제한 적용 (계좌의 25%)');
     }
@@ -90,9 +141,9 @@ export async function validateTradeRisk(params: RiskValidationParams): Promise<R
     });
 
     // ========================================
-    // 3. 레버리지 검증
+    // 4. 레버리지 검증
     // ========================================
-    logger.debug('3. 레버리지 검증 중...');
+    logger.debug('4. 레버리지 검증 중...');
 
     // 3-1. 심볼별 레버리지
     const leverageValidation = await validateLeverage({
@@ -116,9 +167,9 @@ export async function validateTradeRisk(params: RiskValidationParams): Promise<R
     }
 
     // ========================================
-    // 4. 노출도 검증
+    // 5. 노출도 검증
     // ========================================
-    logger.debug('4. 노출도 검증 중...');
+    logger.debug('5. 노출도 검증 중...');
 
     // 4-1. 심볼별 노출도
     const symbolExposureValidation = await checkSymbolExposure({
@@ -142,9 +193,9 @@ export async function validateTradeRisk(params: RiskValidationParams): Promise<R
     }
 
     // ========================================
-    // 5. 손절 범위 검증
+    // 6. 손절 범위 검증
     // ========================================
-    logger.debug('5. 손절 범위 검증 중...');
+    logger.debug('6. 손절 범위 검증 중...');
     const stopLossDistance = entry.minus(stopLoss).abs();
     const stopLossPct = stopLossDistance.div(entry);
 
@@ -157,7 +208,7 @@ export async function validateTradeRisk(params: RiskValidationParams): Promise<R
     }
 
     // ========================================
-    // 6. 결과 종합
+    // 7. 결과 종합
     // ========================================
     const approved = violations.length === 0;
 

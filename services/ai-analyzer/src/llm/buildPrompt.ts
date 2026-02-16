@@ -2,12 +2,25 @@ import type { Market } from '../config/markets.js';
 import type { MarketMode } from '../config/schedule.js';
 import type { SelectedTarget } from '../analysis/selectTargets.js';
 
+export type MarketContext = {
+  upcomingEvents: Array<{
+    title: string;
+    impactScore: number;
+    publishedAt: string;
+    affectedSectors: string[] | null;
+  }>;
+  hasHighImpactEventToday: boolean;
+  hasHighImpactEventTomorrow: boolean;
+  eventSummary: string;
+};
+
 export type BuildPromptParams = {
   market: Market;
   mode: MarketMode;
   snapshot: unknown;
   targets: SelectedTarget[];
   nowIso: string; // 호출 시각(UTC ISO)
+  marketContext?: MarketContext;
 };
 
 function safeJson(value: unknown): string {
@@ -24,7 +37,28 @@ function safeJson(value: unknown): string {
  * - targets별 결과 배열(results[])을 반드시 반환
  */
 export function buildPrompt(params: BuildPromptParams): string {
-  const { market, mode, snapshot, targets, nowIso } = params;
+  const { market, mode, snapshot, targets, nowIso, marketContext } = params;
+
+  // 마켓 컨텍스트 섹션 생성
+  const marketContextSection = marketContext
+    ? `
+[경제 이벤트 및 실적 발표]
+- 요약: ${marketContext.eventSummary}
+- 오늘 고임팩트 이벤트: ${marketContext.hasHighImpactEventToday ? '있음' : '없음'}
+- 내일 고임팩트 이벤트: ${marketContext.hasHighImpactEventTomorrow ? '있음' : '없음'}
+${
+  marketContext.upcomingEvents.length > 0
+    ? `- 상위 이벤트:\n${marketContext.upcomingEvents
+        .slice(0, 5)
+        .map(
+          (e) =>
+            `  * ${e.title} (임팩트: ${e.impactScore}/10, 날짜: ${e.publishedAt}, 영향 섹터: ${e.affectedSectors?.join(', ') || '전체'})`
+        )
+        .join('\n')}`
+    : ''
+}
+`
+    : '';
 
   return `
 너는 자동매매 시스템의 "리스크 분석 AI"다.
@@ -32,7 +66,7 @@ export function buildPrompt(params: BuildPromptParams): string {
 
 [현재 시각]
 - now_utc: ${nowIso}
-
+${marketContextSection}
 [스냅샷 데이터]
 - snapshot_json: ${safeJson(snapshot)}
 

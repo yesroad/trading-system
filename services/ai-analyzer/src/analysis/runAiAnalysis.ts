@@ -10,6 +10,7 @@ import { canCallLLM, recordLLMCall } from '../llm/aiBudget.js';
 import { saveAiResults } from '../db/saveAiResults.js';
 import { shouldCallAIBySnapshot } from './shouldCallAIBySnapshot.js';
 import { nowIso } from '@workspace/shared-utils';
+import { buildMarketContext } from '@workspace/db-client';
 
 export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<void> {
   console.log(`[AI] ${market} | ${mode} 시작`);
@@ -47,12 +48,19 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
     return;
   }
 
+  // ✅ 마켓 컨텍스트 수집 (경제 이벤트, 실적 발표 등)
+  const marketContext = await buildMarketContext();
+  console.log(
+    `[AI] 마켓 컨텍스트 수집 완료 | upcomingEvents=${marketContext.upcomingEvents.length}개`
+  );
+
   const prompt = buildPrompt({
     market,
     mode,
     snapshot,
     targets,
     nowIso: nowIso(),
+    marketContext,
   });
 
   console.log(`[AI] LLM 호출 시작 | market=${market} | mode=${mode}`);

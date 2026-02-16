@@ -107,6 +107,20 @@ export interface RiskValidationParams {
 }
 
 /**
+ * 이벤트 리스크 결과 (재export)
+ */
+export interface EventRiskResult {
+  hasRisk: boolean;
+  riskLevel: 'low' | 'medium' | 'high';
+  reason: string;
+  event: {
+    title: string;
+    publishedAt: string;
+    impactScore: number;
+  } | null;
+}
+
+/**
  * 종합 리스크 검증 결과
  */
 export interface RiskValidationResult {
@@ -126,6 +140,8 @@ export interface RiskValidationResult {
   leverageValidation?: LeverageValidationResult;
   /** 노출도 검증 결과 */
   exposureValidation?: ExposureValidationResult;
+  /** 이벤트 리스크 결과 */
+  eventRisk?: EventRiskResult;
 }
 
 /**

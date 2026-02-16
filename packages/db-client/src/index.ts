@@ -15,3 +15,6 @@ export * from './news-events.js';
 // AI Monitoring - Phase 3 Enhancement
 export * from './ai-budget.js';
 export * from './signal-failures.js';
+
+// Market Calendar Integration
+export * from './market-calendar.js';
