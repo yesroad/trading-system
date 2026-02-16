@@ -16,12 +16,12 @@
 
 ## .claude/ 규칙 문서
 
-### [immutable-rules.md](./.rules/immutable-rules.md)
+### [immutable-rules.md](./rules/immutable-rules.md)
 - **목적**: 절대 변경하면 안 되는 핵심 규칙
 - **내용**: 보안, 아키텍처, 타입/검증, 환경변수, 숫자/날짜, DB 접근
 - **우선순위**: 최상위 (AGENTS.md 다음)
 
-### [architecture-guide.md](./.rules/architecture-guide.md)
+### [architecture-guide.md](./rules/architecture-guide.md)
 - **목적**: 시스템 아키텍처 상세 설명
 - **내용**:
   - 전체 시스템 아키텍처
@@ -34,7 +34,7 @@
   - 배포 및 운영
 - **대상**: 아키텍처 설계, 서비스 간 통신 이해 필요 시
 
-### [database-guide.md](./.rules/database-guide.md)
+### [database-guide.md](./rules/database-guide.md)
 - **목적**: Supabase 데이터베이스 스키마 및 접근 패턴
 - **내용**:
   - 데이터베이스 개요 및 연결 방법
