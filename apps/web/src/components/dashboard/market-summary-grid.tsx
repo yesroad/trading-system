@@ -1,9 +1,14 @@
+import * as React from 'react';
 import type { OpsSnapshot } from '@/types/api/snapshot';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, formatLocalDateTime, toPercentString } from './format';
 
-export function MarketSummaryGrid({ snapshot }: { snapshot: OpsSnapshot }) {
+export const MarketSummaryGrid = React.memo(function MarketSummaryGrid({
+  snapshot,
+}: {
+  snapshot: OpsSnapshot;
+}) {
   const statusText = (status: 'MARKET' | 'SKIPPED' | 'STOP'): string => {
     if (status === 'MARKET') return '장중';
     if (status === 'SKIPPED') return '스킵(장종료)';
@@ -82,4 +87,4 @@ export function MarketSummaryGrid({ snapshot }: { snapshot: OpsSnapshot }) {
       })}
     </div>
   );
-}
+});

@@ -29,6 +29,7 @@
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "recharts": "^3.7.0",
     "tailwind-merge": "^3.4.0",
     "yarn": "^1.22.22"
   },
@@ -42,6 +43,7 @@
     "@types/qs": "^6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/recharts": "^2.0.1",
     "@workspace/eslint-config": "*",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",

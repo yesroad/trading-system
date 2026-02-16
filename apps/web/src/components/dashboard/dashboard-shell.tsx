@@ -8,6 +8,9 @@ import { useSnapshotQuery } from '@/queries/snapshot';
 import { MarketSummaryGrid } from './market-summary-grid';
 import { MarketTabs } from './market-tabs';
 import { PerformancePanel } from './performance-panel';
+import { TradingSignalsPanel } from './trading-signals-panel';
+import { RiskAlertsWidget } from './risk-alerts-widget';
+import { TradeHistoryTable } from './trade-history-table';
 import { SymbolAccordionList } from './symbol-accordion-list';
 import { formatCurrency, toPercentString } from './format';
 import { ROUTE_TO_MARKET, type DashboardRouteKey } from './types';
@@ -52,6 +55,36 @@ export function DashboardShell({ routeKey }: { routeKey: DashboardRouteKey }) {
     [pathname, router, searchParams],
   );
 
+  const handlePerformancePeriodChange = React.useCallback(
+    (next: keyof SnapshotPerformance) => {
+      updateSearch({
+        period: next === 'DAILY' ? null : next,
+        page: null,
+        open: null,
+      });
+    },
+    [updateSearch],
+  );
+
+  const handlePageChange = React.useCallback(
+    (next: number) => {
+      updateSearch({
+        page: next <= 1 ? null : String(next),
+        open: null,
+      });
+    },
+    [updateSearch],
+  );
+
+  const handleOpenChange = React.useCallback(
+    (next: string | null) => {
+      updateSearch({
+        open: next,
+      });
+    },
+    [updateSearch],
+  );
+
   const snapshotQuery = useSnapshotQuery({ refetchInterval: 10_000 });
 
   if (snapshotQuery.isLoading) {
@@ -78,27 +111,6 @@ export function DashboardShell({ routeKey }: { routeKey: DashboardRouteKey }) {
   const marketSummary = snapshot.byMarket[market];
   const marketPositions = snapshot.positions.filter((item) => item.market === market);
 
-  const handlePerformancePeriodChange = (next: keyof SnapshotPerformance) => {
-    updateSearch({
-      period: next === 'DAILY' ? null : next,
-      page: null,
-      open: null,
-    });
-  };
-
-  const handlePageChange = (next: number) => {
-    updateSearch({
-      page: next <= 1 ? null : String(next),
-      open: null,
-    });
-  };
-
-  const handleOpenChange = (next: string | null) => {
-    updateSearch({
-      open: next,
-    });
-  };
-
   return (
     <div className="space-y-4">
       <MarketSummaryGrid snapshot={snapshot} />
@@ -107,6 +119,12 @@ export function DashboardShell({ routeKey }: { routeKey: DashboardRouteKey }) {
         onChange={handlePerformancePeriodChange}
         performance={snapshot.performance}
       />
+
+      {/* 리스크 알림 위젯 */}
+      <RiskAlertsWidget />
+
+      {/* AI 매매 신호 패널 */}
+      <TradingSignalsPanel />
 
       <Card>
         <CardContent className="p-4">
@@ -177,6 +195,9 @@ export function DashboardShell({ routeKey }: { routeKey: DashboardRouteKey }) {
         onPageChange={handlePageChange}
         onOpenChange={handleOpenChange}
       />
+
+      {/* 거래 히스토리 테이블 */}
+      <TradeHistoryTable />
     </div>
   );
 }
