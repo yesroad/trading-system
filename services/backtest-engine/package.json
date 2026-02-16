@@ -1,0 +1,32 @@
+{
+  "name": "backtest-engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/cli.ts",
+    "start": "node dist/cli.js",
+    "build": "tsc",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts",
+    "backtest": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@workspace/db-client": "workspace:*",
+    "@workspace/shared-utils": "workspace:*",
+    "@workspace/trading-utils": "workspace:*",
+    "big.js": "^6.2.2",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "luxon": "^3.5.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/big.js": "^6.2.2",
+    "@types/luxon": "^3.4.2",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
