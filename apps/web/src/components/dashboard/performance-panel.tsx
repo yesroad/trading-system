@@ -1,11 +1,13 @@
+import * as React from 'react';
 import Big from 'big.js';
 import type { SnapshotPerformance } from '@/types/api/snapshot';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, toPercentString } from './format';
 import { PERFORMANCE_PERIODS } from './types';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-export function PerformancePanel({
+export const PerformancePanel = React.memo(function PerformancePanel({
   period,
   onChange,
   performance,
@@ -76,7 +78,34 @@ export function PerformancePanel({
             </p>
           </div>
         </div>
+
+        {/* 승률 차트 */}
+        {metrics.totalTrades > 0 && (
+          <div className="mt-4">
+            <p className="mb-2 text-xs text-slate-500">승률 분포</p>
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: '수익', value: metrics.winTrades },
+                    { name: '손실', value: metrics.lossTrades },
+                  ]}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={70}
+                  label={({ name, value }) => `${name}: ${value}`}
+                >
+                  <Cell fill="#10b981" />
+                  <Cell fill="#f43f5e" />
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
-}
+});
