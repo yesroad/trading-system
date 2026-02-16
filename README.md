@@ -6,6 +6,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org/)
 [![Turborepo](https://img.shields.io/badge/Turborepo-2.x-orange.svg)](https://turbo.build/)
 [![Tests](https://img.shields.io/badge/Tests-294%20passing-brightgreen.svg)](#)
+[![Claude Code](https://img.shields.io/badge/AI-Claude_Code-purple.svg)](https://claude.ai/)
 
 ---
 
