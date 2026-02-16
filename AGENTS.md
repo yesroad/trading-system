@@ -30,6 +30,8 @@ trading-system/
 │   ├── shared-utils/            # env/date/logger/backoff 공통 유틸
 │   ├── db-client/               # Supabase 공통 DB 접근 레이어
 │   ├── kis-auth/                # KIS 토큰 발급/캐시 관리
+│   ├── trading-utils/           # 신호 생성/기술 지표/리스크 계산
+│   ├── stock-screener/          # 종목 스크리닝 (CANSLIM 등)
 │   ├── eslint-config/           # 공용 ESLint 규칙
 │   └── typescript-config/       # 공용 tsconfig
 └── services/
@@ -38,7 +40,9 @@ trading-system/
     ├── yf-collector/            # 미장 바 수집
     ├── ai-analyzer/             # AI 분석 결과 생성
     ├── trade-executor/          # 매매 의사결정/주문 실행
-    └── monitoring-bot/          # 상태 점검/알림 전송
+    ├── monitoring-bot/          # 상태 점검/알림 전송
+    ├── backtest-engine/         # 전략 백테스팅
+    └── market-calendar/         # 시장 이벤트 관리
 ```
 
 데이터 흐름: `collectors -> Supabase -> ai-analyzer/trade-executor/monitoring-bot`.
@@ -77,6 +81,8 @@ trading-system/
 - `@workspace/shared-utils`: env/date/logger/backoff/Nullable
 - `@workspace/db-client`: 공통 Supabase 접근 함수
 - `@workspace/kis-auth`: KIS TokenManager 및 오류 타입
+- `@workspace/trading-utils`: 신호 생성/기술 지표/리스크 계산
+- `@workspace/stock-screener`: 종목 스크리닝 엔진
 - `@workspace/eslint-config`: 공용 lint 규칙
 - `@workspace/typescript-config`: 공용 tsconfig preset
 
@@ -92,9 +98,13 @@ trading-system/
 - **[AI Analyzer](./services/ai-analyzer/README.md)** - AI 분석 파이프라인 작업
 - **[Trade Executor](./services/trade-executor/trading-rules.md)** - 매매 룰/주문 실행 작업
 - **[Monitoring Bot](./services/monitoring-bot/README.md)** - 알림/운영 모니터링 작업
+- **[Backtest Engine](./services/backtest-engine/README.md)** - 전략 백테스팅 작업
+- **[Market Calendar](./services/market-calendar/README.md)** - 시장 이벤트 관리 작업
 - **[DB Client](./packages/db-client/package.json)** - 공통 DB 레이어 변경 작업
 - **[Shared Utils](./packages/shared-utils/package.json)** - 공통 유틸 변경 작업
 - **[KIS Auth](./packages/kis-auth/README.md)** - KIS 인증 토큰 작업
+- **[Trading Utils](./packages/trading-utils/README.md)** - 신호/지표/리스크 계산 작업
+- **[Stock Screener](./packages/stock-screener/README.md)** - 종목 스크리닝 작업
 - **[ESLint Config](./packages/eslint-config/AGENTS.md)** - lint 규칙 조정
 - **[TypeScript Config](./packages/typescript-config/AGENTS.md)** - tsconfig 조정
 
