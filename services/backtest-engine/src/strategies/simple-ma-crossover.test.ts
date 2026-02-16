@@ -32,15 +32,15 @@ describe('Simple MA Crossover 전략', () => {
   it('골든 크로스 시 BUY 신호', () => {
     // shortPeriod = 3, longPeriod = 5
     //
-    // 이전 시점 (7개 캔들):
+    // 이전 시점 (9개 캔들): [5, 5, 5, 5, 5, 5, 5, 5, 5]
     //   shortMA (최근 3개): (5, 5, 5) / 3 = 5
     //   longMA (최근 5개): (5, 5, 5, 5, 5) / 5 = 5
     //   단기 5 <= 장기 5 ✓
     //
-    // 현재 시점 (8개 캔들):
-    //   shortMA (최근 3개): (5, 10, 20) / 3 = 11.67
-    //   longMA (최근 5개): (5, 5, 5, 10, 20) / 5 = 9
-    //   단기 11.67 > 장기 9 ✓
+    // 현재 시점 (10개 캔들): [5, 5, 5, 5, 5, 5, 5, 5, 5, 10]
+    //   shortMA (최근 3개): (5, 5, 10) / 3 = 6.67
+    //   longMA (최근 5개): (5, 5, 5, 5, 10) / 5 = 6
+    //   단기 6.67 > 장기 6 ✓
     //
     // → 골든 크로스 발생!
     const candles: Candle[] = [
@@ -50,8 +50,10 @@ describe('Simple MA Crossover 전략', () => {
       createCandle(5, '2025-01-04'),
       createCandle(5, '2025-01-05'),
       createCandle(5, '2025-01-06'),
-      createCandle(10, '2025-01-07'),
-      createCandle(20, '2025-01-08'),
+      createCandle(5, '2025-01-07'),
+      createCandle(5, '2025-01-08'),
+      createCandle(5, '2025-01-09'),
+      createCandle(10, '2025-01-10'),
     ];
 
     const signal = strategy.generateSignal(candles, null);
@@ -63,15 +65,15 @@ describe('Simple MA Crossover 전략', () => {
   it('데드 크로스 시 SELL 신호', () => {
     // shortPeriod = 3, longPeriod = 5
     //
-    // 이전 시점 (7개 캔들):
+    // 이전 시점 (9개 캔들): [20, 20, 20, 20, 20, 20, 20, 20, 20]
     //   shortMA (최근 3개): (20, 20, 20) / 3 = 20
     //   longMA (최근 5개): (20, 20, 20, 20, 20) / 5 = 20
     //   단기 20 >= 장기 20 ✓
     //
-    // 현재 시점 (8개 캔들):
-    //   shortMA (최근 3개): (20, 5, 2) / 3 = 9
-    //   longMA (최근 5개): (20, 20, 20, 5, 2) / 5 = 13.4
-    //   단기 9 < 장기 13.4 ✓
+    // 현재 시점 (10개 캔들): [20, 20, 20, 20, 20, 20, 20, 20, 20, 5]
+    //   shortMA (최근 3개): (20, 20, 5) / 3 = 15
+    //   longMA (최근 5개): (20, 20, 20, 20, 5) / 5 = 17
+    //   단기 15 < 장기 17 ✓
     //
     // → 데드 크로스 발생!
     const candles: Candle[] = [
@@ -81,8 +83,10 @@ describe('Simple MA Crossover 전략', () => {
       createCandle(20, '2025-01-04'),
       createCandle(20, '2025-01-05'),
       createCandle(20, '2025-01-06'),
-      createCandle(5, '2025-01-07'),
-      createCandle(2, '2025-01-08'),
+      createCandle(20, '2025-01-07'),
+      createCandle(20, '2025-01-08'),
+      createCandle(20, '2025-01-09'),
+      createCandle(5, '2025-01-10'),
     ];
 
     const position = {

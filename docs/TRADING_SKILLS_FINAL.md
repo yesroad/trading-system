@@ -5,8 +5,9 @@
 ### ✅ 완료된 스킬 (13개)
 
 #### Tier 1: 개발 기반 (10개 - 기존 유지)
+
 - `coding-standards` ⭐
-- `common-packages` ⭐  
+- `common-packages` ⭐
 - `database-operations` ⭐
 - `external-api-integration` ⭐
 - `project-context` ⭐
@@ -17,6 +18,7 @@
 - `web-design-guidelines`
 
 #### Tier 2: 트레이딩 분석 (7개 - NEW)
+
 1. **technical-analyst** ⭐⭐⭐
    - Elliott Wave, 피보나치, 일목균형표
    - tradermonty/technical-analyst
@@ -47,6 +49,7 @@
    - jmanhype/qts ACE framework
 
 #### Tier 3: 리스크 & 실행 (3개 - NEW)
+
 1. **risk-management** ⭐⭐⭐
    - 다층 리스크 제어, ATR 손절매, 일일 한도
    - jmanhype/qts risk_manager.py (TypeScript 포팅)
@@ -62,19 +65,23 @@
 ### 📚 선택적 스킬 (추가 가능, 별도 Phase)
 
 #### 주식 스크리닝 (tradermonty)
+
 - `dividend-screener` - 배당주 스크리닝
 - `dividend-growth-pullback` - 배당 성장주
 - `pairs-trading` - 통계적 차익거래
 
 #### 포트폴리오 & 옵션 (tradermonty)
+
 - `portfolio-manager` - Alpaca 연동 포트폴리오 관리
 - `options-strategy` - Black-Scholes 옵션 전략
 
 #### 경제 캘린더 (tradermonty)
+
 - `economic-calendar` - FMP API 경제 이벤트
 - `earnings-calendar` - 실적 발표 일정
 
 #### 고급 분석 (tradermonty)
+
 - `institutional-flow` - 13F 기관 매수 추적
 - `us-market-bubble` - 버블 리스크 평가
 - `stanley-druckenmiller` - 드러켄밀러 철학
@@ -151,14 +158,14 @@ Step 5: 추적
 
 ## API 요구사항
 
-| 스킬 | FMP API | Finviz | Alpaca | 비고 |
-|------|---------|--------|--------|------|
-| canslim-screener | ✅ | ✅ (scraping) | ❌ | Phase 2, I component |
-| economic-calendar | ✅ | ❌ | ❌ | 선택적 |
-| earnings-calendar | ✅ | ❌ | ❌ | 선택적 |
-| portfolio-manager | ❌ | ❌ | ✅ | 선택적 |
-| dividend-screener | ✅ | 🟡 | ❌ | 선택적 |
-| options-strategy | 🟡 | ❌ | ❌ | 선택적, 이론값 계산 |
+| 스킬              | FMP API | Finviz        | Alpaca | 비고                 |
+| ----------------- | ------- | ------------- | ------ | -------------------- |
+| canslim-screener  | ✅      | ✅ (scraping) | ❌     | Phase 2, I component |
+| economic-calendar | ✅      | ❌            | ❌     | 선택적               |
+| earnings-calendar | ✅      | ❌            | ❌     | 선택적               |
+| portfolio-manager | ❌      | ❌            | ✅     | 선택적               |
+| dividend-screener | ✅      | 🟡            | ❌     | 선택적               |
+| options-strategy  | 🟡      | ❌            | ❌     | 선택적, 이론값 계산  |
 
 - ✅ 필수
 - 🟡 선택적 (성능 향상)
@@ -242,6 +249,7 @@ Step 5: 추적
 ## 다음 단계
 
 ### 선택적 추가 (필요 시)
+
 1. 배당주 관련 스킬 (dividend-screener, dividend-growth-pullback)
 2. 포트폴리오 관리 (portfolio-manager with Alpaca)
 3. 옵션 전략 (options-strategy)
@@ -249,6 +257,7 @@ Step 5: 추적
 5. 고급 분석 (institutional-flow, market-bubble, druckenmiller)
 
 ### 실제 구현
+
 1. `packages/risk-engine` 생성
 2. `services/signal-generator` 생성
 3. `services/backtest-engine` 생성
@@ -258,6 +267,7 @@ Step 5: 추적
 ---
 
 **현재 상태:**
+
 - ✅ 13개 핵심 스킬 통합 완료
 - ✅ SKILL.md 모두 5,000 토큰 이하
 - ✅ Anthropic 표준 준수
@@ -265,6 +275,7 @@ Step 5: 추적
 - ✅ 즉시 사용 가능한 상태
 
 **즉시 사용 가능:**
+
 ```
 "BTC 차트를 technical-analyst로 분석하고,
  risk-management로 검증해서,

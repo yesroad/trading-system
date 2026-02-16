@@ -3858,6 +3858,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:^22.10.2":
+  version: 22.19.11
+  resolution: "@types/node@npm:22.19.11"
+  dependencies:
+    undici-types: "npm:~6.21.0"
+  checksum: 10c0/4b274acf27ec31aa83b50ef22088f83c783e6bcd7dcb40b4834f64f44868b6bf68725214220f15a0c776928f7c0f7f26f03c05cd5868f0526340af3f4af4b58b
+  languageName: node
+  linkType: hard
+
 "@types/phoenix@npm:^1.6.6":
   version: 1.6.7
   resolution: "@types/phoenix@npm:1.6.7"
@@ -4522,7 +4531,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@workspace/db-client@npm:*, @workspace/db-client@workspace:packages/db-client":
+"@workspace/db-client@npm:*, @workspace/db-client@workspace:*, @workspace/db-client@workspace:packages/db-client":
   version: 0.0.0-use.local
   resolution: "@workspace/db-client@workspace:packages/db-client"
   dependencies:
@@ -4572,7 +4581,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@workspace/shared-utils@npm:*, @workspace/shared-utils@workspace:packages/shared-utils":
+"@workspace/shared-utils@npm:*, @workspace/shared-utils@workspace:*, @workspace/shared-utils@workspace:packages/shared-utils":
   version: 0.0.0-use.local
   resolution: "@workspace/shared-utils@workspace:packages/shared-utils"
   dependencies:
@@ -4585,7 +4594,22 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@workspace/trading-utils@workspace:packages/trading-utils":
+"@workspace/stock-screener@workspace:packages/stock-screener":
+  version: 0.0.0-use.local
+  resolution: "@workspace/stock-screener@workspace:packages/stock-screener"
+  dependencies:
+    "@types/big.js": "npm:^6.2.2"
+    "@types/node": "npm:^22.10.2"
+    "@workspace/shared-utils": "workspace:*"
+    big.js: "npm:^6.2.2"
+    dotenv: "npm:^16.4.5"
+    typescript: "npm:^5.7.2"
+    vitest: "npm:^2.1.8"
+    zod: "npm:^3.23.8"
+  languageName: unknown
+  linkType: soft
+
+"@workspace/trading-utils@workspace:*, @workspace/trading-utils@workspace:packages/trading-utils":
   version: 0.0.0-use.local
   resolution: "@workspace/trading-utils@workspace:packages/trading-utils"
   dependencies:
@@ -4947,6 +4971,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"backtest-engine@workspace:services/backtest-engine":
+  version: 0.0.0-use.local
+  resolution: "backtest-engine@workspace:services/backtest-engine"
+  dependencies:
+    "@types/big.js": "npm:^6.2.2"
+    "@types/luxon": "npm:^3.4.2"
+    "@types/node": "npm:^22.10.2"
+    "@workspace/db-client": "workspace:*"
+    "@workspace/shared-utils": "workspace:*"
+    "@workspace/trading-utils": "workspace:*"
+    big.js: "npm:^6.2.2"
+    commander: "npm:^12.1.0"
+    dotenv: "npm:^16.4.5"
+    luxon: "npm:^3.5.0"
+    tsx: "npm:^4.19.2"
+    typescript: "npm:^5.7.2"
+    vitest: "npm:^2.1.8"
+    zod: "npm:^3.23.8"
+  languageName: unknown
+  linkType: soft
+
 "balanced-match@npm:^1.0.0":
   version: 1.0.2
   resolution: "balanced-match@npm:1.0.2"
@@ -5279,6 +5324,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"commander@npm:^12.1.0":
+  version: 12.1.0
+  resolution: "commander@npm:12.1.0"
+  checksum: 10c0/6e1996680c083b3b897bfc1cfe1c58dfbcd9842fd43e1aaf8a795fbc237f65efcc860a3ef457b318e73f29a4f4a28f6403c3d653d021d960e4632dd45bde54a9
+  languageName: node
+  linkType: hard
+
 "commander@npm:^14.0.0":
   version: 14.0.3
   resolution: "commander@npm:14.0.3"
@@ -5577,6 +5629,13 @@ __metadata:
   dependencies:
     esutils: "npm:^2.0.2"
   checksum: 10c0/b6416aaff1f380bf56c3b552f31fdf7a69b45689368deca72d28636f41c16bb28ec3ebc40ace97db4c1afc0ceeb8120e8492fe0046841c94c2933b2e30a7d5ac
+  languageName: node
+  linkType: hard
+
+"dotenv@npm:^16.4.5":
+  version: 16.6.1
+  resolution: "dotenv@npm:16.6.1"
+  checksum: 10c0/15ce56608326ea0d1d9414a5c8ee6dcf0fffc79d2c16422b4ac2268e7e2d76ff5a572d37ffe747c377de12005f14b3cc22361e79fc7f1061cce81f77d2c973dc
   languageName: node
   linkType: hard
 
@@ -8308,7 +8367,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"luxon@npm:^3.7.2":
+"luxon@npm:^3.5.0, luxon@npm:^3.7.2":
   version: 3.7.2
   resolution: "luxon@npm:3.7.2"
   checksum: 10c0/ed8f0f637826c08c343a29dd478b00628be93bba6f068417b1d8896b61cb61c6deacbe1df1e057dbd9298334044afa150f9aaabbeb3181418ac8520acfdc2ae2
@@ -8362,6 +8421,23 @@ __metadata:
   checksum: 10c0/525f74915660be60b616bcbd267c4a5b59481b073ba125e45c9c3a041bb1a47a2bd0ae79d028eb6f5f95bf9851a4158423f5068539c3093621abb64027e8e461
   languageName: node
   linkType: hard
+
+"market-calendar@workspace:services/market-calendar":
+  version: 0.0.0-use.local
+  resolution: "market-calendar@workspace:services/market-calendar"
+  dependencies:
+    "@types/luxon": "npm:^3.4.2"
+    "@types/node": "npm:^22.10.2"
+    "@workspace/db-client": "workspace:*"
+    "@workspace/shared-utils": "workspace:*"
+    dotenv: "npm:^16.4.5"
+    luxon: "npm:^3.5.0"
+    tsx: "npm:^4.19.2"
+    typescript: "npm:^5.7.2"
+    vitest: "npm:^2.1.8"
+    zod: "npm:^3.23.8"
+  languageName: unknown
+  linkType: soft
 
 "math-intrinsics@npm:^1.1.0":
   version: 1.1.0
@@ -10765,7 +10841,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tsx@npm:^4.19.1, tsx@npm:^4.21.0":
+"tsx@npm:^4.19.1, tsx@npm:^4.19.2, tsx@npm:^4.21.0":
   version: 4.21.0
   resolution: "tsx@npm:4.21.0"
   dependencies:
@@ -10981,7 +11057,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.6.3, typescript@npm:^5.9.2, typescript@npm:^5.9.3":
+"typescript@npm:^5.6.3, typescript@npm:^5.7.2, typescript@npm:^5.9.2, typescript@npm:^5.9.3":
   version: 5.9.3
   resolution: "typescript@npm:5.9.3"
   bin:
@@ -11001,7 +11077,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.6.3#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
+"typescript@patch:typescript@npm%3A^5.6.3#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.7.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.2#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
   version: 5.9.3
   resolution: "typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"
   bin:
@@ -11835,7 +11911,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^3.24.1":
+"zod@npm:^3.23.8, zod@npm:^3.24.1":
   version: 3.25.76
   resolution: "zod@npm:3.25.76"
   checksum: 10c0/5718ec35e3c40b600316c5b4c5e4976f7fee68151bc8f8d90ec18a469be9571f072e1bbaace10f1e85cf8892ea12d90821b200e980ab46916a6166a4260a983c
