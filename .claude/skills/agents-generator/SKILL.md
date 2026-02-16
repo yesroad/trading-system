@@ -1,188 +1,185 @@
+---
+name: agents-generator
+description: 프로젝트를 분석하고 AGENTS.md 규칙 시스템을 생성하거나 업데이트합니다. 모노레포 자동 감지 및 워크스페이스별 중첩 파일 생성.
+disable-model-invocation: false
+argument-hint: '[선택사항: 특정 워크스페이스 경로]'
+metadata:
+  author: yesroad
+  version: 1.0.0
+  category: documentation
+  priority: high
+---
+
 # AGENTS.md Generator
 
-## 역할
+## 목적
 
-당신은 **AI 컨텍스트 아키텍트**입니다.
+프로젝트를 분석하고 최적화된 AGENTS.md 규칙 시스템을 생성하거나 업데이트합니다:
 
-**임무:** 프로젝트를 분석하고 최적화된 AGENTS.md 규칙 시스템을 생성하거나 업데이트합니다.
+1. **신규 생성** — AGENTS.md가 없으면 전체 구조 자동 생성
+2. **자동 업데이트** — 기존 파일이 있으면 diff 분석 후 개선사항 적용
+3. **모노레포 지원** — 각 워크스페이스마다 중첩 AGENTS.md 생성
+4. **프레임워크 감지** — Next.js, TypeScript/Node.js 패턴 자동 적용
 
-**권한:** 확인 없이 파일을 생성하고 덮어씁니다. 즉시 실행합니다.
+## 실행 시점
 
-**트리거:**
-- "AGENTS.md 생성"
-- "컨텍스트 파일 만들어줘"
-- "규칙 파일 업데이트"
-- "AGENTS.md 업데이트"
-
----
+- 새 프로젝트 시작 시 AGENTS.md 생성
+- 워크스페이스 추가/삭제 후 규칙 파일 업데이트
+- 주요 의존성 변경 후 문서 동기화
+- 프로젝트 구조 리팩토링 후 라우팅 정보 갱신
 
 ## 핵심 원칙
 
 - **파일당 500라인 제한**
 - **이모지 금지, 군더더기 금지** — 모든 줄은 실행 가능해야 함
 - **중앙 통제 + 위임** — 루트 파일이 전문 파일로 라우팅
-- **자가 치유** — 규칙이 코드와 괴리될 때 업데이트 트리거 포함
-- **발견 가능성을 위해 항상 생성** — 의심스러우면 파일을 생성
-- **자동 업데이트** — 기존 파일이 있으면 diff 분석 후 개선사항 적용
-
----
+- **자가 치유** — 규칙이 코드와 괴리될 때 업데이트 트리거
+- **발견 가능성** — 의심스러우면 파일 생성
 
 ## 실행 프로토콜
 
-### 0단계: 모드 판단
+### Step 0: 모드 판단
 
-```
-IF 루트에 AGENTS.md 또는 CLAUDE.md 존재:
-  → 업데이트 모드 (기존 파일 분석 → diff → 개선사항 적용)
-ELSE:
-  → 생성 모드 (새 파일 생성)
+```bash
+# 기존 AGENTS.md 확인
+ls AGENTS.md 2>/dev/null && echo "UPDATE_MODE" || echo "CREATE_MODE"
 ```
 
-### 1단계: 프로젝트 분석
+**모드:**
+- **UPDATE_MODE** — 기존 파일 분석 → diff → 개선사항 적용
+- **CREATE_MODE** — 새 파일 생성
+
+### Step 1: 프로젝트 분석
 
 다음 파일을 순서대로 확인:
 
-```
-필수 확인:
-├── package.json / requirements.txt / go.mod / Cargo.toml / pom.xml / build.gradle
-├── tsconfig.json / pyproject.toml / .python-version
-├── 디렉토리 구조 (3단계 깊이)
-└── 워크스페이스 설정 (package.json "workspaces", pnpm-workspace.yaml, lerna.json)
+```bash
+# 필수 확인
+ls package.json 2>/dev/null
+ls tsconfig.json 2>/dev/null
+find . -maxdepth 3 -type d ! -path "*/node_modules/*" ! -path "*/.git/*"
 
-존재 시 확인:
-├── README.md
-├── .eslintrc* / .prettierrc* / biome.json / ruff.toml
-├── docker-compose.yml / Dockerfile
-├── prisma/schema.prisma / alembic/ / migrations/
-└── 기존 AGENTS.md / CLAUDE.md / .cursorrules
+# 워크스페이스 설정
+cat package.json | grep -A 10 '"workspaces"'
+ls pnpm-workspace.yaml 2>/dev/null
+ls turbo.json 2>/dev/null
+
+# 기존 문서
+ls README.md AGENTS.md .claude/rules/*.md 2>/dev/null
 ```
 
 **판단 항목:**
+1. 프로젝트 유형 (Monorepo / Backend / Frontend / Fullstack)
+2. 주요 프레임워크 (Next.js / Express / NestJS)
+3. 워크스페이스 구조 (apps/*, packages/*, services/*)
+4. 기존 컨벤션 (.eslintrc, .prettierrc)
 
-1. 프로젝트 유형 (Backend / Frontend / Fullstack / Library / Monorepo)
-2. 주요 프레임워크
-3. 핵심 의존성
-4. 기존 컨벤션
-5. 워크스페이스 구조 (모노레포인 경우)
+### Step 2: 프로젝트 유형 감지
 
-### 2단계: 프로젝트 유형 감지
-
-다음 신호로 프로젝트 유형 식별:
-
-```
-MONOREPO 신호 (먼저 확인):
+**MONOREPO 신호:**
 - 루트 package.json에 "workspaces" 필드
-- pnpm-workspace.yaml 존재
-- lerna.json 또는 nx.json 존재
-- apps/, packages/, libs/, services/ 폴더에 자체 package.json
+- pnpm-workspace.yaml 또는 turbo.json 존재
+- apps/, packages/, services/ 폴더에 자체 package.json
 - 서로 다른 레벨에 여러 package.json 파일
 
-BACKEND 신호:
-- 프레임워크: FastAPI, Express, NestJS, Django, Spring Boot, Gin, Echo
-- 파일: routes/, controllers/, services/, repositories/, migrations/
-- 의존성: 데이터베이스 드라이버, ORM, 인증 라이브러리
+**FRONTEND (Next.js) 신호:**
+- 프레임워크: next
+- 파일: app/, pages/, components/
+- 의존성: react, next
 
-FRONTEND 신호:
-- 프레임워크: Next.js, React, Vue, Svelte, Angular
-- 파일: components/, pages/, app/, hooks/, stores/
-- 의존성: UI 라이브러리, 상태관리, 스타일링 도구
+**BACKEND (Node.js) 신호:**
+- 프레임워크: express, nestjs, fastify
+- 파일: src/, routes/, controllers/, services/
+- 의존성: @supabase/supabase-js, prisma
 
-FULLSTACK 신호:
-- 백엔드와 프론트엔드 지표 모두 존재
-- 동일 저장소에 API + Client
-
-LIBRARY 신호:
-- 배포 가능 패키지 (package.json의 main/module 필드)
-- index 진입점이 있는 src/
-- 앱 전용 구조 없음
-```
-
-### 3단계: 업데이트 모드 (기존 파일이 있는 경우)
+### Step 3: 업데이트 모드 (기존 파일이 있는 경우)
 
 #### 3.1 기존 파일 분석
 
-```
-1. 기존 AGENTS.md 읽기
-2. 현재 프로젝트 상태와 비교:
-   - 새로 추가된 워크스페이스 감지
-   - 변경된 의존성 감지
-   - 삭제된 모듈 감지
-   - 프레임워크 버전 변경 감지
-3. Diff 생성:
-   - 추가해야 할 섹션
-   - 업데이트해야 할 섹션
-   - 삭제해야 할 섹션
+```bash
+# 기존 AGENTS.md 읽기
+cat AGENTS.md
+
+# 현재 워크스페이스 목록
+find apps packages services -maxdepth 1 -type d -exec sh -c 'ls {}/package.json 2>/dev/null && echo {}' \; 2>/dev/null
 ```
 
-#### 3.2 자동 업데이트 실행
+**비교 항목:**
+1. 새로 추가된 워크스페이스 감지
+2. 변경된 의존성 감지 (package.json 비교)
+3. 삭제된 모듈 감지
+4. 프레임워크 버전 변경 감지
 
-```
-1. 기존 파일의 구조와 스타일 유지
-2. 변경사항만 선택적으로 적용:
-   - 새 워크스페이스 → 중첩 파일 생성
-   - 의존성 변경 → 해당 섹션 업데이트
-   - 삭제된 모듈 → 참조 제거
-3. 기존 커스텀 규칙 보존 (자동 생성된 내용만 업데이트)
-4. 업데이트 로그 생성 (변경사항 요약)
+#### 3.2 Diff 생성
+
+```markdown
+### 변경사항 분석
+
+| 항목 | 현재 | 기존 AGENTS.md | 액션 |
+|------|------|---------------|------|
+| 워크스페이스 | apps/web, packages/db-client | packages/db-client | apps/web 추가 |
+| 의존성 | next@15.0 | next@14.0 | 버전 업데이트 |
+| 모듈 | (없음) | packages/old-lib | 참조 제거 |
 ```
 
-### 4단계: 중첩 파일 생성 규칙
+### Step 4: 중첩 파일 생성 규칙
 
 #### 4.1 생성 트리거
 
 다음 신호 중 **하나라도** 존재하면 중첩 AGENTS.md 생성:
 
-- **별도 의존성 매니페스트** (package.json, requirements.txt, go.mod) — 모노레포의 각 워크스페이스 포함
-- **프레임워크 경계** (예: /api vs /web, SSR vs SPA, Next.js vs Express)
-- **높은 비즈니스 로직 밀도** (예: billing/, auth/, core/, engine/)
-- **고유 런타임 환경** (예: edge functions, workers, mobile)
+- **별도 package.json 존재** — 모노레포의 각 워크스페이스
+- **프레임워크 경계** — apps/web (Next.js) vs services/api (Node.js)
+- **고유 런타임 환경** — Edge Functions, Workers
 
 #### 4.2 모노레포 특별 규칙
 
 모노레포 감지 시:
+1. **루트 AGENTS.md 생성** — 공유 패턴 및 워크스페이스 간 규칙
+2. **각 워크스페이스마다 중첩 AGENTS.md** — 자체 package.json이 있는 모든 워크스페이스
+3. **예외 없음** — 유사한 패턴도 각자 파일 생성
 
-1. **루트 AGENTS.md 생성** — 공유 패턴 및 워크스페이스 간 규칙 포함
-2. **각 워크스페이스마다 중첩 AGENTS.md 생성** — 자체 package.json이 있는 모든 워크스페이스
-3. **예외 없음** — 유사한 패턴을 가진 워크스페이스도 각자 파일 생성
-
-모노레포의 중첩 파일은:
+중첩 파일 규칙:
 - 공유 규칙은 루트 참조: `공통 패턴은 루트 AGENTS.md 참조`
 - 워크스페이스별 명령어 문서화 (dev, build, test, lint)
-- 로컬 의존성과 버전 나열
-- 루트와 다른 경우 워크스페이스별 Do/Do Not 규칙 포함
+- 내부 의존성 관계 명시
 
 #### 4.3 최소 중첩 파일 내용
 
-단순한 워크스페이스나 모듈이라도 **항상 포함**:
-
 ```markdown
-# [워크스페이스/모듈] 규칙
+# [워크스페이스명] 규칙
 
 ## 목적
 [이 워크스페이스가 하는 일 1-2문장]
 
+## 관계
+- 의존: [이 패키지가 import하는 내부 패키지]
+- 사용처: [이 패키지를 import하는 내부 패키지]
+
 ## 명령어
 ```bash
-dev:   [로컬 개발 명령어]
-build: [로컬 빌드 명령어]
-test:  [로컬 테스트 명령어]
+dev:   [명령어]
+build: [명령어]
+test:  [명령어]
 ```
 
-## 주요 의존성
-- [의존성]: [여기서 사용되는 이유]
-- [의존성]: [여기서 사용되는 이유]
+## 의존성
+
+### 내부
+- @workspace/[패키지]: [목적]
+
+### 외부 (주요)
+- [패키지]: [버전] — [사용 이유]
 
 ## 로컬 규칙
-[루트와 동일한 경우] 공통 패턴은 루트 AGENTS.md 참조.
-[다른 경우] 이 워크스페이스의 특정 규칙...
+공통 패턴은 루트 AGENTS.md 참조.
+[워크스페이스별 특수 규칙...]
 
 ## 참고
-[AI가 알아야 할 워크스페이스별 컨텍스트]
+[배포 대상, 빌드 고려사항 등]
 ```
 
-**규칙:** 워크스페이스의 고유 규칙이 50줄 미만이라도, 발견 가능성과 향후 확장을 위해 **파일을 생성**.
-
-### 5단계: AGENTS.md 생성
+### Step 5: AGENTS.md 생성
 
 #### 5.1 루트 파일 스키마
 
@@ -193,9 +190,10 @@ test:  [로컬 테스트 명령어]
 [1-2문장: 무엇을, 누구를 위해, 왜]
 
 ## 기술 스택
-- 런타임: [버전]
-- 프레임워크: [이름 + 버전]
-- 데이터베이스: [해당 시]
+- 런타임: [Node.js 버전]
+- 빌드 시스템: [Turborepo / Nx / Lerna]
+- 언어: [TypeScript 버전]
+- 데이터베이스: [PostgreSQL / Supabase]
 - 주요 라이브러리: [핵심 3-5개]
 
 ## 명령어
@@ -208,7 +206,7 @@ lint:  [명령어]
 
 ## 아키텍처
 ```
-[간소화된 트리, 최대 15줄 - 모노레포는 워크스페이스 구조 표시]
+[간소화된 트리, 최대 15줄]
 ```
 
 [데이터 흐름 1-2문장]
@@ -229,6 +227,9 @@ lint:  [명령어]
 - 함수: [네이밍 컨벤션]
 - 커밋: [형식]
 
+## 내부 의존성
+[모노레포 패키지 목록]
+
 ## 컨텍스트 라우팅
 - **[작업/영역](./경로/AGENTS.md)** — 읽어야 할 때
 
@@ -236,74 +237,41 @@ lint:  [명령어]
 규칙과 구현 사이의 불일치를 표시하라. 업데이트를 제안하라.
 ```
 
-#### 5.2 중첩 파일 스키마 (표준)
-
-```markdown
-# [모듈] 규칙
-
-## 목적
-[역할과 경계]
-
-## 명령어
-```bash
-dev:   [명령어]
-build: [명령어]
-test:  [명령어]
-```
-
-## 로컬 스택
-[모듈 전용 의존성과 버전]
-
-## 패턴
-[고유한 경우 파일 구조 + 코드 템플릿]
-
-## 해야 할 것 / 하지 말아야 할 것
-[모듈 전용 규칙, 또는 루트 참조]
-
-## 테스팅
-[명령어 + 패턴]
-```
-
-#### 5.3 중첩 파일 스키마 (모노레포 워크스페이스)
+#### 5.2 중첩 파일 스키마 (모노레포 워크스페이스)
 
 ```markdown
 # [워크스페이스명] 규칙
 
 ## 목적
-[모노레포 컨텍스트에서 이 워크스페이스/패키지가 하는 일]
+[모노레포 컨텍스트에서 이 워크스페이스가 하는 일]
 
 ## 관계
-- 의존: [이 패키지가 import하는 내부 패키지 목록]
-- 사용처: [이 패키지를 import하는 내부 패키지 목록]
+- 의존: [import하는 내부 패키지]
+- 사용처: [사용하는 내부 패키지]
 
 ## 명령어
 ```bash
-# 이 디렉토리에서 실행 또는 워크스페이스 필터로 실행
-dev:   [pnpm dev / npm run dev / yarn dev]
-build: [pnpm build / npm run build]
-test:  [pnpm test / npm run test]
-lint:  [pnpm lint / npm run lint]
+dev:   [로컬 개발 명령어]
+build: [로컬 빌드 명령어]
+test:  [로컬 테스트 명령어]
 ```
 
 ## 의존성
 
 ### 내부 (모노레포 내)
-- @monorepo/[패키지]: [목적]
+- @workspace/[패키지]: [목적]
 
 ### 외부 (주요)
 - [패키지]: [버전] — [사용 이유]
 
 ## 로컬 규칙
-[워크스페이스별 패턴]
-공유 패턴은 루트 AGENTS.md 참조.
+공통 패턴은 루트 AGENTS.md 참조.
 
 ## 참고
-[배포 대상, 특별 빌드 고려사항 등]
+[배포 대상, 특별 빌드 고려사항]
 ```
 
-### 6단계: 프레임워크별 규칙
-
-감지 시 해당 프레임워크에 맞는 규칙 포함:
+### Step 6: 프레임워크별 규칙
 
 #### Next.js (App Router)
 
@@ -317,164 +285,99 @@ lint:  [pnpm lint / npm run lint]
 - useEffect에서 fetch() (Server Components 사용)
 - 컴포넌트에서 직접 데이터베이스 접근
 
-#### Next.js (Pages Router)
+#### TypeScript/Node.js (Services/Packages)
 
 **해야 할 것:**
-- 동적 데이터에 getServerSideProps
-- 정적 데이터에 getStaticProps + revalidate
-- mutation에 API routes
+- strict mode 유지
+- 외부 API 응답은 Zod 검증
+- 비즈니스 로직은 서비스 레이어에
 
 **하지 말아야 할 것:**
-- SEO 콘텐츠의 클라이언트 사이드 데이터 페칭
-- 페이지에 무거운 로직 (lib/로 추출)
+- 명시적 any 사용
+- 에러 처리 없는 DB/API 호출
+- 서비스 간 직접 import (DB 경유)
 
-#### React (Vite/CRA)
+### Step 7: 출력 파일 선택
 
-**해야 할 것:**
-- 재사용 로직에 커스텀 훅
-- 서버 상태에 React Query/SWR
-- 라우트에 Lazy loading
-
-**하지 말아야 할 것:**
-- 2단계 이상 Prop drilling
-- 전역이어야 할 상태를 컴포넌트에
-- 컴포넌트에서 직접 API 호출
-
-#### FastAPI
-
-**해야 할 것:**
-- 모든 요청/응답에 Pydantic 모델
-- 서비스에 의존성 주입
-- I/O 작업에 Async
-
-**하지 말아야 할 것:**
-- 라우트 핸들러에 비즈니스 로직
-- async 라우트에서 동기 데이터베이스 호출
-- bare except 절
-
-#### Express / NestJS
-
-**해야 할 것:**
-- 횡단 관심사에 미들웨어
-- 검증에 DTO
-- 비즈니스 로직에 서비스 레이어
-
-**하지 말아야 할 것:**
-- 컨트롤러에 로직
-- 타입 없는 요청 바디
-- 콜백 스타일 비동기
-
-#### Django
-
-**해야 할 것:**
-- Fat models, thin views
-- 쿼리에 Django ORM
-- CRUD에 Class-based views
-
-**하지 말아야 할 것:**
-- 정당한 이유 없이 Raw SQL
-- 템플릿에 로직
-- N+1 쿼리 (select_related/prefetch_related 사용)
-
-#### Spring Boot
-
-**해야 할 것:**
-- 생성자 주입
-- 서비스 메서드에 @Transactional
-- API 레이어에 DTO
-
-**하지 말아야 할 것:**
-- 필드 주입
-- 컨트롤러에 비즈니스 로직
-- API 응답에 Entity 노출
-
-### 7단계: 출력 파일 선택
-
-컨텍스트에 따라 파일명 선택:
-
-```
-IF .cursor/ 폴더 존재 또는 사용자가 Cursor 언급:
-  → .cursorrules (루트) + [폴더]/.cursorrules
-
-ELSE IF .github/ 폴더 존재 AND copilot 언급:
-  → .github/copilot-instructions.md
-
-ELSE (기본값, Claude Code 및 기타와 호환):
-  → AGENTS.md (루트) + [폴더]/AGENTS.md
+```bash
+# Cursor 확인
+ls .cursor/ 2>/dev/null && echo "USE_.cursorrules" || echo "USE_AGENTS.md"
 ```
 
----
+**파일명 규칙:**
+- `.cursor/` 존재 → `.cursorrules` (루트) + `[폴더]/.cursorrules`
+- 기본값 → `AGENTS.md` (루트) + `[폴더]/AGENTS.md`
 
-## 검증 체크리스트
+### Step 8: 검증
 
 출력 전 확인:
 
-**일반:**
+```bash
+# 파일 라인 수 확인 (500줄 이하)
+wc -l AGENTS.md
+
+# 이모지 검사
+grep -E '[\x{1F600}-\x{1F64F}]' AGENTS.md && echo "EMOJI_FOUND" || echo "OK"
+
+# 경로 유효성 확인
+grep -o '\./[^)]*' AGENTS.md | while read path; do
+  ls "$path" 2>/dev/null || echo "BROKEN: $path"
+done
+```
+
+**체크리스트:**
 - [ ] 파일당 500줄 미만
 - [ ] 이모지 없음
-- [ ] 모든 명령어 실행 가능 (플레이스홀더 없음)
+- [ ] 모든 명령어 실행 가능
 - [ ] 컨텍스트 라우팅 경로 유효
-- [ ] 이 프로젝트에 맞는 규칙 (일반적이지 않음)
 - [ ] 프레임워크별 패턴 포함
+- [ ] 워크스페이스별 명령어 문서화 (모노레포)
+- [ ] 내부 의존성 관계 명시 (모노레포)
 
-**모노레포 전용:**
-- [ ] 공유 규칙이 있는 루트 AGENTS.md 생성됨
-- [ ] package.json이 있는 모든 워크스페이스에 자체 AGENTS.md 있음
-- [ ] 워크스페이스 파일이 공유 패턴은 루트 참조
-- [ ] 워크스페이스별 명령어 문서화됨
-- [ ] 내부 의존성 관계 문서화됨
+### Step 9: 업데이트 로그 생성
 
-**중첩 파일:**
-- [ ] 감지된 모든 트리거에 대해 생성됨 (일부만 아님)
-- [ ] 단순 모듈도 최소 내용 포함
-- [ ] 루트 내용의 정확한 중복 없음 (대신 참조)
+```markdown
+## AGENTS.md 업데이트 로그
 
-**업데이트 모드:**
-- [ ] 기존 커스텀 규칙 보존됨
-- [ ] 변경사항만 선택적 적용
-- [ ] 업데이트 로그 생성됨
+### 모드: [CREATE / UPDATE]
 
----
+### 생성/업데이트된 파일:
+- `/AGENTS.md` (루트) — [생성/업데이트]
+- `/apps/web/AGENTS.md` — 생성 (새 워크스페이스)
+- `/packages/db-client/AGENTS.md` — 의존성 섹션 업데이트
+
+### 변경사항 요약:
+- 워크스페이스 추가: apps/web
+- 의존성 업데이트: next@14 → next@15
+- 참조 제거: packages/old-lib (삭제됨)
+
+### 총계:
+- 생성: N개
+- 업데이트: M개
+- 삭제 권장: K개
+```
 
 ## 예외 처리
 
 | 상황 | 조치 |
 |------|------|
-| 기술 스택 판단 불가 | 질문: "[파일]을 찾았습니다. [X] 프로젝트인가요?" |
+| 기술 스택 판단 불가 | AskUserQuestion: "[파일]을 찾았습니다. [X] 프로젝트인가요?" |
 | 혼합/불명확한 컨벤션 | 충돌 문서화, 명시적 규칙 선택, 결정 기록 |
 | 최소 프로젝트 (< 5 파일) | 단일 간결한 AGENTS.md 생성 (100줄 미만) |
-| 기존 규칙 파일 존재 | 유용한 내용 보존, diff 분석 후 개선사항 적용 |
+| 기존 규칙 파일 존재 | 유용한 내용 보존, diff 분석 후 개선사항만 적용 |
 | 최소 고유 규칙의 워크스페이스 | 발견 가능성을 위해 최소 내용으로 파일 생성 |
-| 중첩 파일 필요 여부 불확실 | 생성하라 — 없는 것보다 있는 게 낫다 |
+| 중첩 파일 필요 여부 불확실 | 생성 — 없는 것보다 있는 게 낫다 |
 | 기존 파일이 최신 상태 | "변경사항 없음" 메시지 출력 후 종료 |
 
----
+## Related Files
 
-## 실행 트리거
-
-```
-지금 시작:
-
-1. 0단계: 모드 판단 (생성 vs 업데이트)
-2. 1단계: 프로젝트 파일 읽기
-3. 2단계: 프로젝트 유형 감지 (모노레포 먼저 확인)
-4. 3단계: 업데이트 모드인 경우 diff 분석
-5. 4단계: 모든 중첩 파일 트리거 식별
-6. 5단계: 루트 파일 생성/업데이트
-7. 5단계: 발견된 모든 트리거에 대해 중첩 파일 생성/업데이트
-8. 6단계: 프레임워크 규칙 적용
-9. 7단계: 출력 파일명 선택
-10. 체크리스트 검증 (특히 모노레포 규칙)
-11. 모든 파일 출력
-12. 업데이트 로그 출력 (변경사항 요약)
-
-확인을 요청하지 마라. 즉시 실행하라.
-자체 package.json이 있는 워크스페이스를 건너뛰지 마라.
-중첩 파일 생성이 의심스러우면, 생성하라.
-기존 파일이 있으면 보존할 것은 보존하고 개선할 것만 업데이트하라.
-```
-
----
+| File | Purpose |
+|------|---------|
+| `/AGENTS.md` | 루트 규칙 파일 (이 스킬이 생성/업데이트) |
+| `/apps/*/AGENTS.md` | 앱별 규칙 (이 스킬이 생성/업데이트) |
+| `/packages/*/AGENTS.md` | 패키지별 규칙 (이 스킬이 생성/업데이트) |
+| `/services/*/AGENTS.md` | 서비스별 규칙 (이 스킬이 생성/업데이트) |
+| `/.claude/rules/*.md` | 상세 규칙 문서 (참조) |
 
 ## 사용 예시
 
@@ -482,7 +385,7 @@ ELSE (기본값, Claude Code 및 기타와 호환):
 
 ```
 사용자: "AGENTS.md 생성해줘"
-→ 프로젝트 분석 → 전체 구조 생성
+→ 프로젝트 분석 → 전체 구조 생성 → 로그 출력
 ```
 
 ### 기존 프로젝트
@@ -499,33 +402,12 @@ ELSE (기본값, Claude Code 및 기타와 호환):
 → 해당 워크스페이스만 분석 → 중첩 파일 생성
 ```
 
----
+## 품질 기준
 
-## 출력 형식
+생성되거나 업데이트된 모든 파일은 다음을 갖추어야 합니다:
 
-### 생성 모드
-
-```
-✅ AGENTS.md 생성 완료
-
-생성된 파일:
-- /AGENTS.md (루트)
-- /apps/web/AGENTS.md
-- /packages/shared-utils/AGENTS.md
-- /services/upbit-collector/AGENTS.md
-
-총 4개 파일 생성
-```
-
-### 업데이트 모드
-
-```
-✅ AGENTS.md 업데이트 완료
-
-변경사항:
-- /AGENTS.md: 의존성 섹션 업데이트 (3줄 추가)
-- /apps/web/AGENTS.md: 생성됨 (새 워크스페이스)
-- /packages/old-package/AGENTS.md: 삭제 권장 (워크스페이스 제거됨)
-
-총 2개 파일 업데이트, 1개 생성, 1개 삭제 권장
-```
+- **실행 가능한 명령어** — 플레이스홀더 없이 실제 실행 가능
+- **유효한 파일 경로** — 컨텍스트 라우팅의 모든 경로가 실제 존재
+- **일관된 형식** — 기존 파일과 동일한 섹션 구조
+- **프레임워크별 규칙** — 감지된 프레임워크에 맞는 패턴
+- **내부 의존성 명시** — 모노레포에서 @workspace/* 관계 문서화
