@@ -1,38 +1,11 @@
 # Trading System
 
-> 다중 시장 자동매매 시스템 (국내주식 · 미국주식 · 암호화폐)
-
-**🤖 AI 바이브코딩 프로젝트 + 🎯 Trading Skills Integration**
-
-이 프로젝트는 **ChatGPT**, **Claude Code**, **Codex**와 소통하며 설계하고 구현한 자동매매 시스템입니다. AI 페어 프로그래밍을 통해 아키텍처를 설계하고, 바이브코딩으로 빠르게 구현하며, **tradermonty** 및 **jmanhype**의 검증된 트레이딩 지식과 로직을 통합하여 **최고의 트레이딩 시스템**을 구축합니다.
-
-**⚠️ 현재 상태:** 개발 중 (테스트 및 검증 필요)
+> AI 기반 다중 시장 자동매매 시스템 (국내주식 · 미국주식 · 암호화폐)
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org/)
 [![Turborepo](https://img.shields.io/badge/Turborepo-2.x-orange.svg)](https://turbo.build/)
-
----
-
-## 🆕 New: Trading Skills Integration
-
-**Phase 1 완료 (2026-02-15):**
-- ✅ `technical-analyst` - Elliott Wave, 피보나치, 일목균형표 차트 분석 (tradermonty)
-- ✅ `risk-management` - 포지션 사이징, ATR 손절매, 일일 손실 한도 (jmanhype QTS 포팅)
-- ✅ 통합 가이드: [SKILLS_INTEGRATION_GUIDE.md](./docs/SKILLS_INTEGRATION_GUIDE.md)
-- ✅ 통합 계획: [INTEGRATION_PLAN.md](./INTEGRATION_PLAN.md)
-
-**핵심 통합 포인트:**
-```typescript
-// 1. 차트 분석 → 2. 리스크 검증 → 3. TypeScript 구현
-"BTC 차트를 technical-analyst로 분석하고
- risk-management로 검증한 뒤
- coding-standards 지켜서 구현해줘"
-```
-
-**Coming Soon (Phase 2-3):**
-- `market-analysis`, `stock-screening`, `backtest-framework`
-- `signal-generation`, `performance-analytics`, `compliance-logging`
+[![Tests](https://img.shields.io/badge/Tests-294%20passing-brightgreen.svg)](#)
 
 ---
 
@@ -40,191 +13,528 @@
 
 - [개요](#-개요)
 - [주요 기능](#-주요-기능)
-- [Trading Skills](#-trading-skills-new)
 - [시스템 아키텍처](#-시스템-아키텍처)
 - [기술 스택](#-기술-스택)
 - [시작하기](#-시작하기)
 - [프로젝트 구조](#-프로젝트-구조)
 - [개발 가이드](#-개발-가이드)
+- [테스트](#-테스트)
 - [배포](#-배포)
-- [문서](#-문서)
-- [라이선스](#-라이선스)
 
 ---
 
 ## 🎯 개요
 
-**Trading System**은 AI 도구와의 협업을 통해 설계하고 구현한 자동매매 시스템입니다. 국내주식(KRX), 미국주식(US), 암호화폐(Crypto) 시장에서 자동으로 데이터를 수집하고, AI 분석을 통해 매매 신호를 생성하며, 의사결정에 따라 주문을 실행합니다.
+**Trading System**은 AI 분석과 전문 트레이딩 로직을 결합한 자동매매 시스템입니다. 국내주식(KRX), 미국주식(US), 암호화폐(Crypto) 시장에서 자동으로 데이터를 수집하고, AI 분석을 통해 매매 신호를 생성하며, 리스크 관리를 거쳐 주문을 실행합니다.
 
-### 개발 방식
+### 핵심 특징
 
-- 🤖 **AI 페어 프로그래밍** - AI와 대화하며 설계 및 구현
-- 💬 **바이브코딩** - Claude Code, Codex와 협업
-- 📋 **코드 품질 관리** - `.claude/rules`와 `skills`로 일관된 코딩 규칙 적용
-- 🏗️ **아키텍처 우선** - 마이크로서비스, DB 중심 설계
-- 🛠️ **현대적 도구** - TypeScript strict, Turborepo, Supabase
-- 🎯 **전문 지식 통합** - tradermonty + jmanhype 트레이딩 스킬
+- 🤖 **AI 기반 분석** - OpenAI를 활용한 시장 분석 및 신호 생성
+- 🛡️ **전문 리스크 관리** - ATR 기반 손절, 서킷 브레이커, 레버리지 제한
+- 📊 **다중 시장 지원** - 국내주식(KIS), 미국주식(YF), 암호화폐(Upbit)
+- 🔍 **기술적 분석** - Elliott Wave, 피보나치, MACD, RSI 등
+- 📈 **백테스팅** - 전략 검증 및 성과 분석
+- 🎯 **종목 스크리닝** - 배당주, 성장주 자동 발굴
+- 📅 **이벤트 추적** - 경제 지표, 실적 발표 모니터링
+- 🖥️ **대시보드** - Next.js 기반 실시간 모니터링
 
-### 핵심 철학
+### 시스템 철학
 
-1. **서비스 격리** - 각 기능을 독립적인 서비스로 분리
+1. **서비스 격리** - 마이크로서비스 아키텍처로 독립적 배포 가능
 2. **DB 중심 통신** - 서비스 간 느슨한 결합
-3. **타입 안전** - TypeScript strict mode + 런타임 검증
-4. **AI 절제** - 의미 있을 때만 정확하게 호출
+3. **타입 안전** - TypeScript strict mode + Zod 런타임 검증
+4. **AI 절제** - 비용 효율적인 AI 호출 (쿨다운 + 예산 관리)
 5. **검증된 로직** - 커뮤니티 검증 트레이딩 방법론 활용
 
 ---
 
 ## ✨ 주요 기능
 
-### 📊 데이터 수집
+### 📊 데이터 수집 (Collectors)
 
-- **upbit-collector**: 업비트 암호화폐 시세 (1분봉)
-- **kis-collector**: 한국투자증권 국내주식 시세 (실시간 틱)
-- **yf-collector**: Yahoo Finance 미국주식 시세 (15분봉)
+**3개 시장의 실시간 데이터 수집**
 
-### 🤖 AI 분석
+- **upbit-collector**: 업비트 암호화폐 시세 (1분봉, KRW 마켓)
+- **kis-collector**: 한국투자증권 국내주식 시세 (실시간 틱, KRX)
+- **yf-collector**: Yahoo Finance 미국주식 시세 (15분봉, US)
 
-- **ai-analyzer**: OpenAI 기반 기술적 분석
-- 시장 모드별 분석 (장 시작 전/장중/장 마감/장 마감 후)
-- AI 호출 최소화 (쿨다운 + 예산 제한)
+**기능:**
 
-### 💰 매매 실행
+- 우선순위 기반 수집 (보유 종목 → 관심 종목 → 거래량 상위)
+- 배치 추적 (ingestion_runs 테이블)
+- 워커 상태 모니터링 (worker_status 테이블)
 
-- **trade-executor**: AI 신호 기반 주문 실행
-- 가드 체크 (시장 시간, 거래 활성화, 예산)
-- Dry-run 모드 지원
+### 🤖 AI 분석 (AI Analyzer)
 
-### 📈 모니터링
+**OpenAI 기반 시장 분석**
 
-- **monitoring-bot**: 시스템 상태 모니터링
+- 시장 모드별 분석 (PRE_OPEN, INTRADAY, CLOSE, POST_CLOSE)
+- 기술적 지표 + AI 신뢰도 블렌딩 (60% AI + 40% Technical)
+- AI 호출 최소화 (심볼별 쿨다운 + 월별 예산 제한)
+
+**통합 기능:**
+
+- 경제 이벤트 및 실적 발표 정보 반영
+- 배당주 스크리닝 결과 자동 분석 대상 추가
+
+### 💰 매매 실행 (Trade Executor)
+
+**다층 리스크 검증 기반 자동 주문**
+
+**리스크 관리:**
+
+- Circuit Breaker: 일일 손실 -5% 도달 시 자동 청산 + 60분 쿨다운
+- Position Sizing: 1% 리스크 기반 계산, 심볼당 최대 25%
+- Leverage Limits: BTC 1.5x, 알트 1.2x, 포트폴리오 1.0x
+- ATR Stop Loss: 동적 손절 (0.5% ~ 5%)
+- Event Risk: 24시간 내 고임팩트 이벤트 시 거래 차단/축소
+
+**ACE 감사 추적:**
+
+- Aspiration (목표): 전략, 목표 수익률, 최대 손실
+- Capability (역량): 신호 품질, 시장 분석, 리스크 평가
+- Execution (실행): 실제 주문 내역
+- Outcome (결과): 실현 손익, 교훈
+
+**브로커 지원:**
+
+- Upbit (암호화폐)
+- 한국투자증권 (국내주식, 미국주식)
+
+### 📈 백테스팅 (Backtest Engine)
+
+**전략 검증 및 성과 분석**
+
+- 과거 데이터 기반 전략 시뮬레이션
+- 슬리피지, 수수료 반영
+- Walk-forward 분석 지원
+- 성과 메트릭 (승률, Sharpe Ratio, MDD)
+
+### 🔍 종목 스크리닝 (Stock Screener)
+
+**배당주 자동 발굴**
+
+**스크리닝 기준:**
+
+- 배당 수익률 (최소 3%)
+- 밸류에이션 (P/E < 20, P/B < 2)
+- 배당 성장률 (3년 CAGR)
+- 재무 건전성 (ROE, Debt/Equity)
+
+**복합 점수:**
+
+- 배당 수익률 (30점)
+- 배당 성장률 (25점)
+- 밸류에이션 (25점)
+- 재무 건전성 (20점)
+
+### 📅 시장 이벤트 (Market Calendar)
+
+**경제 지표 및 실적 발표 추적**
+
+**수집 데이터:**
+
+- 경제 이벤트 (FOMC, CPI, GDP 등)
+- 실적 발표 (Earnings Calendar)
+- 임팩트 점수 (1-10)
+- 영향받는 섹터
+
+**통합:**
+
+- AI Analyzer: 프롬프트에 이벤트 정보 포함
+- Trade Executor: 고위험 이벤트 시 거래 차단
+
+### 📊 모니터링 (Monitoring Bot)
+
+**시스템 상태 추적 및 알림**
+
+- 워커 상태 모니터링 (장시간 미실행 감지)
+- 데이터 수집 현황 (성공률, 에러율)
+- 거래 실행 추적
 - Telegram 알림 (거래, 에러, 일일 리포트)
-- 워커 상태 및 배치 추적
 
-### 🖥️ 대시보드
+### 🖥️ 대시보드 (Web)
 
-- **web**: Next.js 기반 대시보드
-- 실시간 포지션 조회
-- 거래 내역 및 수익률 확인
+**Next.js 기반 실시간 모니터링**
 
----
-
-## 🎯 Trading Skills (NEW)
-
-### Phase 1: 핵심 트레이딩 분석 (완료)
-
-#### 1. `technical-analyst` ⭐⭐⭐
-**출처:** tradermonty/claude-trading-skills  
-**기능:** Elliott Wave, 피보나치, 일목균형표 기반 차트 분석
-
-```
-사용 예:
-"BTC 차트를 technical-analyst로 분석해줘"
-
-결과:
-- Elliott Wave 5파동 분석
-- 피보나치 되돌림/확장 목표가
-- 일목균형표 신호
-- 시나리오 기반 확률 평가 (60% 조정, 30% 상승, 10% 급락)
-```
-
-#### 2. `risk-management` ⭐⭐⭐
-**출처:** jmanhype/qts (Python → TypeScript 포팅)  
-**기능:** 다층 리스크 관리 시스템
-
-**핵심 규칙:**
-- 레버리지 캡: BTC/ETH 1.5x, 알트 1.2x, 포트폴리오 1.0x
-- 포지션 사이징: 심볼당 최대 25%, 총 100%
-- ATR 기반 동적 손절매 (0.5% ~ 5%)
-- 일일 손실 한도: -5% 도달 시 자동 청산 + 60분 쿨다운
-- 리스크/보상 비율: 최소 1.5 이상
-
-```typescript
-import { validateNewPosition } from '@workspace/risk-management';
-
-const validation = await validateNewPosition({
-  symbol: 'BTC',
-  entry: new Big(93000),
-  target: new Big(98000),
-  stopLoss: new Big(91500),
-  leverage: new Big(1.5),
-});
-
-if (!validation.approved) {
-  console.error('Rejected:', validation.violations);
-}
-```
-
-### 통합 워크플로우
-
-```
-Step 1: 차트 분석
-"technical-analyst로 BTC 차트 분석"
-→ Elliott Wave 5파동 완성, 조정 예상
-
-Step 2: 리스크 검증
-"risk-management로 포지션 검증"
-→ 레버리지 OK, R/R 2.1 (✅), 포지션 사이즈 $10,000
-
-Step 3: 코드 생성
-"coding-standards 지켜서 TypeScript 구현"
-→ 타입 안전, Zod 검증, big.js 사용
-
-Step 4: DB 저장
-"database-operations로 스키마 설계"
-→ trading_signals, risk_events 테이블 생성
-```
-
-### 문서
-
-- 📖 [통합 가이드](./docs/SKILLS_INTEGRATION_GUIDE.md) - 사용법 및 예제
-- 📋 [통합 계획](./INTEGRATION_PLAN.md) - Phase 2-3 로드맵
-- 🎯 [Technical Analyst 스킬](./.claude/skills/technical-analyst/SKILL.md)
-- 🛡️ [Risk Management 스킬](./.claude/skills/risk-management/SKILL.md)
+- 포지션 조회 (보유 자산, 평가 손익)
+- 거래 내역
+- AI 분석 결과
+- 시스템 상태
 
 ---
 
 ## 🏗️ 시스템 아키텍처
 
+### 전체 구조
+
 ```
 ┌─────────────────────────────────────────────────┐
 │              Supabase (PostgreSQL)              │
+│                                                 │
+│  [자산]                                         │
 │  - positions, account_cash                      │
+│                                                 │
+│  [시세]                                         │
 │  - upbit_candles, kis_candles, yf_candles      │
-│  - ai_analysis, trades                          │
+│                                                 │
+│  [분석]                                         │
+│  - ai_analysis, trading_signals                 │
+│                                                 │
+│  [거래]                                         │
+│  - trades, risk_events, ace_logs                │
+│                                                 │
+│  [이벤트]                                       │
+│  - news_events                                  │
+│                                                 │
+│  [운영]                                         │
 │  - worker_status, ingestion_runs                │
-│  + trading_signals, risk_events (NEW)           │
+│  - system_guard (토큰, 거래 활성화)             │
 └─────────────────────────────────────────────────┘
-         ▲         ▲        ▲         ▲
-         │         │        │         │
-    ┌────┴──┐  ┌───┴───┐  ┌┴──┐   ┌──┴───┐
-    │Collect│  │   AI  │  │Trade│ │Monitor│
-    │(3종)  │  │Analyze│  │ Exec│ │  Bot  │
-    └───────┘  └───────┘  └────┘  └──────┘
-                    ▲                ▲
-                    │                │
-          ┌─────────┴────┐    ┌─────┴──────┐
-          │Technical     │    │Risk        │
-          │Analyst (NEW) │    │Mgmt (NEW)  │
-          └──────────────┘    └────────────┘
+         ▲         ▲        ▲         ▲        ▲
+         │         │        │         │        │
+    ┌────┴──┐  ┌───┴───┐  ┌┴──┐   ┌──┴───┐ ┌─┴─┐
+    │Collect│  │   AI  │  │Trade│ │Monitor│ │Web│
+    │(3종)  │  │Analyze│  │ Exec│ │  Bot  │ │   │
+    └───────┘  └───────┘  └────┘  └──────┘ └───┘
 ```
 
-**데이터 흐름:**
+### 데이터 흐름
 
 ```
-Collectors → DB → AI Analyzer → DB → Trade Executor → DB → Monitoring Bot
-                      ↓                     ↓
-              Technical Analyst      Risk Management
-                   (차트 분석)           (리스크 검증)
+1. 데이터 수집
+   Collectors → DB (candles 테이블)
+
+2. 시장 분석
+   DB → AI Analyzer → DB (ai_analysis, trading_signals)
+   ↓ (market-calendar, stock-screener 통합)
+
+3. 리스크 검증
+   DB → Trade Executor (Risk Validator)
+   ↓ (circuit-breaker, leverage, exposure, event risk)
+
+4. 주문 실행
+   Trade Executor → Broker API
+   ↓
+   DB (trades, ace_logs)
+
+5. 모니터링
+   DB → Monitoring Bot → Telegram
 ```
 
-**핵심 원칙:**
+### 핵심 원칙
 
-- ✅ 서비스 간 직접 import 금지 (DB 경유)
-- ✅ 공통 로직은 `@workspace/*` 패키지로 추출
-- ✅ 모든 외부 API 응답은 Zod로 런타임 검증
-- ✅ 트레이딩 로직은 검증된 스킬 활용 (NEW)
+- ✅ **서비스 간 직접 import 금지** - 모든 통신은 DB 경유
+- ✅ **공통 로직은 패키지로 추출** - `@workspace/*`
+- ✅ **외부 API 응답은 Zod 검증** - 런타임 타입 안전
+- ✅ **금융 계산은 big.js** - 부동소수점 오차 방지
+- ✅ **날짜는 Luxon** - 타임존 안전 처리
 
 ---
 
-(이하 기존 내용 유지...)
+## 🛠️ 기술 스택
+
+### 코어
+
+- **TypeScript 5.9** - Strict mode, 타입 안전
+- **Node.js 22+** - 최신 LTS
+- **Turborepo** - 모노레포 빌드 시스템
+- **Yarn Workspaces** - 패키지 관리
+
+### 데이터베이스
+
+- **Supabase (PostgreSQL)** - 중앙 데이터 저장소
+- **@supabase/supabase-js** - 클라이언트 라이브러리
+
+### 프레임워크
+
+- **Next.js 15** - 대시보드 (App Router)
+- **React 19** - UI 컴포넌트
+- **TailwindCSS 4** - 스타일링
+
+### 검증 및 계산
+
+- **Zod** - 스키마 검증
+- **big.js** - 금융 계산 (부동소수점 안전)
+- **Luxon** - 날짜/시간 처리
+
+### 테스팅
+
+- **Vitest** - 단위 테스트, 통합 테스트
+- **294개 테스트** - 92%+ 커버리지
+
+### 외부 API
+
+- **OpenAI API** - AI 분석
+- **Upbit API** - 암호화폐 시세/거래
+- **한국투자증권 API** - 주식 시세/거래
+- **Yahoo Finance** - 미국주식 시세
+- **FMP API** - 경제 이벤트, 실적 발표, 종목 스크리닝
+
+---
+
+## 🚀 시작하기
+
+### 필수 요구사항
+
+- Node.js 22+
+- Yarn 4+
+- PostgreSQL (또는 Supabase 계정)
+
+### 환경 변수 설정
+
+각 서비스 디렉토리에 `.env` 파일 생성:
+
+```bash
+# 공통
+SUPABASE_URL=your-supabase-url
+SUPABASE_KEY=your-supabase-key
+
+# AI Analyzer
+OPENAI_API_KEY=your-openai-key
+
+# Upbit Collector / Trade Executor
+UPBIT_ACCESS_KEY=your-upbit-access
+UPBIT_SECRET_KEY=your-upbit-secret
+
+# KIS Collector / Trade Executor
+KIS_APP_KEY=your-kis-app-key
+KIS_APP_SECRET=your-kis-app-secret
+
+# Market Calendar / Stock Screener
+FMP_API_KEY=your-fmp-api-key
+
+# Monitoring Bot
+TELEGRAM_BOT_TOKEN=your-telegram-token
+TELEGRAM_CHAT_ID=your-chat-id
+```
+
+### 설치 및 실행
+
+```bash
+# 1. 저장소 클론
+git clone <repository-url>
+cd trading-system
+
+# 2. 의존성 설치
+yarn install
+
+# 3. 전체 빌드
+yarn build
+
+# 4. 서비스 실행 (개별)
+cd services/upbit-collector
+yarn dev
+
+# 또는 PM2로 전체 실행 (권장)
+pm2 start ecosystem.config.js
+```
+
+### 테스트 실행
+
+```bash
+# 전체 테스트
+yarn test
+
+# 특정 패키지/서비스
+cd packages/trading-utils
+yarn test
+
+# 커버리지 확인
+yarn test --coverage
+```
+
+---
+
+## 📁 프로젝트 구조
+
+```
+trading-system/
+├── apps/
+│   └── web/                    # Next.js 대시보드
+├── packages/
+│   ├── shared-utils/           # 공통 유틸 (로깅, 날짜, 환경변수)
+│   ├── db-client/              # Supabase 클라이언트
+│   ├── kis-auth/               # KIS 토큰 관리
+│   ├── trading-utils/          # 트레이딩 로직
+│   │   ├── indicators/         # 기술적 지표 (MA, MACD, RSI)
+│   │   ├── atr/                # ATR 계산, Stop Loss
+│   │   ├── confidence/         # 신뢰도 계산
+│   │   ├── risk/               # Position Sizing, Exposure
+│   │   └── signals/            # 신호 생성
+│   └── stock-screener/         # 배당주 스크리닝
+├── services/
+│   ├── upbit-collector/        # 업비트 데이터 수집
+│   ├── kis-collector/          # KIS 데이터 수집
+│   ├── yf-collector/           # Yahoo Finance 수집
+│   ├── ai-analyzer/            # AI 분석
+│   ├── trade-executor/         # 주문 실행
+│   │   ├── risk/               # 리스크 관리
+│   │   │   ├── circuit-breaker.ts
+│   │   │   ├── leverage-manager.ts
+│   │   │   ├── position-sizer.ts
+│   │   │   └── validator.ts
+│   │   ├── compliance/         # ACE 로깅
+│   │   │   ├── ace-logger.ts
+│   │   │   └── outcome-tracker.ts
+│   │   └── execution/          # 주문 실행
+│   ├── market-calendar/        # 경제 이벤트, 실적 발표
+│   ├── monitoring-bot/         # 시스템 모니터링
+│   └── backtest-engine/        # 백테스팅
+├── .claude/
+│   ├── rules/                  # 코딩 규칙
+│   │   ├── immutable-rules.md
+│   │   ├── architecture-guide.md
+│   │   └── database-guide.md
+│   └── skills/                 # 트레이딩 스킬 (19개)
+│       ├── technical-analyst/
+│       ├── risk-management/
+│       ├── signal-generation/
+│       ├── market-analysis/
+│       └── ...
+└── turbo.json                  # Turborepo 설정
+```
+
+---
+
+## 🔧 개발 가이드
+
+### 코딩 규칙
+
+프로젝트는 `.claude/rules/`에 정의된 규칙을 따릅니다:
+
+**필수 규칙 ([immutable-rules.md](./.claude/rules/immutable-rules.md)):**
+
+1. **서비스 격리** - `services/*` 간 직접 import 금지
+2. **타입 안전** - TypeScript strict, 명시적 `any` 금지
+3. **런타임 검증** - 외부 API 응답은 Zod 검증
+4. **금융 계산** - `big.js` 사용 (가격, 수량, 금액)
+5. **날짜 처리** - Luxon 사용, JS `Date` 직접 사용 금지
+6. **DB 접근** - `@workspace/db-client` 우선 사용
+
+**아키텍처 가이드 ([architecture-guide.md](./.claude/rules/architecture-guide.md)):**
+
+- 서비스 격리, DB 중심 통신
+- 공통 로직의 패키지화
+- 에러 처리 전략 (일시적 vs 영구적)
+- 백오프 패턴
+
+**데이터베이스 가이드 ([database-guide.md](./.claude/rules/database-guide.md)):**
+
+- 테이블 스키마 및 관계
+- 쿼리 패턴 및 최적화
+- 인덱스 전략
+
+### 새 서비스 추가
+
+1. `services/` 아래에 디렉토리 생성
+2. `package.json` 작성 (TypeScript, Vitest 포함)
+3. DB 접근은 `@workspace/db-client` 사용
+4. 공통 로직은 `@workspace/*` 패키지로 이동
+5. 환경변수는 `@workspace/shared-utils/requireEnv` 사용
+
+### 트레이딩 스킬 활용
+
+`.claude/skills/` 아래에 19개 스킬이 정의되어 있습니다:
+
+- `technical-analyst` - Elliott Wave, 피보나치, 차트 분석
+- `risk-management` - 리스크 관리 규칙
+- `signal-generation` - 매매 신호 생성
+- `market-analysis` - 시장 분석
+- `compliance-logging` - ACE 프레임워크
+- 기타 14개 스킬
+
+**사용 예:**
+
+```
+"BTC 차트를 technical-analyst로 분석하고
+ risk-management로 검증한 뒤
+ coding-standards 지켜서 구현해줘"
+```
+
+---
+
+## 🧪 테스트
+
+### 테스트 현황
+
+- **총 294개 테스트** - 모두 통과 ✅
+- **평균 커버리지** - 92%+
+
+**세부:**
+
+- trade-executor: 17개 통합 테스트
+- trading-utils: 212개 단위 테스트
+- market-calendar: 30개 테스트
+- stock-screener: 35개 테스트
+
+### 테스트 실행
+
+```bash
+# 전체 테스트
+yarn test --run
+
+# 커버리지
+yarn test --coverage
+
+# Watch 모드
+yarn test
+```
+
+---
+
+## 📦 배포
+
+### PM2 설정 (권장)
+
+```javascript
+// ecosystem.config.js
+module.exports = {
+  apps: [
+    {
+      name: 'upbit-collector',
+      script: 'dist/index.js',
+      cwd: './services/upbit-collector',
+      instances: 1,
+      autorestart: true,
+    },
+    // ... 기타 서비스
+  ],
+};
+```
+
+```bash
+# PM2로 시작
+pm2 start ecosystem.config.js
+
+# 저장 및 자동 시작 설정
+pm2 save
+pm2 startup
+```
+
+### Docker (선택)
+
+```bash
+# 전체 빌드
+docker-compose build
+
+# 실행
+docker-compose up -d
+```
+
+---
+
+## 📄 라이선스
+
+MIT License
+
+---
+
+## 🙏 Credits
+
+- **tradermonty** - Elliott Wave, 피보나치 분석 로직
+- **jmanhype** - QTS 리스크 관리 시스템 (Python → TypeScript 포팅)
+
+---
+
+**Made with 🤖 AI Pair Programming (Claude Code, ChatGPT, Codex)**
