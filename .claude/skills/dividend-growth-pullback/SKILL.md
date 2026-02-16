@@ -1,301 +1,335 @@
 # Dividend Growth Pullback Screener
 
 ---
+
 name: dividend-growth-pullback-screener
-description: Use this skill to find high-quality dividend growth stocks (12%+ annual dividend growth, 1.5%+ yield) that are experiencing temporary pullbacks, identified by RSI oversold conditions (RSI ≤40). This skill combines fundamental dividend analysis with technical timing indicators to identify buying opportunities in strong dividend growers during short-term weakness.
+description: RSI 과매도 조건(RSI ≤40)에서 일시적 조정을 받은 고품질 배당 성장주(연 배당 성장률 12%+, 배당수익률 1.5%+)를 찾을 때 사용하는 스킬입니다. 배당 펀더멘털 분석과 기술적 타이밍 지표를 결합해 단기 약세 구간의 매수 기회를 식별합니다.
+
 ---
 
-## Overview
+## 개요
 
-This skill screens for dividend growth stocks that exhibit strong fundamental characteristics but are experiencing temporary technical weakness. It targets stocks with exceptional dividend growth rates (12%+ CAGR) that have pulled back to RSI oversold levels (≤40), creating potential entry opportunities for long-term dividend growth investors.
+이 스킬은 펀더멘털은 강하지만 기술적으로 일시적 약세를 보이는 배당 성장주를 스크리닝합니다. 핵심 대상은 높은 배당 성장률(연복리 12%+)을 유지하면서 RSI 과매도(≤40) 구간으로 조정받은 종목이며, 장기 배당 성장 투자자에게 진입 기회를 제공합니다.
 
-**Investment Thesis:** High-quality dividend growth stocks (often yielding 1-2.5%) compound wealth through dividend increases rather than high current yield. Buying these stocks during temporary pullbacks (RSI ≤40) can enhance total returns by combining strong fundamental growth with favorable technical entry timing.
+**투자 가설:** 고품질 배당 성장주는 높은 현재 수익률보다 배당 인상으로 복리 효과를 만드는 경우가 많습니다(대개 1~2.5% 수익률). 이런 종목을 일시적 눌림(RSI ≤40)에서 매수하면, 펀더멘털 성장성과 기술적 진입 타이밍을 동시에 확보해 총수익률을 높일 수 있습니다.
 
-## When to Use This Skill
+## 이 스킬을 사용할 때
 
-Use this skill when:
-- Looking for dividend growth stocks with exceptional compounding potential (12%+ dividend CAGR)
-- Seeking entry opportunities in quality stocks during temporary market weakness
-- Willing to accept lower current yields (1.5-3%) for higher dividend growth
-- Focusing on total return over 5-10 years rather than current income
-- Market conditions show sector rotations or broad pullbacks affecting quality names
+다음 상황에서 사용합니다.
 
-**Do NOT use when:**
-- Seeking high current income (use value-dividend-screener instead)
-- Requiring immediate dividend yields >3%
-- Looking for deep value plays with strict P/E or P/B requirements
-- Short-term trading focus (<6 months)
+- 복리 잠재력이 높은 배당 성장주(배당 CAGR 12%+)를 찾을 때
+- 시장 약세 구간에서 우량주 진입 기회를 찾을 때
+- 낮은 현재 수익률(1.5~3%)을 수용하고 더 높은 배당 성장률을 추구할 때
+- 현재 현금흐름보다 5~10년 총수익률에 초점을 둘 때
+- 섹터 로테이션이나 시장 전반 조정으로 우량주가 함께 하락한 구간일 때
 
-## Screening Workflow
+**다음 경우에는 사용하지 않습니다.**
 
-### Step 1: Set API Keys
+- 현재 배당소득이 최우선일 때 (대신 `value-dividend-screener` 사용)
+- 즉시 3%+ 배당수익률이 필요할 때
+- 엄격한 P/E, P/B 기준의 딥밸류 종목을 찾을 때
+- 단기 트레이딩 중심(<6개월)일 때
 
-#### Two-Stage Approach (RECOMMENDED)
+## 스크리닝 워크플로
 
-For optimal performance, use FINVIZ Elite API for pre-screening + FMP API for detailed analysis:
+### 1단계: API 키 설정
+
+#### 2단계 방식 (권장)
+
+최적 성능을 위해 FINVIZ Elite API 선별 + FMP API 정밀 분석을 함께 사용합니다.
 
 ```bash
-# Set both API keys as environment variables
+# 환경 변수에 API 키 설정
 export FMP_API_KEY=your_fmp_key_here
 export FINVIZ_API_KEY=your_finviz_key_here
 ```
 
-**Why Two-Stage?**
-- **FINVIZ**: Fast pre-screening with RSI filter (1 API call → ~10-50 candidates)
-- **FMP**: Detailed fundamental analysis only on pre-screened candidates
-- **Result**: Analyze more stocks with fewer FMP API calls (stays within free tier limits)
+**왜 2단계인가?**
 
-#### FMP-Only Approach (Original Method)
+- **FINVIZ**: RSI 필터 포함 고속 1차 선별 (API 1회 호출 → 약 10~50개 후보)
+- **FMP**: 1차 통과 종목에만 정밀 펀더멘털 분석
+- **결과**: FMP 호출 수를 줄여 더 많은 종목 분석 가능 (무료 플랜 한도 내 운영 용이)
 
-If you don't have FINVIZ Elite access:
+#### FMP 단독 방식 (기존 방식)
+
+FINVIZ Elite 접근 권한이 없다면:
 
 ```bash
 export FMP_API_KEY=your_key_here
 ```
 
-**Limitation**: FMP free tier (250 requests/day) limits analysis to ~40 stocks. Use `--max-candidates 40` to stay within limits.
+**제약:** FMP 무료 플랜(일 250회 요청)에서는 약 40종목 정도만 분석 가능합니다. `--max-candidates 40` 사용을 권장합니다.
 
-### Step 2: Execute Screening
+### 2단계: 스크리닝 실행
 
-**Two-Stage Screening (RECOMMENDED):**
+**2단계 스크리닝 (권장):**
 
 ```bash
 cd dividend-growth-pullback-screener/scripts
 python3 screen_dividend_growth_rsi.py --use-finviz
 ```
 
-This executes:
-1. FINVIZ pre-screen: Dividend yield 0.5-3%, Dividend growth 10%+, EPS growth 5%+, Sales growth 5%+, RSI <40
-2. FMP detailed analysis: Verify 12%+ dividend CAGR, calculate exact RSI, analyze fundamentals
+실행 내용:
 
-**FMP-Only Screening:**
+1. FINVIZ 1차 선별: 배당수익률 0.5~3%, 배당성장 10%+, EPS 성장 5%+, 매출성장 5%+, RSI <40
+2. FMP 정밀 분석: 배당 CAGR 12%+ 검증, 정확 RSI 계산, 펀더멘털 분석
+
+**FMP 단독 스크리닝:**
 
 ```bash
 python3 screen_dividend_growth_rsi.py --max-candidates 40
 ```
 
-**Customization Options:**
+**커스터마이징 예시:**
 
 ```bash
-# Two-stage with custom parameters
+# 2단계 + 사용자 조건
 python3 screen_dividend_growth_rsi.py --use-finviz --min-yield 2.0 --min-div-growth 15.0 --rsi-max 35
 
-# FMP-only with custom parameters
+# FMP 단독 + 사용자 조건
 python3 screen_dividend_growth_rsi.py --min-yield 2.0 --min-div-growth 10.0 --max-candidates 30
 
-# Provide API keys as arguments (instead of environment variables)
+# 환경 변수 대신 인자로 API 키 전달
 python3 screen_dividend_growth_rsi.py --use-finviz --fmp-api-key YOUR_FMP_KEY --finviz-api-key YOUR_FINVIZ_KEY
 ```
 
-### Step 3: Review Results
+### 3단계: 결과 검토
 
-The script generates two outputs:
+스크립트는 아래 2개 결과물을 생성합니다.
 
-1. **JSON file:** `dividend_growth_pullback_results_YYYY-MM-DD.json`
-   - Structured data with all metrics for further analysis
-   - Includes dividend growth rates, RSI values, financial health metrics
+1. **JSON 파일:** `dividend_growth_pullback_results_YYYY-MM-DD.json`
+   - 후속 분석에 사용할 구조화 데이터
+   - 배당 성장률, RSI, 재무건전성 지표 포함
 
-2. **Markdown report:** `dividend_growth_pullback_screening_YYYY-MM-DD.md`
-   - Human-readable analysis with stock profiles
-   - Scenario-based probability assessments
-   - Entry timing recommendations
+2. **마크다운 리포트:** `dividend_growth_pullback_screening_YYYY-MM-DD.md`
+   - 사람이 읽기 쉬운 종목 분석 리포트
+   - 시나리오 기반 확률 평가
+   - 진입 타이밍 권고
 
-### Step 4: Analyze Qualified Stocks
+### 4단계: 통과 종목 해석
 
-For each qualified stock, the report includes:
+각 통과 종목 리포트에는 다음이 포함됩니다.
 
-**Dividend Growth Profile:**
-- Current yield and annual dividend
-- 3-year dividend CAGR and consistency
-- Payout ratio and sustainability assessment
+**배당 성장 프로파일:**
 
-**Technical Timing:**
-- Current RSI value (≤40 = oversold)
-- RSI context (extreme oversold <30 vs. early pullback 30-40)
-- Price action relative to recent trend
+- 현재 수익률과 연간 배당
+- 3년 배당 CAGR 및 일관성
+- 배당성향과 지속가능성 평가
 
-**Quality Metrics:**
-- Revenue and EPS growth (confirms business momentum)
-- Financial health (debt levels, liquidity ratios)
-- Profitability (ROE, profit margins)
+**기술적 타이밍:**
 
-**Investment Recommendation:**
-- Entry timing assessment (immediate vs. wait for confirmation)
-- Risk factors specific to the stock
-- Upside scenarios based on dividend growth compounding
+- 현재 RSI 값(≤40 = 과매도)
+- RSI 맥락(극단 과매도 <30 vs 초기 조정 30~40)
+- 최근 추세 대비 가격 위치
 
-## Screening Criteria Details
+**품질 지표:**
 
-### Phase 1: Fundamental Screening (FMP API)
+- 매출/EPS 성장(사업 모멘텀 확인)
+- 재무건전성(부채, 유동성)
+- 수익성(ROE, 이익률)
 
-**Initial Filter:**
-- Dividend Yield ≥ 1.5% (calculated from actual dividend payments)
-- Market Cap ≥ $2 billion (liquidity and stability)
-- Exchange: NYSE, NASDAQ (excludes OTC/pink sheets)
+**투자 권고:**
 
-**Dividend Growth Analysis:**
-- 3-Year Dividend CAGR ≥ 12% (doubles dividend in 6 years)
-- Dividend Consistency: No cuts in past 4 years
-- Payout Ratio < 100% (sustainability check)
+- 진입 타이밍(즉시 vs 확인 후)
+- 종목별 핵심 리스크
+- 배당 성장 복리 기반 상방 시나리오
 
-**Financial Health:**
-- Positive revenue growth over 3 years
-- Positive EPS growth over 3 years
-- Debt-to-Equity < 2.0 (manageable leverage)
-- Current Ratio > 1.0 (liquidity)
+## 스크리닝 기준 상세
 
-### Phase 2: Technical Screening (RSI Calculation)
+### 1단계: 펀더멘털 스크리닝 (FMP API)
 
-**RSI Calculation:**
-- 14-period RSI using daily closing prices
-- Formula: RSI = 100 - (100 / (1 + RS))
-  - RS = Average Gain / Average Loss over 14 periods
-- Data source: FMP historical prices (past 30 days)
+**초기 필터:**
 
-**RSI Filter:**
-- RSI ≤ 40 (oversold/pullback condition)
-- RSI interpretation:
-  - < 30: Extreme oversold (potential reversal)
-  - 30-40: Early pullback (uptrend correction)
-  - > 40: Not oversold (excluded)
+- 배당수익률 ≥ 1.5% (실제 배당금 기준 계산)
+- 시가총액 ≥ 20억 달러 (유동성/안정성)
+- 거래소: NYSE, NASDAQ (OTC 제외)
 
-### Phase 3: Ranking and Output
+**배당 성장 분석:**
 
-**Composite Scoring (0-100):**
-- Dividend Growth (40%): Reward higher CAGR and consistency
-- Financial Quality (30%): ROE, profit margins, debt levels
-- Technical Setup (20%): Lower RSI = better entry opportunity
-- Valuation (10%): P/E and P/B for context (not exclusionary)
+- 3년 배당 CAGR ≥ 12% (약 6년 내 배당 2배)
+- 배당 일관성: 최근 4년 감배 없음
+- 배당성향 < 100% (지속가능성 점검)
 
-Stocks ranked by composite score. Top scorers combine exceptional dividend growth with attractive technical entry points.
+**재무건전성:**
 
-## Understanding the Results
+- 최근 3년 매출 성장 플러스
+- 최근 3년 EPS 성장 플러스
+- 부채비율(D/E) < 2.0
+- 유동비율 > 1.0
 
-### Interpreting RSI Levels
+### 2단계: 기술적 스크리닝 (RSI 계산)
 
-**RSI 25-30 (Extreme Oversold):**
-- Often indicates panic selling or negative news
-- Higher risk but potentially highest reward
-- Recommended: Wait for RSI to turn up (sign of stabilization)
-- Entry: Scale in with 50% position, add on RSI >30
+**RSI 계산:**
 
-**RSI 30-35 (Strong Oversold):**
-- Normal correction in strong uptrend
-- Lower risk than extreme oversold
-- Recommended: Can initiate position immediately
-- Entry: Full position acceptable, set stop loss 5-8% below
+- 일봉 종가 기준 14기간 RSI
+- 공식: RSI = 100 - (100 / (1 + RS))
+  - RS = 14기간 평균 상승폭 / 평균 하락폭
+- 데이터 소스: FMP 과거 가격(최근 30일)
 
-**RSI 35-40 (Early Pullback):**
-- Mild weakness in uptrend
-- Lowest risk of further decline
-- Recommended: Conservative entry for high conviction stocks
-- Entry: Full position, tight stop loss 3-5% below
+**RSI 필터:**
 
-### Dividend Growth Compounding Examples
+- RSI ≤ 40 (과매도/눌림 조건)
+- RSI 해석:
+  - < 30: 극단 과매도(반등 가능성)
+  - 30~40: 초기 눌림(상승추세 내 조정)
+  - > 40: 과매도 아님(제외)
 
-**12% Dividend CAGR (Minimum Threshold):**
-- Starting Yield: 1.5%
-- Year 6: 2.96% yield on cost (doubled)
-- Year 12: 5.85% yield on cost (4x)
-- Example: Visa (V), Mastercard (MA) historical profile
+### 3단계: 랭킹 및 출력
 
-**15% Dividend CAGR (Excellent):**
-- Starting Yield: 1.8%
-- Year 6: 4.08% yield on cost (2.3x)
-- Year 12: 9.22% yield on cost (5.1x)
-- Example: Microsoft (MSFT) 2010-2020 period
+**종합 점수 (0~100):**
 
-**20% Dividend CAGR (Exceptional):**
-- Starting Yield: 2.0%
-- Year 6: 6.00% yield on cost (3x)
-- Year 12: 18.0% yield on cost (9x)
-- Example: Apple (AAPL) 2012-2020 period
+- 배당 성장(40%): CAGR과 일관성 가중
+- 재무 품질(30%): ROE, 이익률, 부채 수준
+- 기술적 셋업(20%): RSI 낮을수록 진입 매력도↑
+- 밸류에이션(10%): P/E, P/B는 참고(배제 기준 아님)
 
-**Key Insight:** Lower starting yield + high growth > high starting yield + low growth over 10+ years.
+종목은 종합 점수 기준으로 정렬됩니다. 상위 종목은 높은 배당 성장성과 유리한 기술적 진입 구간을 동시에 만족합니다.
 
-## Troubleshooting
+## 결과 해석 가이드
 
-### No Results Found
+### RSI 구간 해석
 
-**Possible Causes:**
-1. **Market conditions:** Strong bull market with few oversold stocks
-2. **Criteria too strict:** 12% dividend growth is rare (5-10 stocks typically qualify)
-3. **RSI threshold too low:** Consider raising to RSI ≤45 for more candidates
+**RSI 25~30 (극단 과매도):**
 
-**Solutions:**
-- Relax RSI threshold: `--rsi-max 45` (early pullback phase)
-- Lower dividend growth: `--min-div-growth 10.0` (still excellent growth)
-- Lower minimum yield: `--min-yield 1.0` (capture more growth stocks)
+- 공포성 매도나 악재 반영 구간인 경우가 많음
+- 리스크는 높지만 보상 잠재력도 큼
+- 권장: RSI 재상승 확인 후 진입
+- 진입: 50% 분할 진입 후 RSI >30에서 추가
 
-### API Rate Limit Reached
+**RSI 30~35 (강한 과매도):**
 
-**FMP Free Tier Limits:**
-- 250 requests/day
-- Each stock analyzed requires 6 API calls (quote, dividend, prices, income, balance, cashflow, metrics)
-- Maximum ~40 stocks per day in FMP-only mode
+- 강한 상승추세의 정상 조정 가능성
+- 극단 과매도보다 하방 리스크 낮음
+- 권장: 초기 포지션 진입 가능
+- 진입: 전량 진입 가능, 손절은 5~8% 아래
 
-**Solutions:**
+**RSI 35~40 (초기 눌림):**
 
-**1. Use FINVIZ Two-Stage Approach (RECOMMENDED)**
+- 상승추세 내 비교적 완만한 약세
+- 추가 급락 리스크가 상대적으로 낮음
+- 권장: 확신 높은 종목의 보수적 진입
+- 진입: 전량 진입, 손절은 3~5% 아래
+
+### 배당 성장 복리 예시
+
+**배당 CAGR 12% (최소 기준):**
+
+- 시작 수익률: 1.5%
+- 6년차: 투자원금 대비 2.96% (약 2배)
+- 12년차: 투자원금 대비 5.85% (약 4배)
+- 예시: Visa(V), Mastercard(MA) 과거 프로파일
+
+**배당 CAGR 15% (우수):**
+
+- 시작 수익률: 1.8%
+- 6년차: 투자원금 대비 4.08% (2.3배)
+- 12년차: 투자원금 대비 9.22% (5.1배)
+- 예시: Microsoft(MSFT) 2010~2020
+
+**배당 CAGR 20% (탁월):**
+
+- 시작 수익률: 2.0%
+- 6년차: 투자원금 대비 6.00% (3배)
+- 12년차: 투자원금 대비 18.0% (9배)
+- 예시: Apple(AAPL) 2012~2020
+
+**핵심 포인트:** 장기(10년+)에서는 낮은 시작 수익률 + 높은 성장률이, 높은 시작 수익률 + 낮은 성장률을 초과할 수 있습니다.
+
+## 트러블슈팅
+
+### 결과가 없을 때
+
+**가능한 원인:**
+
+1. **시장 환경:** 강한 상승장에서는 과매도 종목 자체가 적음
+2. **기준이 너무 엄격:** 배당 성장률 12%는 희소(보통 5~10종목)
+3. **RSI 기준이 낮음:** RSI ≤45로 상향 시 후보 확대 가능
+
+**해결 방법:**
+
+- RSI 완화: `--rsi-max 45` (초기 눌림 구간 포함)
+- 배당 성장 기준 완화: `--min-div-growth 10.0` (여전히 우수)
+- 최소 수익률 완화: `--min-yield 1.0` (성장주 풀 확장)
+
+### API 호출 한도 초과
+
+**FMP 무료 플랜 한도:**
+
+- 일 250회 요청
+- 종목당 약 6회 호출(시세, 배당, 가격, 손익계산서, 재무상태표, 현금흐름, 지표)
+- FMP 단독 모드 기준 일 최대 약 40종목
+
+**해결 방법:**
+
+**1. FINVIZ 2단계 방식 사용 (권장)**
+
 ```bash
 python3 screen_dividend_growth_rsi.py --use-finviz
 ```
-- FINVIZ pre-screening: 1 API call → 10-50 candidates (already filtered by RSI)
-- FMP analysis: 6 calls × 10-50 stocks = 60-300 FMP calls
-- **Advantage**: FINVIZ RSI filter dramatically reduces candidates, staying within FMP limits
 
-**2. Limit FMP-Only Candidates**
+- FINVIZ 1차 선별: 1회 호출 → RSI 포함 10~50개 후보
+- FMP 정밀 분석: 6회 × 10~50종목 = 60~300회
+- **장점**: FINVIZ RSI 필터로 후보 수를 줄여 FMP 한도 관리가 쉬움
+
+**2. FMP 단독 후보 수 제한**
+
 ```bash
 python3 screen_dividend_growth_rsi.py --max-candidates 40
 ```
 
-**3. Wait 24 Hours for Rate Limit Reset**
-- FMP resets at UTC midnight
+**3. 24시간 대기 후 한도 리셋**
 
-**4. Upgrade to FMP Paid Plan**
-- Starter ($14/month): 500 requests/day
-- Professional ($29/month): 1,000 requests/day
+- FMP는 UTC 자정 기준으로 한도 초기화
 
-**Note:** FINVIZ Elite subscription ($40/month) + FMP free tier is more cost-effective than FMP paid plans for this use case.
+**4. FMP 유료 플랜 업그레이드**
 
-### RSI Calculation Errors
+- Starter($14/월): 일 500회
+- Professional($29/월): 일 1,000회
 
-**Issue:** "Insufficient price data for RSI calculation"
+**참고:** 이 사용례에서는 FINVIZ Elite($40/월) + FMP 무료 플랜 조합이 FMP 단독 유료 플랜보다 비용 효율적일 수 있습니다.
 
-**Cause:** Stock has less than 30 days of trading history (IPO or inactive)
+### RSI 계산 오류
 
-**Solution:** Script automatically skips stocks with insufficient data. No action needed.
+**증상:** "Insufficient price data for RSI calculation"
 
-## Resources
+**원인:** 거래 이력이 30일 미만(신규 상장/비활성 종목)
+
+**해결:** 데이터가 부족한 종목은 자동 스킵됩니다. 추가 조치는 필요 없습니다.
+
+## 리소스
 
 ### scripts/
 
-**screen_dividend_growth_rsi.py** - Main screening script
-- Integrates FMP API for fundamental data
-- Calculates 14-period RSI from historical prices
-- Applies multi-phase filtering and ranking
-- Outputs JSON and markdown reports
+**screen_dividend_growth_rsi.py** - 메인 스크리닝 스크립트
+
+- FMP API 기반 펀더멘털 데이터 통합
+- 과거 가격으로 14기간 RSI 계산
+- 다단계 필터링 및 랭킹 적용
+- JSON/마크다운 리포트 출력
 
 ### references/
 
-**rsi_oversold_strategy.md** - RSI indicator explanation
-- How RSI identifies oversold conditions
-- Difference between extreme oversold (<30) vs. early pullback (30-40)
-- Combining RSI with fundamental analysis
-- False positive management and risk mitigation
+**rsi_oversold_strategy.md** - RSI 과매도 전략 설명
 
-**dividend_growth_compounding.md** - Dividend growth mathematics
-- Power of 12%+ dividend CAGR over time
-- Yield vs. growth trade-offs
-- Historical examples (MSFT, V, MA, AAPL)
-- Quality characteristics of dividend growth stocks
+- RSI가 과매도 구간을 식별하는 방식
+- 극단 과매도(<30) vs 초기 눌림(30~40)
+- RSI와 펀더멘털 결합 방법
+- 오탐 관리 및 리스크 완화
 
-**fmp_api_guide.md** - API usage documentation
-- API key setup and management
-- Endpoint documentation for screening
-- Rate limiting strategies
-- Error handling and troubleshooting
+**dividend_growth_compounding.md** - 배당 성장 복리 수학
+
+- 12%+ 배당 CAGR의 장기 효과
+- 수익률 vs 성장률 트레이드오프
+- 역사적 예시(MSFT, V, MA, AAPL)
+- 배당 성장주의 품질 특성
+
+**fmp_api_guide.md** - API 사용 가이드
+
+- API 키 설정 및 관리
+- 스크리닝용 엔드포인트 설명
+- 호출 한도 관리 전략
+- 에러 처리 및 트러블슈팅
 
 ---
 
-**Disclaimer:** This screening tool is for informational purposes only. Past dividend growth does not guarantee future performance. Conduct thorough due diligence before making investment decisions. RSI oversold conditions do not guarantee price reversals - stocks can remain oversold for extended periods.
+**면책 조항:** 본 스크리닝 도구는 정보 제공 목적이며 투자 자문이 아닙니다. 과거 배당 성장률은 미래 성과를 보장하지 않습니다. 투자 전 반드시 추가 실사를 수행하세요. RSI 과매도는 반등을 보장하지 않으며, 과매도 상태가 장기간 지속될 수 있습니다.

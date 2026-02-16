@@ -1,65 +1,70 @@
 # Options Strategy Advisor
 
-## Overview
+## 개요
 
-This is a comprehensive options trading analysis tool that provides theoretical pricing, Greeks calculations, and strategy simulation for educational purposes.
+교육 목적의 옵션 트레이딩 분석 도구로, 이론가 계산, 그릭스 산출, 전략별 손익 시뮬레이션을 제공합니다.
 
-## Core Capabilities
+## 핵심 역량
 
-- **Black-Scholes theoretical pricing** and Greeks calculations
-- **Strategy P/L simulation** across 17+ options strategies
-- **Earnings-integrated volatility analysis**
-- **Risk management** and position sizing guidance
-- **Educational framework** with practical trade simulation
+- **블랙-숄즈 기반 이론가 산출** 및 그릭스 계산
+- **17개+ 옵션 전략 손익 시뮬레이션**
+- **실적 이벤트 연계 변동성 분석**
+- **리스크 관리** 및 포지션 사이징 가이드
+- **실전형 학습 프레임워크** 제공
 
-## Key Features
+## 주요 기능
 
-The skill supports major strategies including:
-- Covered calls, protective puts
-- Bull/bear spreads
-- Iron condors
-- Straddles/strangles
-- Calendar spreads
+다음과 같은 대표 전략을 지원합니다.
 
-It features a detailed analysis workflow:
-1. Gathering inputs
-2. Calculating historical volatility
-3. Pricing options
-4. Computing Greeks
-5. Simulating P/L
-6. Generating ASCII diagrams
-7. Providing strategy-specific guidance
+- 커버드 콜, 프로텍티브 풋
+- 불/베어 스프레드
+- 아이언 콘도르
+- 스트래들/스트랭글
+- 캘린더 스프레드
 
-## Greeks Analysis
+분석 워크플로:
 
-The tool calculates:
-- **Delta** (directional exposure)
-- **Gamma** (delta acceleration)
-- **Theta** (daily time decay)
-- **Vega** (volatility sensitivity)
-- **Rho** (interest rate sensitivity)
+1. 입력값 수집
+2. 과거 변동성 계산
+3. 옵션 가격 산출
+4. 그릭스 계산
+5. 손익 시뮬레이션
+6. ASCII 다이어그램 생성
+7. 전략별 실행 가이드 제공
 
-## Earnings Integration
+## 그릭스 분석
 
-Pre-earnings strategies incorporate earnings calendar data to assess:
-- Implied moves
-- IV crush risk
-- Optimal strategy selection between long straddles/strangles versus short iron condors
+다음 지표를 계산합니다.
 
-## Important Limitations
+- **Delta** (방향 민감도)
+- **Gamma** (델타 변화율)
+- **Theta** (시간가치 감소)
+- **Vega** (변동성 민감도)
+- **Rho** (금리 민감도)
 
-All pricing uses Black-Scholes European-style approximations. **Actual market prices may differ due to bid-ask spread and American vs European pricing.** The tool emphasizes this is theoretical analysis requiring real broker quotes before trading.
+## 실적 이벤트 연계
 
-## Output Format
+실적 발표 전 전략 분석 시 실적 캘린더 데이터를 연동해 다음을 평가합니다.
 
-Comprehensive markdown reports with:
-- Strategy setup
-- P/L analysis
-- ASCII diagrams
-- Greeks interpretation
-- Risk assessment
-- Trade management guidelines
+- 내재 변동폭(Implied Move)
+- 실적 후 IV 크러시 리스크
+- 롱 스트래들/스트랭글 vs 숏 아이언 콘도르 중 전략 선택 적합성
+
+## 중요한 제한사항
+
+모든 가격 산출은 블랙-숄즈 유럽형 근사에 기반합니다. **실제 체결 가격은 호가 스프레드, 미국형/유럽형 차이 등으로 달라질 수 있습니다.** 실거래 전에는 반드시 브로커 실시간 호가로 재검증해야 합니다.
+
+## 출력 형식
+
+다음 내용을 포함한 종합 마크다운 리포트를 생성합니다.
+
+- 전략 구성
+- 손익 분석
+- ASCII 다이어그램
+- 그릭스 해석
+- 리스크 평가
+- 포지션 관리 가이드
 
 ---
 
-**Dependencies**: Python 3.8+, numpy, scipy, pandas
+**의존성**: Python 3.8+, numpy, scipy, pandas

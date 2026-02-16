@@ -1,111 +1,123 @@
 # Institutional Flow Tracker
 
 ---
+
 name: institutional-flow-tracker
-description: Use this skill to track institutional investor ownership changes and portfolio flows using 13F filings data. Analyzes hedge funds, mutual funds, and other institutional holders to identify stocks with significant smart money accumulation or distribution. Helps discover stocks before major moves by following where sophisticated investors are deploying capital.
+description: 13F 공시 데이터를 활용해 기관 투자자의 지분 변동과 포트폴리오 자금 흐름을 추적하는 스킬입니다. 헤지펀드, 뮤추얼펀드 등 주요 기관 보유자 변화를 분석해 스마트머니의 누적 매수/분산 매도 신호를 식별하고 선행 기회를 탐색합니다.
+
 ---
 
-## Overview
+## 개요
 
-This skill tracks institutional investor activity through 13F SEC filings to identify "smart money" flows into and out of stocks. By analyzing quarterly changes in institutional ownership, you can discover stocks that sophisticated investors are accumulating before major price moves, or identify potential risks when institutions are reducing positions.
+이 스킬은 SEC 13F 분기 공시를 기반으로 기관 투자자 활동을 추적해 종목 안팎으로 유입/유출되는 "스마트머니" 흐름을 식별합니다. 기관 보유율의 분기별 변화를 분석하면, 대규모 가격 변동 전에 기관이 매집 중인 종목이나 기관 이탈이 진행 중인 위험 종목을 파악할 수 있습니다.
 
-**Key Insight:** Institutional investors (hedge funds, pension funds, mutual funds) manage trillions of dollars and conduct extensive research. Their collective buying/selling patterns often precede significant price movements by 1-3 quarters.
+**핵심 인사이트:** 기관 투자자(헤지펀드, 연기금, 뮤추얼펀드)는 막대한 운용자산과 리서치 역량을 보유합니다. 이들의 집단적 매수/매도 패턴은 종종 1~3개 분기 선행해 가격에 반영됩니다.
 
-## When to Use This Skill
+## 이 스킬을 사용할 때
 
-Use this skill when:
-- Validating investment ideas (checking if smart money agrees with your thesis)
-- Discovering new opportunities (finding stocks institutions are accumulating)
-- Risk assessment (identifying stocks institutions are exiting)
-- Portfolio monitoring (tracking institutional support for your holdings)
-- Following specific investors (tracking Warren Buffett, Cathie Wood, etc.)
-- Sector rotation analysis (identifying where institutions are rotating capital)
+다음 상황에서 사용합니다.
 
-**Do NOT use when:**
-- Seeking real-time intraday signals (13F data has 45-day reporting lag)
-- Analyzing micro-cap stocks (<$100M market cap with limited institutional interest)
-- Looking for short-term trading signals (<3 months horizon)
+- 투자 아이디어 검증(스마트머니가 같은 방향인지 확인)
+- 신규 기회 발굴(기관 매집 종목 탐색)
+- 리스크 평가(기관 이탈 종목 식별)
+- 포트폴리오 모니터링(보유 종목의 기관 수급 지지 여부 점검)
+- 특정 투자자 추적(예: 워런 버핏, 캐시 우드)
+- 섹터 로테이션 분석(기관 자금 이동 경로 파악)
 
-## Data Sources & Requirements
+**다음 경우에는 사용하지 않습니다.**
 
-### Required: FMP API Key
+- 실시간/당일 신호가 필요할 때(13F는 45일 시차 존재)
+- 초소형주 분석(<1억 달러, 기관 커버리지 제한)
+- 3개월 미만 단기 매매 신호 탐색
 
-This skill uses Financial Modeling Prep (FMP) API to access 13F filing data:
+## 데이터 소스 및 요구 사항
 
-**Setup:**
+### 필수: FMP API Key
+
+본 스킬은 Financial Modeling Prep(FMP) API로 13F 공시 데이터를 조회합니다.
+
+**설정:**
+
 ```bash
-# Set environment variable (preferred)
+# 권장: 환경 변수 사용
 export FMP_API_KEY=your_key_here
 
-# Or provide when running scripts
+# 또는 실행 시 인자로 전달
 python3 scripts/track_institutional_flow.py --api-key YOUR_KEY
 ```
 
-**13F Filing Schedule:**
-- Filed quarterly within 45 days after quarter end
-- Q1 (Jan-Mar): Filed by mid-May
-- Q2 (Apr-Jun): Filed by mid-August
-- Q3 (Jul-Sep): Filed by mid-November
-- Q4 (Oct-Dec): Filed by mid-February
+**13F 공시 일정:**
 
-## Analysis Workflow
+- 분기 종료 후 45일 이내 제출
+- 1분기(1~3월): 5월 중순까지
+- 2분기(4~6월): 8월 중순까지
+- 3분기(7~9월): 11월 중순까지
+- 4분기(10~12월): 2월 중순까지
 
-### Step 1: Identify Stocks with Significant Institutional Changes
+## 분석 워크플로
 
-Execute the main screening script to find stocks with notable institutional activity.
+### 1단계: 기관 보유 변동이 큰 종목 선별
 
-### Step 2: Deep Dive on Specific Stocks
+메인 스크리닝 스크립트를 실행해 유의미한 기관 수급 변화가 있는 종목을 찾습니다.
 
-For detailed analysis of a specific stock's institutional ownership.
+### 2단계: 개별 종목 정밀 분석
 
-### Step 3: Track Specific Institutional Investors
+특정 종목의 기관 보유 구조를 상세 분석합니다.
 
-Follow the portfolio moves of specific hedge funds or investment firms.
+### 3단계: 특정 기관 투자자 추적
 
-### Step 4: Interpretation and Action
+헤지펀드/운용사의 포트폴리오 이동을 추적합니다.
 
-Read the references for interpretation guidance:
-- `references/13f_filings_guide.md` - Understanding 13F data and limitations
-- `references/institutional_investor_types.md` - Different investor types and their strategies
-- `references/interpretation_framework.md` - How to interpret institutional flow signals
+### 4단계: 해석 및 액션
 
-## Signal Strength Framework
+해석 가이드는 아래 참고 자료를 사용합니다.
 
-**Strong Bullish (Consider buying):**
-- Institutional ownership increasing >15% QoQ
-- Number of institutions increasing >10%
-- Quality long-term investors adding positions
-- Low current ownership (<40%) with room to grow
-- Accumulation happening across multiple quarters
+- `references/13f_filings_guide.md` - 13F 데이터 구조와 한계
+- `references/institutional_investor_types.md` - 기관 유형별 전략 특성
+- `references/interpretation_framework.md` - 기관 수급 신호 해석 프레임워크
 
-**Strong Bearish (Consider selling/avoiding):**
-- Institutional ownership decreasing >15% QoQ
-- Number of institutions decreasing >10%
-- Quality investors exiting positions
-- Distribution happening across multiple quarters
-- Concentration risk (top holder selling large position)
+## 신호 강도 프레임워크
 
-## Limitations and Caveats
+**강한 강세 (매수 검토):**
 
-**Data Lag:**
-- 13F filings have 45-day reporting delay
-- Positions may have changed since filing date
-- Use as confirming indicator, not leading signal
+- 기관 보유율 QoQ +15% 초과 증가
+- 보유 기관 수 +10% 초과 증가
+- 질 높은 장기 투자 기관의 비중 확대
+- 현재 기관 보유율이 낮아(<40%) 추가 유입 여지 존재
+- 다중 분기에 걸친 연속 매집
 
-**Coverage:**
-- Only institutions managing >$100M are required to file
-- Excludes individual investors and smaller funds
-- International institutions may not file 13F
+**강한 약세 (매도/회피 검토):**
 
-**Reporting Rules:**
-- Only long equity positions reported (no shorts, options, bonds)
-- Holdings as of quarter-end snapshot
-- Some positions may be confidential (delayed reporting)
+- 기관 보유율 QoQ -15% 초과 감소
+- 보유 기관 수 -10% 초과 감소
+- 질 높은 기관의 이탈
+- 다중 분기에 걸친 분산 매도
+- 상위 보유자 대량 매도에 따른 집중도 리스크
 
-## Resources
+## 한계와 주의사항
 
-The `references/` folder contains detailed guides:
+**데이터 시차:**
 
-- **13f_filings_guide.md** - Comprehensive guide to 13F SEC filings
-- **institutional_investor_types.md** - Different types of institutional investors
-- **interpretation_framework.md** - Framework for interpreting institutional ownership changes
+- 13F는 45일 보고 지연 존재
+- 공시 이후 포지션이 이미 변경됐을 수 있음
+- 선행 지표가 아닌 확인 지표로 활용
+
+**커버리지:**
+
+- 운용자산 1억 달러 초과 기관만 의무 공시
+- 개인 투자자 및 소형 펀드 제외
+- 일부 해외 기관은 13F 제출 대상 아님
+
+**공시 규칙:**
+
+- 롱 주식 포지션만 공시(숏/옵션/채권 제외)
+- 분기 말 스냅샷 기준
+- 일부 포지션은 비공개 처리로 지연 공시 가능
+
+## 리소스
+
+`references/` 폴더에서 상세 가이드를 제공합니다.
+
+- **13f_filings_guide.md** - 13F SEC 공시 종합 가이드
+- **institutional_investor_types.md** - 기관 투자자 유형 정리
+- **interpretation_framework.md** - 기관 보유 변동 해석 프레임워크

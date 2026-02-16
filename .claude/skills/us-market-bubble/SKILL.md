@@ -1,124 +1,133 @@
 # US Market Bubble Detection Skill (Revised v2.1)
 
-## Overview
+## 개요
 
-This is Claude Code's official bubble detection framework using data-driven analysis based on the revised Minsky/Kindleberger framework v2.1. The skill prioritizes objective metrics (Put/Call ratios, VIX, margin debt, breadth indicators, IPO data) over subjective impressions.
+개정된 Minsky/Kindleberger 프레임워크 v2.1을 기반으로 한 데이터 중심 버블 탐지 체계입니다. 주관적 인상보다 객관 지표(Put/Call 비율, VIX, 신용융자 잔고, 시장 폭 지표, IPO 데이터)를 우선합니다.
 
-## When to Use
+## 사용 시점
 
-Activate this skill when users ask about:
-- Market bubble risk or valuation concerns
-- Profit-taking or entry timing decisions
-- Social phenomena suggesting speculative excess
-- Risk management for existing positions
+다음과 같은 질문이 들어오면 이 스킬을 활성화합니다.
 
-## Evaluation Process (Strict Order)
+- 시장 버블 위험 또는 밸류에이션 과열 우려
+- 익절/진입 타이밍 판단
+- 투기 과열을 시사하는 사회적 현상 점검
+- 기존 포지션의 리스크 관리
 
-### Phase 1: Mandatory Quantitative Data Collection
+## 평가 절차 (고정 순서)
 
-Before any analysis begins, collect these measurements:
+### 1단계: 필수 정량 데이터 수집
 
-**Market Structure Data:**
-- Put/Call Ratio (CBOE Equity P/C, 5-day moving average)
-- VIX current value and 3-month percentile
-- 21-day realized volatility
+분석 시작 전 아래 지표를 반드시 수집합니다.
 
-**Leverage & Positioning:**
-- FINRA Margin Debt (latest month + YoY % change)
-- S&P 500 breadth (% above 50-day moving average)
+**시장 구조 데이터:**
 
-**IPO Activity:**
-- Quarterly IPO count and median first-day returns
+- Put/Call Ratio (CBOE 주식 P/C, 5일 이동평균)
+- VIX 현재값 및 3개월 분위수
+- 21일 실현 변동성
 
-⚠️ **Critical:** Do not proceed without Phase 1 data.
+**레버리지/포지셔닝:**
 
-### Phase 2: Quantitative Evaluation
+- FINRA Margin Debt (최신 월 + 전년 대비 변화율)
+- S&P 500 시장 폭(50일 이동평균 상회 종목 비율)
 
-Score mechanically using these six indicators (0-12 points total):
+**IPO 활동:**
 
-| Indicator | Scoring |
-|-----------|---------|
-| Put/Call Ratio | 2 pts: <0.70; 1 pt: 0.70-0.85; 0 pts: >0.85 |
-| VIX Suppression | 2 pts: <12 AND within 5% of highs; 1 pt: 12-15; 0 pts: >15 |
-| Margin Debt YoY | 2 pts: +20%+; 1 pt: +10-20%; 0 pts: +10% or less |
-| IPO Overheating | 2 pts: >2x average + 20%+ first-day; 1 pt: >1.5x average |
-| Breadth Anomaly | 2 pts: New high + <45% above 50DMA; 1 pt: 45-60%; 0 pts: >60% |
-| Price Acceleration | 2 pts: 95th percentile; 1 pt: 85-95th; 0 pts: below 85th |
+- 분기 IPO 건수 및 상장 첫날 중위 수익률
 
-### Phase 3: Qualitative Adjustment (Maximum +3 points)
+⚠️ **중요:** 1단계 데이터 없이는 다음 단계로 진행하지 않습니다.
 
-**Before adding ANY qualitative points, verify:**
-- Concrete, measurable data exists
-- Independent observers would agree
-- No double-counting with Phase 2
-- Evidence is documented with sources
+### 2단계: 정량 평가
 
-**Adjustment A: Social Penetration (+0 to +1)**
-- Requires: Direct user reports of non-investor recommendations with names/dates
-- Requires: Multiple independent sources (minimum 3)
-- Invalid: Vague statements like "everyone talks about stocks"
+아래 6개 지표를 기계적으로 채점합니다(총 0~12점).
 
-**Adjustment B: Media/Search Trends (+0 to +1)**
-- Requires: Google Trends showing 5x+ year-over-year increase (measured)
-- Requires: Mainstream coverage confirmation (specific Time covers, dated TV specials)
-- Invalid: "Elevated narrative" without measured data
+| 지표            | 채점 기준                                                           |
+| --------------- | ------------------------------------------------------------------- |
+| Put/Call Ratio  | 2점: <0.70; 1점: 0.70-0.85; 0점: >0.85                              |
+| VIX 억눌림      | 2점: <12 이면서 고점 대비 5% 이내; 1점: 12-15; 0점: >15             |
+| Margin Debt YoY | 2점: +20% 이상; 1점: +10-20%; 0점: +10% 이하                        |
+| IPO 과열        | 2점: 평균 대비 2배 초과 + 첫날 +20% 이상; 1점: 평균 대비 1.5배 초과 |
+| Breadth 이상    | 2점: 지수 신고점 + 50DMA 상회 <45%; 1점: 45-60%; 0점: >60%          |
+| 가격 가속       | 2점: 95분위 이상; 1점: 85-95분위; 0점: 85분위 미만                  |
 
-**Adjustment C: Valuation Disconnect (+0 to +1)**
-- Requires: P/E >25 (if not already in Phase 2)
-- Requires: Fundamentals explicitly ignored in mainstream discourse
-- Requires: "This time is different" documented in major media
-- Invalid if: Companies have real earnings supporting valuations
+### 3단계: 정성 보정 (최대 +3점)
 
-### Phase 4: Final Judgment
+**정성 점수 추가 전 필수 확인:**
+
+- 구체적이고 측정 가능한 데이터 존재
+- 독립 관찰자도 동일 결론에 동의 가능
+- 2단계와 중복 계산 아님
+- 근거와 출처 문서화 완료
+
+**보정 A: 사회적 침투 (+0~+1)**
+
+- 필요: 비투자자 추천 사례의 실명/날짜 기반 제보
+- 필요: 최소 3개 이상의 독립 소스 교차 확인
+- 무효: "다들 주식 얘기한다" 같은 정성적 진술
+
+**보정 B: 미디어/검색 트렌드 (+0~+1)**
+
+- 필요: Google Trends 전년 대비 5배 이상 증가(계량)
+- 필요: 대중매체 확산 근거(특정 표지/방송, 날짜 포함)
+- 무효: 정량 근거 없는 "서사가 과열" 주장
+
+**보정 C: 밸류에이션 괴리 (+0~+1)**
+
+- 필요: P/E >25(2단계 미반영 시)
+- 필요: 주류 담론에서 펀더멘털 무시 정황
+- 필요: "이번엔 다르다" 유형 서사에 대한 매체 근거
+- 무효: 실적이 밸류에이션을 정당화하는 경우
+
+### 4단계: 최종 판정
 
 ```
-Final Score = Phase 2 (0-12) + Phase 3 (0 to +3) = 0-15 points
+최종 점수 = 2단계(0~12) + 3단계(0~+3) = 0~15점
 
-0-4 points:    Normal (100% Risk Budget)
-5-7 points:    Caution (70-80% Risk Budget)
-8-9 points:    Elevated Risk (50-70% Risk Budget) ← NEW in v2.1
-10-12 points:  Euphoria (40-50% Risk Budget)
-13-15 points:  Critical (20-30% Risk Budget)
+0~4점:    정상 (리스크 예산 100%)
+5~7점:    주의 (리스크 예산 70~80%)
+8~9점:    위험 상승 (리스크 예산 50~70%) ← v2.1 신규
+10~12점:  과열 (리스크 예산 40~50%)
+13~15점:  임계 (리스크 예산 20~30%)
 ```
 
-## Recommended Actions by Phase
+## 구간별 권장 액션
 
-**Normal (0-4):** Continue standard strategy; set 2.0× ATR trailing stops
+**정상 (0~4):** 기존 전략 유지, 2.0× ATR 트레일링 스탑 적용
 
-**Caution (5-7):** Begin partial profit-taking (20-30%); tighten to 1.8× ATR
+**주의 (5~7):** 부분 익절 시작(20~30%), 1.8× ATR로 스탑 타이트닝
 
-**Elevated Risk (8-9):** Increase profit-taking (30-50%); selective positions only; build cash reserves
+**위험 상승 (8~9):** 익절 비중 확대(30~50%), 선별적 신규 진입, 현금 비중 확대
 
-**Euphoria (10-12):** Accelerate stair-step profit-taking (50-60%); no new long positions except pullbacks
+**과열 (10~12):** 계단식 익절 가속(50~60%), 눌림 외 신규 롱 자제
 
-**Critical (13-15):** Major profit-taking; full hedge implementation; prepare for dislocation
+**임계 (13~15):** 대규모 익절, 전면적 헤지 적용, 변동성 급등 구간 대비
 
-## Short-Selling Composite Conditions
+## 공매도 복합 조건
 
-Only consider after confirming ≥3 of these 7 conditions:
-1. Weekly chart shows lower highs
-2. Volume peaks out
-3. Margin debt drops sharply
-4. Media/search trends peak
-5. Weak stocks break first
-6. VIX spikes above 20
-7. Fed/policy shift signals
+아래 7개 조건 중 3개 이상 확인 후에만 공매도 검토:
 
-## Key Changes in v2.1
+1. 주봉 기준 고점 하락(Lower High) 형성
+2. 거래량 피크아웃
+3. 신용융자 잔고(Margin Debt) 급감
+4. 미디어/검색 트렌드 정점 통과
+5. 약한 종목군 선제 붕괴
+6. VIX 20 상향 돌파
+7. 연준/정책 기조 전환 신호
 
-- Qualitative adjustment maximum reduced to +3 (from +5)
-- Added "Elevated Risk" phase (8-9 points) for nuanced positioning
-- Confirmation bias prevention checklist required
-- ALL qualitative points must have measurable evidence
-- Independent verification standard applies to all adjustments
+## v2.1 주요 변경점
 
-## Data Sources
+- 정성 보정 상한을 +5에서 +3으로 축소
+- 8~9점 구간 "위험 상승" 단계 신설
+- 확증편향 방지 체크리스트 의무화
+- 모든 정성 점수는 계량 근거 필수
+- 모든 보정 항목에 독립 검증 기준 적용
+
+## 데이터 출처
 
 - **Put/Call & VIX:** cboe.com
 - **Margin Debt:** finra.org
 - **Breadth:** barchart.com
-- **IPO Data:** renaissancecapital.com
+- **IPO 데이터:** renaissancecapital.com
 
-## Core Principle
+## 핵심 원칙
 
-"Bring data." All bubble assessments must be independently verifiable and confirmation-bias free.
+"데이터로 말한다." 모든 버블 평가는 독립 검증 가능해야 하며, 확증편향을 배제해야 합니다.

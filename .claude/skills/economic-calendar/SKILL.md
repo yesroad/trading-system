@@ -1,77 +1,85 @@
 # Economic Calendar Fetcher
 
 ---
+
 name: economic-calendar-fetcher
-description: Fetch upcoming economic events and data releases using FMP API. Retrieve scheduled central bank decisions, employment reports, inflation data, GDP releases, and other market-moving economic indicators for specified date ranges (default: next 7 days). Output chronological markdown reports with impact assessment.
+description: FMP API를 사용해 향후 경제 이벤트와 지표 발표 일정을 조회합니다. 지정한 기간(기본: 향후 7일)의 중앙은행 결정, 고용, 인플레이션, GDP 등 시장 영향 이벤트를 가져와 영향도 평가가 포함된 시간순 마크다운 리포트를 생성합니다.
+
 ---
 
-## Overview
+## 개요
 
-Retrieve upcoming economic events and data releases from the Financial Modeling Prep (FMP) Economic Calendar API. This skill fetches scheduled economic indicators including central bank monetary policy decisions, employment reports, inflation data (CPI/PPI), GDP releases, retail sales, manufacturing data, and other market-moving events that impact financial markets.
+Financial Modeling Prep(FMP)의 경제 캘린더 API를 통해 향후 경제 이벤트와 지표 발표를 조회합니다. 중앙은행 통화정책 결정, 고용, 물가(CPI/PPI), GDP, 소매판매, 제조업 지표 등 시장 영향도가 높은 일정을 수집합니다.
 
-The skill uses a Python script to query the FMP API and generates chronological markdown reports with impact assessment for each scheduled event.
+이 스킬은 파이썬 스크립트로 FMP API를 호출하고, 각 이벤트별 영향도 평가를 포함한 시간순 마크다운 리포트를 생성합니다.
 
-**Key Capabilities:**
-- Fetch economic events for specified date ranges (max 90 days)
-- Support flexible API key provision (environment variable or user input)
-- Filter by impact level, country, or event type
-- Generate structured markdown reports with impact analysis
-- Default to next 7 days for quick market outlook
+**핵심 기능:**
 
-**Data Source:**
+- 지정 기간 경제 이벤트 조회(최대 90일)
+- API 키 입력 방식 유연 지원(환경 변수/사용자 입력)
+- 영향도, 국가, 이벤트 유형 필터링
+- 영향 분석이 포함된 구조화 마크다운 리포트 생성
+- 빠른 시장 점검을 위해 기본값 7일 적용
+
+**데이터 소스:**
+
 - FMP Economic Calendar API: `https://financialmodelingprep.com/api/v3/economic_calendar`
-- Covers major economies: US, EU, UK, Japan, China, Canada, Australia
-- Event types: Central bank decisions, employment, inflation, GDP, trade, housing, surveys
+- 주요 국가 지원: 미국, 유럽, 영국, 일본, 중국, 캐나다, 호주
+- 이벤트 유형: 중앙은행 결정, 고용, 인플레이션, GDP, 무역, 주택, 설문 지표
 
-## When to Use This Skill
+## 이 스킬을 사용할 때
 
-Use this skill when the user requests:
+사용자가 다음을 요청하면 사용합니다.
 
-1. **Economic Calendar Queries:**
-   - "What economic events are coming up this week?"
-   - "Show me the economic calendar for the next two weeks"
-   - "When is the next FOMC meeting?"
-   - "What major economic data is being released next month?"
+1. **경제 캘린더 조회:**
+   - "이번 주 경제 이벤트 뭐 있어?"
+   - "다음 2주 경제 일정 보여줘"
+   - "다음 FOMC 회의 언제야?"
+   - "다음 달 주요 경제지표 발표 일정 알려줘"
 
-2. **Market Event Planning:**
-   - "What should I watch for in the markets this week?"
-   - "Are there any high-impact economic releases coming?"
-   - "When is the next jobs report / CPI release / GDP report?"
+2. **시장 이벤트 대응 계획:**
+   - "이번 주 시장에서 뭘 주의해야 해?"
+   - "고영향 경제 이벤트 예정돼 있어?"
+   - "다음 고용보고서/CPI/GDP 발표 언제야?"
 
-3. **Specific Date Range Requests:**
-   - "Get economic events from January 1 to January 31"
-   - "What's on the economic calendar for Q1 2025?"
+3. **특정 기간 요청:**
+   - "1월 1일부터 1월 31일까지 경제 이벤트 조회해줘"
+   - "2025년 1분기 경제 캘린더 보여줘"
 
-4. **Country-Specific Queries:**
-   - "Show me US economic data releases next week"
-   - "What ECB events are scheduled?"
-   - "When is Japan releasing their inflation data?"
+4. **국가별 요청:**
+   - "다음 주 미국 경제지표 일정 보여줘"
+   - "ECB 관련 이벤트 일정은?"
+   - "일본 물가 발표 일정 언제야?"
 
-**DO NOT use this skill for:**
-- Past economic events (use market-news-analyst for historical analysis)
-- Corporate earnings calendars (this skill excludes earnings)
-- Real-time market data or live quotes
-- Technical analysis or chart interpretation
+**다음 용도에는 사용하지 않습니다.**
 
-## Workflow Summary
+- 과거 경제 이벤트 분석(히스토리 분석 스킬 사용)
+- 기업 실적 캘린더 조회(본 스킬 범위 아님)
+- 실시간 시세/호가 조회
+- 기술적 분석/차트 해석
 
-1. **Obtain FMP API Key** - Check environment variable or prompt user
-2. **Determine Date Range** - Default 7 days or user-specified range
-3. **Execute API Fetch Script** - Run get_economic_calendar.py
-4. **Parse and Filter Events** - Apply user filters (impact, country, type)
-5. **Assess Market Impact** - Evaluate significance of each event
-6. **Generate Output Report** - Create structured markdown report
+## 워크플로 요약
 
-## Resources
+1. **FMP API 키 확보** - 환경 변수 확인 또는 사용자 입력
+2. **조회 기간 결정** - 기본 7일 또는 사용자 지정
+3. **API 조회 스크립트 실행** - `get_economic_calendar.py` 실행
+4. **이벤트 파싱/필터링** - 영향도/국가/유형 필터 적용
+5. **시장 영향 평가** - 이벤트별 중요도 해석
+6. **결과 리포트 생성** - 구조화된 마크다운 출력
 
-**Python Script:**
-- `scripts/get_economic_calendar.py`: Main API fetch script with CLI interface
+## 리소스
 
-**Reference Documentation:**
-- `references/fmp_api_documentation.md`: Complete FMP Economic Calendar API reference
+**Python 스크립트:**
 
-**API Details:**
-- Endpoint: `https://financialmodelingprep.com/api/v3/economic_calendar`
-- Authentication: API key required (free tier: 250 requests/day)
-- Max date range: 90 days per request
-- Response format: JSON array of event objects
+- `scripts/get_economic_calendar.py`: CLI 인터페이스를 제공하는 메인 조회 스크립트
+
+**참고 문서:**
+
+- `references/fmp_api_documentation.md`: FMP 경제 캘린더 API 상세 문서
+
+**API 정보:**
+
+- 엔드포인트: `https://financialmodelingprep.com/api/v3/economic_calendar`
+- 인증: API 키 필요(무료 플랜 일 250회)
+- 최대 조회 범위: 요청당 90일
+- 응답 형식: 이벤트 객체 배열(JSON)

@@ -1,34 +1,34 @@
 # Portfolio Manager Skill
 
-The portfolio-manager skill provides comprehensive investment portfolio analysis by integrating with Alpaca's brokerage API through MCP (Model Context Protocol) to access real-time holdings data.
+`portfolio-manager` 스킬은 MCP(Model Context Protocol)를 통해 Alpaca 브로커리지 API와 연동하여 실시간 보유 종목 데이터를 가져오고, 이를 기반으로 종합 포트폴리오 분석을 수행합니다.
 
-## Key Capabilities
+## 핵심 기능
 
-The skill performs multi-dimensional portfolio assessment including:
+다음 다차원 포트폴리오 평가를 수행합니다.
 
-- **Asset allocation analysis** across classes, sectors, market caps, and geography
-- **Diversification evaluation** measuring concentration risk and position correlation
-- **Risk metrics calculation** including beta, volatility, drawdown, and tail risk
-- **Performance analysis** showing absolute returns, position-level gains/losses, and benchmark comparisons
-- **Individual position assessment** validating investment theses and recommending hold/add/trim/sell actions
-- **Rebalancing strategies** prioritizing actions to reduce risk and close allocation gaps
+- **자산배분 분석**: 자산군/섹터/시가총액/지역별 분포 점검
+- **분산도 평가**: 집중 리스크와 포지션 간 상관성 측정
+- **리스크 지표 계산**: 베타, 변동성, 드로우다운, 꼬리위험 산출
+- **성과 분석**: 절대수익률, 포지션별 손익, 벤치마크 비교
+- **개별 포지션 진단**: 투자 가설 검증 및 보유/추가/축소/매도 권고
+- **리밸런싱 전략**: 리스크 완화와 배분 격차 해소를 위한 우선순위 제시
 
-## Workflow Overview
+## 워크플로 개요
 
-The skill follows a seven-step process:
+총 7단계 프로세스로 진행됩니다.
 
-1. Fetch portfolio data via Alpaca MCP (account info, positions, history)
-2. Enrich position data with market fundamentals and technical analysis
-3. Perform portfolio-level analysis across multiple dimensions
-4. Conduct detailed evaluation of top 10-15 holdings
-5. Generate specific rebalancing recommendations with prioritization
-6. Create comprehensive markdown report documenting all findings
-7. Support interactive follow-up questions on results
+1. Alpaca MCP로 포트폴리오 데이터 조회(계좌 정보, 포지션, 이력)
+2. 개별 포지션에 시장 펀더멘털/기술적 지표를 결합
+3. 다차원 포트폴리오 레벨 분석 수행
+4. 상위 10~15개 보유 종목 상세 평가
+5. 우선순위 기반 리밸런싱 액션 제안 생성
+6. 분석 결과를 종합 마크다운 리포트로 정리
+7. 결과에 대한 후속 질의응답 지원
 
-## When to Invoke
+## 사용 시점
 
-Use this skill when users request portfolio review, position analysis, risk assessment, performance evaluation, rebalancing suggestions, or related portfolio-management tasks.
+포트폴리오 리뷰, 포지션 분석, 리스크 평가, 성과 점검, 리밸런싱 제안 등 포트폴리오 관리 관련 요청에서 사용합니다.
 
-## Prerequisites
+## 사전 조건
 
-Alpaca MCP Server must be configured and connected. The skill provides setup instructions if integration is unavailable and supports fallback analysis using manually entered position data.
+Alpaca MCP 서버가 구성 및 연결되어 있어야 합니다. 연동이 불가능한 경우 스킬은 설정 절차를 안내하며, 수동 입력 포지션 데이터를 활용한 대체 분석도 지원합니다.
