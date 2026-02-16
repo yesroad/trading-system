@@ -1,8 +1,9 @@
 import Big from 'big.js';
 import { createLogger } from '@workspace/shared-utils';
 import { checkTotalExposure as checkTotalExposureUtil } from '@workspace/trading-utils';
+import { getSupabase } from '@workspace/db-client';
 import { getAccountSize } from './position-sizer.js';
-import type { ExposureValidationResult, Broker } from './types.js';
+import type { ExposureValidationResult, Broker, Market } from './types.js';
 
 const logger = createLogger('exposure-tracker');
 
@@ -15,6 +16,116 @@ const EXPOSURE_CONFIG = {
   /** 심볼당 최대 노출도 (25% = 0.25) */
   MAX_SYMBOL_EXPOSURE: 0.25,
 };
+
+/**
+ * 현재 포지션 가치 계산
+ *
+ * 보유 중인 포지션의 현재 가치를 계산합니다.
+ * 각 포지션의 현재가를 조회하여 (현재가 × 수량)을 합산합니다.
+ *
+ * @param params - 조회 조건 (선택)
+ * @param params.broker - 특정 브로커의 포지션만 조회
+ * @param params.market - 특정 마켓의 포지션만 조회
+ * @param params.symbol - 특정 심볼의 포지션만 조회
+ * @returns 포지션 총 가치
+ */
+export async function getCurrentPositionValue(params?: {
+  broker?: Broker;
+  market?: Market;
+  symbol?: string;
+}): Promise<Big> {
+  const supabase = getSupabase();
+
+  // 1. 조건에 맞는 포지션 조회
+  let query = supabase
+    .from('positions')
+    .select('symbol, market, broker, qty, avg_price')
+    .gt('qty', 0);
+
+  if (params?.broker) {
+    query = query.eq('broker', params.broker);
+  }
+  if (params?.market) {
+    query = query.eq('market', params.market);
+  }
+  if (params?.symbol) {
+    query = query.eq('symbol', params.symbol);
+  }
+
+  const { data: positions, error } = await query;
+
+  if (error) {
+    logger.error('포지션 조회 실패', { error, params });
+    throw new Error(`포지션 조회 실패: ${error.message}`);
+  }
+
+  if (!positions || positions.length === 0) {
+    logger.debug('보유 포지션 없음', params);
+    return new Big(0);
+  }
+
+  // 2. 각 포지션의 현재가 조회 및 가치 계산
+  let totalValue = new Big(0);
+
+  for (const position of positions) {
+    // 현재가 조회 (최신 캔들)
+    const tableName = getTableName(position.market);
+    const { data: candles } = await supabase
+      .from(tableName)
+      .select('close')
+      .eq('symbol', position.symbol)
+      .order('candle_time', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!candles) {
+      logger.warn('현재가 조회 실패, 평균 단가 사용', {
+        symbol: position.symbol,
+        market: position.market,
+      });
+      // 현재가를 못 찾으면 평균 단가 사용
+      const positionValue = new Big(position.qty).times(new Big(position.avg_price));
+      totalValue = totalValue.plus(positionValue);
+      continue;
+    }
+
+    // 3. 현재가 × 수량
+    const currentPrice = new Big(candles.close);
+    const positionValue = new Big(position.qty).times(currentPrice);
+    totalValue = totalValue.plus(positionValue);
+
+    logger.debug('포지션 가치 계산', {
+      symbol: position.symbol,
+      qty: position.qty,
+      currentPrice: currentPrice.toString(),
+      positionValue: positionValue.toString(),
+    });
+  }
+
+  logger.info('총 포지션 가치 계산 완료', {
+    params,
+    totalValue: totalValue.toString(),
+    positionCount: positions.length,
+  });
+
+  return totalValue;
+}
+
+/**
+ * 마켓에 따른 캔들 테이블 이름 반환
+ */
+function getTableName(market: Market): string {
+  switch (market) {
+    case 'CRYPTO':
+      return 'upbit_candles';
+    case 'KRX':
+      return 'kis_candles';
+    case 'US':
+      return 'yf_candles';
+    default:
+      throw new Error(`알 수 없는 마켓: ${market}`);
+  }
+}
 
 /**
  * 총 노출도 체크
@@ -38,9 +149,9 @@ export async function checkTotalExposure(params: {
   // 계좌 크기 조회
   const accountSize = await getAccountSize(broker);
 
-  // TODO: 현재 보유 포지션 가치 조회 및 합산
-  // 현재는 간단히 빈 배열 사용 (포지션 없음 가정)
-  const currentPositions: Big[] = []; // TODO: 실제 포지션 가치 배열
+  // 현재 보유 포지션 가치 조회
+  const currentTotalValue = await getCurrentPositionValue({ broker });
+  const currentPositions = currentTotalValue.gt(0) ? [currentTotalValue] : [];
   const maxExposure = new Big(EXPOSURE_CONFIG.MAX_TOTAL_EXPOSURE);
 
   // trading-utils의 검증 함수 사용

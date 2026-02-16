@@ -2,6 +2,7 @@ import Big from 'big.js';
 import { createLogger } from '@workspace/shared-utils';
 import { validateLeverage as validateLeverageUtil, getMaxLeverage } from '@workspace/trading-utils';
 import { getAccountSize } from './position-sizer.js';
+import { getCurrentPositionValue } from './exposure-tracker.js';
 import type { LeverageValidationResult, Broker } from './types.js';
 
 const logger = createLogger('leverage-manager');
@@ -72,11 +73,23 @@ export async function validatePortfolioLeverage(params: {
     newPositionValue: newPositionValue.toString(),
   });
 
-  // TODO: 현재 보유 포지션 가치 조회 및 합산
-  // 현재는 간단히 새 포지션만 체크
+  // 현재 보유 포지션 가치 조회
+  const currentPositionValue = await getCurrentPositionValue({ broker });
   const accountSize = await getAccountSize(broker);
-  const totalLeverage = newPositionValue.div(accountSize);
+
+  // 총 포지션 가치 = 현재 포지션 + 새 포지션
+  const totalPositionValue = currentPositionValue.plus(newPositionValue);
+  const totalLeverage = totalPositionValue.div(accountSize);
   const maxLeverage = new Big(1.0);
+
+  logger.debug('포트폴리오 레버리지 계산', {
+    broker,
+    currentPositionValue: currentPositionValue.toString(),
+    newPositionValue: newPositionValue.toString(),
+    totalPositionValue: totalPositionValue.toString(),
+    accountSize: accountSize.toString(),
+    totalLeverage: totalLeverage.toFixed(2),
+  });
 
   const violations: string[] = [];
 
