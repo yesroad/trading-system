@@ -1,75 +1,82 @@
 # Value Dividend Screener Skill Documentation
 
-## Overview
+## 개요
 
-The Value Dividend Screener is a comprehensive stock screening tool designed to identify high-quality dividend-paying stocks by combining valuation metrics, income generation potential, and fundamental growth. The skill employs a dual-stage approach using FINVIZ Elite for pre-screening followed by Financial Modeling Prep (FMP) API for detailed analysis.
+가치 배당 스크리너(Value Dividend Screener)는 밸류에이션 지표, 배당 기반 현금흐름, 펀더멘털 성장성을 결합해 고품질 배당주를 선별하는 종합 스크리닝 도구입니다. FINVIZ Elite로 1차 선별 후 Financial Modeling Prep(FMP) API로 정밀 분석하는 2단계 접근을 사용합니다.
 
-## Key Capabilities
+## 핵심 기능
 
-**Primary Function**: Screen US equities based on quantitative criteria including dividend yield (3%+), valuation ratios (P/E under 20, P/B under 2), and consistent 3-year growth trends in dividends, revenue, and EPS.
+**주요 목적**: 배당수익률(3%+), 밸류에이션(P/E 20 미만, P/B 2 미만), 최근 3년 배당/매출/EPS 성장 추세를 포함한 정량 조건으로 미국 주식을 선별합니다.
 
-**Two-Stage Methodology**:
-1. FINVIZ Elite pre-filters candidates (reducing FMP API usage by up to 90%)
-2. FMP API conducts detailed fundamental analysis with composite scoring
+**2단계 방법론:**
 
-## When to Invoke
+1. FINVIZ Elite로 후보를 사전 필터링(FMP API 사용량 최대 90% 절감)
+2. FMP API로 종합 점수 기반의 정밀 펀더멘털 분석 수행
 
-Use this skill when users request:
-- Dividend stock screening or income portfolio suggestions
-- Value stocks with strong fundamental characteristics
-- Quality dividend opportunities with sustainable yields
-- Screening combining valuation metrics and dividend analysis
+## 사용 시점
 
-## Workflow Summary
+다음 요청에서 이 스킬을 사용합니다.
 
-### API Configuration
-- Verify FMP_API_KEY and FINVIZ_API_KEY availability
-- Provide setup instructions if keys unavailable
-- Note: FINVIZ Elite requires subscription (~$330/year)
+- 배당주 스크리닝 또는 인컴 포트폴리오 제안
+- 펀더멘털이 견조한 가치주 탐색
+- 지속가능한 수익률을 갖춘 고품질 배당 기회 발굴
+- 밸류에이션과 배당 분석을 결합한 선별 요청
 
-### Execution Options
+## 워크플로 요약
 
-**Two-Stage (Recommended)**:
+### API 설정
+
+- `FMP_API_KEY`, `FINVIZ_API_KEY` 사용 가능 여부 확인
+- 키가 없으면 설정 절차 안내
+- 참고: FINVIZ Elite는 유료 구독 필요(연 약 $330)
+
+### 실행 옵션
+
+**2단계(권장):**
+
 ```bash
 python3 scripts/screen_dividend_stocks.py --use-finviz
 ```
 
-**FMP-Only**:
+**FMP 단독:**
+
 ```bash
 python3 scripts/screen_dividend_stocks.py
 ```
 
-### Analysis Output
+### 분석 출력
 
-Scripts generate JSON containing per-stock metrics:
-- Valuation: dividend yield, P/E, P/B ratios
-- Growth: 3-year CAGR for dividends, revenue, EPS
-- Sustainability: payout ratios, FCF coverage assessment
-- Quality: ROE, profit margins, composite scoring
+스크립트는 종목별 지표를 포함한 JSON을 생성합니다.
 
-### Report Generation
+- 밸류에이션: 배당수익률, P/E, P/B
+- 성장성: 배당/매출/EPS 3년 CAGR
+- 지속가능성: 배당성향, FCF 커버리지 평가
+- 품질: ROE, 이익률, 종합 점수
 
-Creates markdown reports with:
-- Ranked stock table by composite score
-- Detailed analysis for top candidates
-- Portfolio construction guidance
-- Risk considerations and monitoring recommendations
+### 리포트 생성
 
-## Resource Files
+다음 내용을 포함한 마크다운 리포트를 생성합니다.
 
-**scripts/screen_dividend_stocks.py**: Main screening engine handling API integration, multi-phase filtering, CAGR calculations, and composite scoring
+- 종합 점수 기준 랭킹 테이블
+- 상위 후보 종목 상세 분석
+- 포트폴리오 구성 가이드
+- 리스크 요인 및 모니터링 권고
 
-**references/screening_methodology.md**: Detailed documentation of screening phases, threshold justification, and investment philosophy
+## 리소스 파일
 
-**references/fmp_api_guide.md**: Complete API setup and usage guide for FMP integration
+**scripts/screen_dividend_stocks.py**: API 연동, 다단계 필터링, CAGR 계산, 종합 점수화를 처리하는 메인 엔진
 
-## Performance Metrics
+**references/screening_methodology.md**: 스크리닝 단계, 임계값 설정 근거, 투자 철학 상세 문서
 
-- Two-stage runtime: 2-3 minutes (30-50 FINVIZ candidates)
-- FMP-only runtime: 5-15 minutes (100-300+ candidates)
-- API savings: 60-94% reduction in FMP calls with two-stage approach
-- Free tier compatible: Two-stage fits within 250 daily FMP calls
+**references/fmp_api_guide.md**: FMP API 설정 및 사용 가이드
 
-## Advanced Customization
+## 성능 지표
 
-Modify screening thresholds in script (lines 383-388) for dividend yield, P/E, P/B, and market cap requirements. Sector filtering, REIT exclusion, and CSV export capabilities available through code modifications.
+- 2단계 실행 시간: 2~3분(대략 30~50개 FINVIZ 후보)
+- FMP 단독 실행 시간: 5~15분(100~300+ 후보)
+- API 절감 효과: 2단계 방식에서 FMP 호출 60~94% 절감
+- 무료 플랜 적합성: 2단계 방식은 FMP 일 250회 한도 내 운영 가능
+
+## 고급 커스터마이징
+
+스크립트(383~388행)의 임계값을 조정해 배당수익률, P/E, P/B, 시가총액 조건을 변경할 수 있습니다. 섹터 필터링, REIT 제외, CSV 내보내기 기능은 코드 수정으로 확장할 수 있습니다.

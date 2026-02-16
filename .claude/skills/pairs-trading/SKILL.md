@@ -1,55 +1,61 @@
 # Pair Trade Screener
 
 ---
+
 name: pair-trade-screener
-description: Statistical arbitrage tool for identifying and analyzing pair trading opportunities. Detects cointegrated stock pairs within sectors, analyzes spread behavior, calculates z-scores, and provides entry/exit recommendations for market-neutral strategies. Use when user requests pair trading opportunities, statistical arbitrage screening, mean-reversion strategies, or market-neutral portfolio construction. Supports correlation analysis, cointegration testing, and spread backtesting.
----
-
-## Overview
-
-This skill identifies and analyzes statistical arbitrage opportunities through pair trading. Pair trading is a market-neutral strategy that profits from the relative price movements of two correlated securities, regardless of overall market direction. The skill uses rigorous statistical methods including correlation analysis and cointegration testing to find robust trading pairs.
-
-**Core Methodology:**
-- Identify pairs of stocks with high correlation and similar sector/industry exposure
-- Test for cointegration (long-term statistical relationship)
-- Calculate spread z-scores to identify mean-reversion opportunities
-- Generate entry/exit signals based on statistical thresholds
-- Provide position sizing for market-neutral exposure
-
-**Key Advantages:**
-- Market-neutral: Profits in up, down, or sideways markets
-- Risk management: Limited exposure to broad market movements
-- Statistical foundation: Data-driven, not discretionary
-- Diversification: Uncorrelated to traditional long-only strategies
-
-## When to Use This Skill
-
-Use this skill when:
-- User asks for "pair trading opportunities"
-- User wants "market-neutral strategies"
-- User requests "statistical arbitrage screening"
-- User asks "which stocks move together?"
-- User wants to hedge sector exposure
-- User requests mean-reversion trade ideas
-- User asks about relative value trading
-
-Example user requests:
-- "Find pair trading opportunities in the tech sector"
-- "Which stocks are cointegrated?"
-- "Screen for statistical arbitrage opportunities"
-- "Find mean-reversion pairs"
-- "What are good market-neutral trades right now?"
-
-## Resources
-
-The `references/` folder contains detailed guides:
-
-- **methodology.md** - Comprehensive guide to statistical arbitrage and pair trading
-- **cointegration_guide.md** - Deep dive into cointegration testing
-- **interpretation_framework.md** - Framework for interpreting institutional ownership changes
+description: 페어 트레이딩 기회를 식별하고 분석하는 통계적 차익거래 도구입니다. 동일 섹터 내 공적분 종목쌍을 탐지하고 스프레드 행동을 분석해 z-score 기반 진입/청산 신호를 제공합니다. 시장 중립 전략, 평균회귀 전략, 통계적 차익거래 스크리닝 요청에서 사용합니다.
 
 ---
 
-**Version**: 1.0
-**Last Updated**: 2025-11-08
-**Dependencies**: Python 3.8+, pandas, numpy, scipy, statsmodels, requests
+## 개요
+
+이 스킬은 페어 트레이딩을 통해 통계적 차익거래 기회를 식별하고 분석합니다. 페어 트레이딩은 상관관계가 높은 두 자산의 상대가격 변동에서 수익을 추구하는 시장 중립 전략으로, 시장 방향과 무관하게 기회를 탐색할 수 있습니다. 상관관계 분석과 공적분 검정을 포함한 통계 절차를 사용해 견고한 페어를 찾습니다.
+
+**핵심 방법론:**
+
+- 섹터/업종 노출이 유사하고 상관성이 높은 종목쌍 탐색
+- 공적분 검정으로 장기 통계적 관계 확인
+- 스프레드 z-score 계산으로 평균회귀 구간 식별
+- 통계 임계값 기반 진입/청산 신호 생성
+- 시장 중립 노출을 위한 포지션 사이징 제공
+
+**주요 장점:**
+
+- 시장 중립: 상승/하락/횡보장 모두 대응 가능
+- 리스크 관리: 시장 베타 노출 축소
+- 통계 기반: 직관이 아닌 데이터 중심 의사결정
+- 분산 효과: 전통적 롱온리 전략과 상관관계 완화
+
+## 이 스킬을 사용할 때
+
+다음 요청에서 사용합니다.
+
+- "페어 트레이딩 기회 찾아줘"
+- "시장 중립 전략이 필요해"
+- "통계적 차익거래 스크리닝 해줘"
+- "같이 움직이는 종목이 뭐야?"
+- "섹터 노출 헷지하고 싶어"
+- "평균회귀 아이디어 줘"
+- "상대가치 트레이딩 분석해줘"
+
+예시 요청:
+
+- "테크 섹터에서 페어 트레이딩 기회 찾아줘"
+- "공적분 관계가 있는 종목쌍 알려줘"
+- "통계적 차익거래 후보 스크리닝해줘"
+- "평균회귀 페어 찾아줘"
+- "지금 시점 시장 중립 트레이드 추천해줘"
+
+## 리소스
+
+`references/` 폴더에서 상세 가이드를 제공합니다.
+
+- **methodology.md** - 통계적 차익거래/페어 트레이딩 종합 방법론
+- **cointegration_guide.md** - 공적분 검정 심화 가이드
+- **interpretation_framework.md** - 기관 보유 변동 해석 프레임워크
+
+---
+
+**버전**: 1.0
+**최종 업데이트**: 2025-11-08
+**의존성**: Python 3.8+, pandas, numpy, scipy, statsmodels, requests
