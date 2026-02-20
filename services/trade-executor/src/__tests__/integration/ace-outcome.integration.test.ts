@@ -1,5 +1,17 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { DateTime } from 'luxon';
 import { getSupabase } from '@workspace/db-client';
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== 'object' || value === null) return null;
+  return value as Record<string, unknown>;
+}
+
+function toIsoString(dateTime: DateTime): string {
+  const iso = dateTime.toISO();
+  if (!iso) throw new Error('ISO 문자열 변환 실패');
+  return iso;
+}
 
 /**
  * ACE Outcome 추적 통합 테스트
@@ -19,6 +31,8 @@ describe('ACE Outcome 추적 통합 테스트', () => {
   let exitTradeId: string;
 
   beforeAll(async () => {
+    const createdAt = DateTime.utc();
+
     // 1. ACE 로그 생성
     const { data: aceData, error: aceError } = await supabase
       .from('ace_logs')
@@ -59,10 +73,10 @@ describe('ACE Outcome 추적 통합 테스트', () => {
           actualStopLoss: 98000,
           actualTarget: 105000,
           size: 0.1,
-          timestamp: new Date().toISOString(),
+          timestamp: toIsoString(createdAt),
           reason: '리스크 검증 통과',
         },
-        created_at: new Date().toISOString(),
+        created_at: toIsoString(createdAt),
       })
       .select('id')
       .single();
@@ -73,7 +87,7 @@ describe('ACE Outcome 추적 통합 테스트', () => {
     testAceLogId = aceData.id;
 
     // 2. 진입 거래 기록
-    const entryTime = new Date();
+    const entryTime = DateTime.utc();
     const { data: entryData, error: entryError } = await supabase
       .from('trades')
       .insert({
@@ -84,8 +98,8 @@ describe('ACE Outcome 추적 통합 테스트', () => {
         qty: '0.1',
         price: '100000',
         status: 'filled',
-        executed_at: entryTime.toISOString(),
-        created_at: entryTime.toISOString(),
+        executed_at: toIsoString(entryTime),
+        created_at: toIsoString(entryTime),
         metadata: {
           aceLogId: testAceLogId,
         },
@@ -115,8 +129,9 @@ describe('ACE Outcome 추적 통합 테스트', () => {
     expect(error).toBeNull();
     expect(aceLog).toBeDefined();
     expect(aceLog?.execution).toBeDefined();
-    expect((aceLog?.execution as any).decision).toBe('BUY');
-    expect((aceLog?.execution as any).actualEntry).toBe(100000);
+    const execution = asRecord(aceLog?.execution);
+    expect(execution?.decision).toBe('BUY');
+    expect(execution?.actualEntry).toBe(100000);
   });
 
   it('진입 거래가 기록되고 ACE 로그 ID가 연결되어야 함', async () => {
@@ -130,12 +145,13 @@ describe('ACE Outcome 추적 통합 테스트', () => {
     expect(trade).toBeDefined();
     expect(trade?.side).toBe('BUY');
     expect(trade?.price).toBe('100000');
-    expect((trade?.metadata as any)?.aceLogId).toBe(testAceLogId);
+    const metadata = asRecord(trade?.metadata);
+    expect(metadata?.aceLogId).toBe(testAceLogId);
   });
 
   it('청산 거래 기록 후 Outcome 계산이 올바르게 되어야 함 (WIN)', async () => {
     // 3. 청산 거래 기록 (수익 실현)
-    const exitTime = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000); // 2일 후
+    const exitTime = DateTime.utc().plus({ days: 2 }); // 2일 후
     const exitPrice = 105000; // 5% 수익
     const entryPrice = 100000;
     const size = 0.1;
@@ -150,8 +166,8 @@ describe('ACE Outcome 추적 통합 테스트', () => {
         qty: '0.1',
         price: exitPrice.toString(),
         status: 'filled',
-        executed_at: exitTime.toISOString(),
-        created_at: exitTime.toISOString(),
+        executed_at: toIsoString(exitTime),
+        created_at: toIsoString(exitTime),
       })
       .select('id')
       .single();
@@ -187,10 +203,10 @@ describe('ACE Outcome 추적 통합 테스트', () => {
   });
 
   it('보유 기간 계산이 올바르게 되어야 함', () => {
-    const entryTime = new Date('2026-02-15T10:00:00Z');
-    const exitTime = new Date('2026-02-17T14:00:00Z'); // 2일 4시간 후
+    const entryTime = DateTime.fromISO('2026-02-15T10:00:00Z', { zone: 'utc' });
+    const exitTime = DateTime.fromISO('2026-02-17T14:00:00Z', { zone: 'utc' }); // 2일 4시간 후
 
-    const durationMs = exitTime.getTime() - entryTime.getTime();
+    const durationMs = exitTime.toMillis() - entryTime.toMillis();
     const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
     const durationDays = Math.floor(durationHours / 24);
 
@@ -208,10 +224,7 @@ describe('ACE Outcome 추적 통합 테스트', () => {
       exitReason: 'auto_detected',
     };
 
-    const { error } = await supabase
-      .from('ace_logs')
-      .update({ outcome })
-      .eq('id', testAceLogId);
+    const { error } = await supabase.from('ace_logs').update({ outcome }).eq('id', testAceLogId);
 
     expect(error).toBeNull();
 
@@ -223,7 +236,8 @@ describe('ACE Outcome 추적 통합 테스트', () => {
       .single();
 
     expect(updatedLog?.outcome).toBeDefined();
-    expect((updatedLog?.outcome as any).result).toBe('WIN');
-    expect((updatedLog?.outcome as any).pnLPct).toBe(5.0);
+    const updatedOutcome = asRecord(updatedLog?.outcome);
+    expect(updatedOutcome?.result).toBe('WIN');
+    expect(updatedOutcome?.pnLPct).toBe(5.0);
   });
 });

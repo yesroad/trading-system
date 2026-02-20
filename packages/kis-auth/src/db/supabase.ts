@@ -3,19 +3,11 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import 'dotenv/config';
+import '@workspace/shared-utils/env-loader';
+import { requireEnv } from '@workspace/shared-utils';
 
-function getEnv(name: string): string {
-  const v = process.env[name];
-  if (!v) {
-    console.error(`[kis-auth] 환경변수 누락: ${name}`);
-    throw new Error(`${name} is missing`);
-  }
-  return v;
-}
-
-const SUPABASE_URL = getEnv('SUPABASE_URL');
-const SUPABASE_KEY = getEnv('SUPABASE_KEY');
+const SUPABASE_URL = requireEnv('SUPABASE_URL');
+const SUPABASE_KEY = requireEnv('SUPABASE_KEY');
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 

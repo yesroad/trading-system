@@ -8,8 +8,6 @@ import {
 import type { CalendarEvent } from '../types.js';
 
 // Supabase 모킹
-let mockSupabaseResponse: any = null;
-
 const mockSupabase = {
   from: vi.fn(() => ({
     insert: vi.fn(() => ({
@@ -110,7 +108,7 @@ describe('Event Saver', () => {
         metadata: {
           symbol: 'AAPL',
           eps: 1.25,
-          epsEstimated: 1.20,
+          epsEstimated: 1.2,
           revenue: 95000000000,
           revenueEstimated: 94000000000,
           time: 'bmo',

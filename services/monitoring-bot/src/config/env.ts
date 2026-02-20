@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '@workspace/shared-utils/env-loader';
 import { env as readEnv, envNumber, envBoolean, requireEnv } from '@workspace/shared-utils';
 
 function str(key: string, def: string) {

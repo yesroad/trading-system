@@ -145,11 +145,9 @@ export async function buildMarketContext(): Promise<{
   const todayEnd = now.endOf('day').toISO();
   const tomorrowEnd = now.plus({ days: 1 }).endOf('day').toISO();
 
-  const hasHighImpactEventToday = upcomingEvents.some(
-    (e) => e.publishedAt <= (todayEnd || '')
-  );
+  const hasHighImpactEventToday = upcomingEvents.some((e) => e.publishedAt <= (todayEnd || ''));
   const hasHighImpactEventTomorrow = upcomingEvents.some(
-    (e) => e.publishedAt <= (tomorrowEnd || '') && e.publishedAt > (todayEnd || '')
+    (e) => e.publishedAt <= (tomorrowEnd || '') && e.publishedAt > (todayEnd || ''),
   );
 
   // 이벤트 요약 생성

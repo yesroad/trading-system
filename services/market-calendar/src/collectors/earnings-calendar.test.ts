@@ -4,7 +4,8 @@ import type { EarningsEvent } from '../types.js';
 
 // requireEnv 모킹
 vi.mock('@workspace/shared-utils', async () => {
-  const actual = await vi.importActual<typeof import('@workspace/shared-utils')>('@workspace/shared-utils');
+  const actual =
+    await vi.importActual<typeof import('@workspace/shared-utils')>('@workspace/shared-utils');
   return {
     ...actual,
     requireEnv: vi.fn((key: string) => {
@@ -15,7 +16,8 @@ vi.mock('@workspace/shared-utils', async () => {
 });
 
 // fetch 모킹
-global.fetch = vi.fn();
+const fetchMock = vi.fn<typeof fetch>();
+global.fetch = fetchMock;
 
 describe('Earnings Calendar Collector', () => {
   describe('transformEarningsEvent', () => {
@@ -25,7 +27,7 @@ describe('Earnings Calendar Collector', () => {
         date: '2026-03-18',
         time: 'bmo',
         eps: 1.25,
-        epsEstimated: 1.20,
+        epsEstimated: 1.2,
         revenue: 95000000000,
         revenueEstimated: 94000000000,
       };
@@ -43,7 +45,7 @@ describe('Earnings Calendar Collector', () => {
       expect(result.metadata).toEqual({
         symbol: 'AAPL',
         eps: 1.25,
-        epsEstimated: 1.20,
+        epsEstimated: 1.2,
         revenue: 95000000000,
         revenueEstimated: 94000000000,
         time: 'bmo',
@@ -56,7 +58,7 @@ describe('Earnings Calendar Collector', () => {
         date: '2026-03-20',
         time: 'amc',
         eps: 0.85,
-        epsEstimated: 0.80,
+        epsEstimated: 0.8,
         revenue: 22000000000,
         revenueEstimated: 21000000000,
       };
@@ -73,7 +75,7 @@ describe('Earnings Calendar Collector', () => {
         date: '2026-03-25',
         time: 'tbc',
         eps: null,
-        epsEstimated: 1.50,
+        epsEstimated: 1.5,
         revenue: null,
         revenueEstimated: 75000000000,
       };
@@ -90,8 +92,8 @@ describe('Earnings Calendar Collector', () => {
         symbol: 'NVDA',
         date: '2026-03-22',
         time: 'amc',
-        eps: 1.50, // 25% 서프라이즈
-        epsEstimated: 1.20,
+        eps: 1.5, // 25% 서프라이즈
+        epsEstimated: 1.2,
         revenue: null,
         revenueEstimated: null,
       };
@@ -106,8 +108,8 @@ describe('Earnings Calendar Collector', () => {
         symbol: 'MSFT',
         date: '2026-03-24',
         time: 'amc',
-        eps: 2.20, // 10% 서프라이즈
-        epsEstimated: 2.00,
+        eps: 2.2, // 10% 서프라이즈
+        epsEstimated: 2.0,
         revenue: null,
         revenueEstimated: null,
       };
@@ -123,7 +125,7 @@ describe('Earnings Calendar Collector', () => {
         date: '2026-03-26',
         time: 'amc',
         eps: 1.08, // 8% 서프라이즈
-        epsEstimated: 1.00,
+        epsEstimated: 1.0,
         revenue: null,
         revenueEstimated: null,
       };
@@ -139,7 +141,7 @@ describe('Earnings Calendar Collector', () => {
         date: '2026-03-28',
         time: 'amc',
         eps: 3.03, // 3% 서프라이즈
-        epsEstimated: 3.00,
+        epsEstimated: 3.0,
         revenue: null,
         revenueEstimated: null,
       };
@@ -155,7 +157,7 @@ describe('Earnings Calendar Collector', () => {
         date: '2026-03-30',
         time: 'amc',
         eps: null,
-        epsEstimated: 2.50,
+        epsEstimated: 2.5,
         revenue: null,
         revenueEstimated: 8500000000,
       };
@@ -189,8 +191,8 @@ describe('Earnings Calendar Collector', () => {
         symbol: 'JPM',
         date: '2026-04-05',
         time: 'bmo',
-        eps: 3.50,
-        epsEstimated: 3.40,
+        eps: 3.5,
+        epsEstimated: 3.4,
         revenue: 32000000000,
         revenueEstimated: 31000000000,
       };
@@ -206,7 +208,7 @@ describe('Earnings Calendar Collector', () => {
         date: '2026-04-08',
         time: 'bmo',
         eps: 0.75,
-        epsEstimated: 0.70,
+        epsEstimated: 0.7,
         revenue: 25000000000,
         revenueEstimated: 24000000000,
       };
@@ -221,8 +223,8 @@ describe('Earnings Calendar Collector', () => {
         symbol: 'UBER',
         date: '2026-04-10',
         time: 'amc',
-        eps: 0.50, // -50% 서프라이즈 (예상보다 낮음)
-        epsEstimated: 1.00,
+        eps: 0.5, // -50% 서프라이즈 (예상보다 낮음)
+        epsEstimated: 1.0,
         revenue: null,
         revenueEstimated: null,
       };
@@ -245,7 +247,7 @@ describe('Earnings Calendar Collector', () => {
           date: '2026-03-18',
           time: 'amc',
           eps: 1.25,
-          epsEstimated: 1.20,
+          epsEstimated: 1.2,
           revenue: 95000000000,
           revenueEstimated: 94000000000,
         },
@@ -254,16 +256,18 @@ describe('Earnings Calendar Collector', () => {
           date: '2026-03-20',
           time: 'amc',
           eps: 0.85,
-          epsEstimated: 0.80,
+          epsEstimated: 0.8,
           revenue: 22000000000,
           revenueEstimated: 21000000000,
         },
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      });
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify(mockResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
 
       const result = await collectEarningsCalendar({
         fromDate: '2026-03-15',
@@ -278,11 +282,12 @@ describe('Earnings Calendar Collector', () => {
     });
 
     it('API 요청 실패 시 에러 처리', async () => {
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-      });
+      fetchMock.mockResolvedValueOnce(
+        new Response('Internal Server Error', {
+          status: 500,
+          statusText: 'Internal Server Error',
+        }),
+      );
 
       const result = await collectEarningsCalendar({
         fromDate: '2026-03-15',
@@ -297,10 +302,12 @@ describe('Earnings Calendar Collector', () => {
     });
 
     it('빈 결과 처리', async () => {
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      });
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
 
       const result = await collectEarningsCalendar({
         fromDate: '2026-03-15',

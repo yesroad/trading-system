@@ -16,11 +16,11 @@
 - `TRADE_EXECUTOR_RUN_MODE=ALWAYS`면 시장 공통 24시간 실행
 - `TRADE_EXECUTOR_RUN_MODE=MARKET_ONLY`(기본)
   - `CRYPTO`: 24시간
-  - `KR`: 평일 KST 09:00~15:30
+  - `KRX`: 평일 KST 09:00~15:30
   - `US`: 평일 ET 09:30~16:00
 - `TRADE_EXECUTOR_RUN_MODE=EXTENDED`
   - `CRYPTO`: 24시간
-  - `KR`: 평일 KST 08:00~16:00
+  - `KRX`: 평일 KST 08:00~16:00
   - `US`: 평일 ET 04:00~20:00
 - 장시간 외에는 해당 시장 루프 스킵
 
@@ -81,6 +81,10 @@
   - `CRYPTO` -> `UpbitClient`
 - 주문 타입: 현재 `MARKET` 고정
 - `DRY_RUN=true`면 브로커 실제 주문 전송 없이 스킵 처리
+- 수수료/세금 기록은 브로커 응답 기반
+  - 매매 경로와 분리된 별도 정산 워커가 후처리로 비용 확정
+  - `UPBIT`: 주문/체결 조회 응답의 `paid_fee` 기반 저장
+  - `KIS`: `order-cash`, `inquire-daily-ccld` 응답에 수수료/세금 필드가 없어 `UNAVAILABLE` 처리(0 저장)
 
 ## 8. DB 기록
 
@@ -95,6 +99,12 @@
 - 실행 결과마다 통계 업데이트
 - 우선 RPC `increment_daily_stats` 호출
 - 실패 시 직접 upsert fallback
+
+### trades 비용 기록
+- `fee_amount`, `tax_amount` 컬럼이 존재하면 별도 컬럼에 저장
+- 컬럼이 없으면 `metadata.costs`에 fallback 저장
+- `metadata.costs.source`로 원천 구분 (`BROKER` | `UNAVAILABLE`)
+- 일일 P&L/Outcome 계산 시 수수료/세금을 차감한 순손익(net) 기준 사용
 
 ## 9. system_guard 상태 전이
 
@@ -126,3 +136,4 @@ trade-executor는 Telegram 직접 전송하지 않고 outbox에 적재:
 - 전략: `MIN_CONFIDENCE`, `STOP_LOSS_PCT`, `TAKE_PROFIT_PCT`, `MAX_TRADE_NOTIONAL`, `MAX_DAILY_TRADES`
 - 가드: `ENABLE_MARKET_HOURS_GUARD`, `AUTO_DISABLE_CONSECUTIVE_FAILURES`, `AUTO_RECOVERY_COOLDOWN_MIN`
 - 안전: `DRY_RUN`
+- 비용정산: `COST_RECONCILE_ENABLED`, `COST_RECONCILE_INTERVAL_SEC`, `COST_RECONCILE_LOOKBACK_DAYS`, `COST_RECONCILE_BATCH_SIZE`, `COST_RECONCILE_UPBIT_POLL_MAX`, `COST_RECONCILE_UPBIT_POLL_MS`

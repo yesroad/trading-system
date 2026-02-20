@@ -5,6 +5,27 @@ import { calculatePositionSize as calculatePositionSizeUtil } from '@workspace/t
 import type { PositionSizingParams, PositionSizingResult, Broker } from './types.js';
 
 const logger = createLogger('position-sizer');
+type AccountCashRow = Record<string, unknown>;
+
+function resolveCashAmount(row: AccountCashRow | null): Big {
+  if (!row) return new Big(0);
+
+  const value = row.cash_available ?? row.total;
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Big(value);
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    try {
+      return new Big(value);
+    } catch {
+      return new Big(0);
+    }
+  }
+
+  return new Big(0);
+}
 
 /**
  * 계좌 크기 조회
@@ -16,10 +37,14 @@ export async function getAccountSize(broker: Broker): Promise<Big> {
   const supabase = getSupabase();
 
   // 1. 현금 조회
+  // NOTE:
+  // account_cash 스키마가 환경별로 total/cash_available가 혼재할 수 있어 * 조회 후 안전 파싱한다.
+  // 또한 unique 제약 부재 환경에서 다중 row가 생길 수 있어 limit(1)로 조회 실패를 방지한다.
   const { data: cashData, error: cashError } = await supabase
     .from('account_cash')
-    .select('total')
+    .select('*')
     .eq('broker', broker)
+    .limit(1)
     .maybeSingle();
 
   if (cashError) {
@@ -27,7 +52,7 @@ export async function getAccountSize(broker: Broker): Promise<Big> {
     throw new Error(`계좌 현금 조회 실패: ${cashError.message}`);
   }
 
-  const cash = cashData?.total ? new Big(cashData.total) : new Big(0);
+  const cash = resolveCashAmount((cashData ?? null) as AccountCashRow | null);
 
   // 2. 포지션 가치 조회 (현재가 필요)
   // 현재는 간단히 현금만 사용 (향후 개선)
@@ -52,7 +77,7 @@ export async function getAccountSize(broker: Broker): Promise<Big> {
  * @returns 포지션 사이징 결과
  */
 export async function calculateOptimalPositionSize(
-  params: PositionSizingParams
+  params: PositionSizingParams,
 ): Promise<PositionSizingResult> {
   const { accountSize, riskPercentage, entry, stopLoss, symbol } = params;
 
@@ -92,7 +117,7 @@ export async function calculateOptimalPositionSize(
  */
 export async function calculatePositionSizeForBroker(
   params: Omit<PositionSizingParams, 'accountSize'>,
-  broker: Broker
+  broker: Broker,
 ): Promise<PositionSizingResult> {
   // 계좌 크기 조회
   const accountSize = await getAccountSize(broker);

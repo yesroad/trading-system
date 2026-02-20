@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '@workspace/shared-utils/env-loader';
 import { requireEnv as env, sleep, nowIso, normalizeUtcIso } from '@workspace/shared-utils';
 import {
   upsertWorkerStatus,

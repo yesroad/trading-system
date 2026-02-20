@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import 'dotenv/config';
+import '@workspace/shared-utils/env-loader';
 import { Command } from 'commander';
 import Big from 'big.js';
 import { DateTime } from 'luxon';

@@ -2,7 +2,7 @@
  * KIS 가격 수집 워커 (다종목 + 안정성 가드 + 장시간 스킵)
  */
 
-import 'dotenv/config';
+import '@workspace/shared-utils/env-loader';
 import { DateTime } from 'luxon';
 import { requireEnv as env, createBackoff, nowIso, type Nullable } from '@workspace/shared-utils';
 import { upsertAccountCash, upsertWorkerStatus } from '@workspace/db-client';

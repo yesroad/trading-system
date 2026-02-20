@@ -1,11 +1,14 @@
 import Big from 'big.js';
 import { DateTime } from 'luxon';
-import { createLogger } from '@workspace/shared-utils';
+import { createLogger, nowIso } from '@workspace/shared-utils';
 import { getSupabase, logRiskEvent } from '@workspace/db-client';
 import { getCurrentPositionValue } from './exposure-tracker.js';
 import type { CircuitBreakerState, DailyPnLResult, Broker } from './types.js';
 
 const logger = createLogger('circuit-breaker');
+type AccountCashRow = Record<string, unknown>;
+type TradeRow = Record<string, unknown>;
+const SYSTEM_GUARD_ID = 1;
 
 /**
  * 서킷 브레이커 설정
@@ -16,6 +19,64 @@ const CIRCUIT_BREAKER_CONFIG = {
   /** 쿨다운 시간 (분) */
   COOLDOWN_MINUTES: 60,
 };
+
+function resolveCashAmount(row: AccountCashRow | null): Big {
+  if (!row) return new Big(0);
+
+  const value = row.cash_available ?? row.total;
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Big(value);
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    try {
+      return new Big(value);
+    } catch {
+      return new Big(0);
+    }
+  }
+
+  return new Big(0);
+}
+
+function parseBigAmount(value: unknown): Big {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Big(value);
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    try {
+      return new Big(value);
+    } catch {
+      return new Big(0);
+    }
+  }
+
+  return new Big(0);
+}
+
+function resolveCostFromMetadata(metadata: unknown, key: 'feeAmount' | 'taxAmount'): Big {
+  if (typeof metadata !== 'object' || metadata === null) return new Big(0);
+
+  const metadataRecord = metadata as Record<string, unknown>;
+  const costs = metadataRecord.costs;
+  if (typeof costs !== 'object' || costs === null) return new Big(0);
+
+  return parseBigAmount((costs as Record<string, unknown>)[key]);
+}
+
+function resolveTradeCost(row: TradeRow, kind: 'fee' | 'tax'): Big {
+  const columnKey = kind === 'fee' ? 'fee_amount' : 'tax_amount';
+  const metadataKey = kind === 'fee' ? 'feeAmount' : 'taxAmount';
+
+  const columnAmount = parseBigAmount(row[columnKey]);
+  if (columnAmount.gt(0)) {
+    return columnAmount;
+  }
+
+  return resolveCostFromMetadata(row.metadata, metadataKey);
+}
 
 /**
  * 일일 실현 손익 계산
@@ -37,7 +98,7 @@ async function calculateRealizedPnL(broker?: Broker): Promise<Big> {
 
   let query = supabase
     .from('trades')
-    .select('qty, price, side')
+    .select('*')
     .gte('executed_at', todayStart)
     .eq('status', 'filled');
 
@@ -53,20 +114,32 @@ async function calculateRealizedPnL(broker?: Broker): Promise<Big> {
   }
 
   // 간단한 P&L 계산 (매수 - 매도)
-  // TODO: 실제로는 평균 단가 기반 계산 필요
-  let totalBuy = new Big(0);
-  let totalSell = new Big(0);
+  // 수수료/세금을 포함한 실현 손익 계산
+  let totalBuyCost = new Big(0);
+  let totalSellProceeds = new Big(0);
 
-  for (const trade of data || []) {
-    const value = new Big(trade.qty as string).times(new Big(trade.price as string));
-    if (trade.side === 'BUY') {
-      totalBuy = totalBuy.plus(value);
+  for (const rawTrade of data || []) {
+    const trade = rawTrade as TradeRow;
+    const side = String(trade.side ?? '').toUpperCase();
+    const quantity = parseBigAmount(trade.qty);
+    const unitPrice = parseBigAmount(trade.price);
+
+    if ((side !== 'BUY' && side !== 'SELL') || quantity.lte(0) || unitPrice.lte(0)) {
+      continue;
+    }
+
+    const value = quantity.times(unitPrice);
+    const feeAmount = resolveTradeCost(trade, 'fee');
+    const taxAmount = resolveTradeCost(trade, 'tax');
+
+    if (side === 'BUY') {
+      totalBuyCost = totalBuyCost.plus(value).plus(feeAmount).plus(taxAmount);
     } else {
-      totalSell = totalSell.plus(value);
+      totalSellProceeds = totalSellProceeds.plus(value).minus(feeAmount).minus(taxAmount);
     }
   }
 
-  return totalSell.minus(totalBuy);
+  return totalSellProceeds.minus(totalBuyCost);
 }
 
 /**
@@ -81,10 +154,7 @@ async function calculateUnrealizedPnL(broker?: Broker): Promise<Big> {
   const supabase = getSupabase();
 
   // 보유 포지션 조회
-  let query = supabase
-    .from('positions')
-    .select('symbol, market, qty, avg_price')
-    .gt('qty', 0);
+  let query = supabase.from('positions').select('symbol, market, qty, avg_price').gt('qty', 0);
 
   if (broker) {
     query = query.eq('broker', broker);
@@ -154,14 +224,18 @@ export async function calculateDailyPnL(broker?: Broker): Promise<DailyPnLResult
 
   // 계좌 크기 조회
   const supabase = getSupabase();
-  let cashQuery = supabase.from('account_cash').select('total');
+  let cashQuery = supabase.from('account_cash').select('*').limit(1);
 
   if (broker) {
     cashQuery = cashQuery.eq('broker', broker);
   }
 
-  const { data: cashData } = await cashQuery.maybeSingle();
-  const accountSize = cashData?.total ? new Big(cashData.total) : new Big(1); // 0 방지
+  const { data: cashData, error: cashError } = await cashQuery.maybeSingle();
+  if (cashError) {
+    logger.error('계좌 현금 조회 실패', { broker, error: cashError });
+  }
+  const cash = resolveCashAmount((cashData ?? null) as AccountCashRow | null);
+  const accountSize = cash.gt(0) ? cash : new Big(1); // 0 분모 방지
 
   const totalPnLPct = totalPnL.div(accountSize);
 
@@ -178,7 +252,7 @@ export async function calculateDailyPnL(broker?: Broker): Promise<DailyPnLResult
     unrealizedPnL,
     totalPnL,
     totalPnLPct,
-    calculatedAt: new Date().toISOString(),
+    calculatedAt: nowIso(),
   };
 }
 
@@ -193,7 +267,7 @@ async function haltTrading(): Promise<void> {
   const { error } = await supabase
     .from('system_guard')
     .update({ trading_enabled: false })
-    .eq('id', 'default');
+    .eq('id', SYSTEM_GUARD_ID);
 
   if (error) {
     logger.error('거래 중지 설정 실패', { error });
@@ -255,7 +329,7 @@ async function liquidateAllPositions(): Promise<void> {
         qty: position.qty,
         price: currentPrice.toString(),
         status: 'filled',
-        executed_at: new Date().toISOString(),
+        executed_at: nowIso(),
       });
 
       if (tradeError) {
@@ -271,7 +345,7 @@ async function liquidateAllPositions(): Promise<void> {
       // 포지션 수량 0으로 업데이트
       await supabase
         .from('positions')
-        .update({ qty: '0', updated_at: new Date().toISOString() })
+        .update({ qty: '0', updated_at: nowIso() })
         .eq('symbol', position.symbol)
         .eq('broker', position.broker)
         .eq('market', position.market);
@@ -397,9 +471,9 @@ async function setCooldown(cooldownUntil: string): Promise<void> {
     .from('system_guard')
     .update({
       circuit_breaker_cooldown_until: cooldownUntil,
-      updated_at: new Date().toISOString(),
+      updated_at: nowIso(),
     })
-    .eq('id', 'default');
+    .eq('id', SYSTEM_GUARD_ID);
 
   if (error) {
     logger.error('쿨다운 상태 저장 실패', { error, cooldownUntil });
@@ -424,7 +498,7 @@ export async function isInCooldown(): Promise<boolean> {
   const { data, error } = await supabase
     .from('system_guard')
     .select('circuit_breaker_cooldown_until')
-    .eq('id', 'default')
+    .eq('id', SYSTEM_GUARD_ID)
     .maybeSingle();
 
   if (error) {

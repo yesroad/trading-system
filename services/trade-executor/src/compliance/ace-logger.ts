@@ -93,9 +93,26 @@ export async function logACEOutcome(params: {
   side: 'BUY' | 'SELL';
   entryTime: string;
   exitTime: string;
+  entryFee?: number;
+  exitFee?: number;
+  entryTax?: number;
+  exitTax?: number;
   exitReason?: string;
 }): Promise<void> {
-  const { aceLogId, entryPrice, exitPrice, size, side, entryTime, exitTime, exitReason } = params;
+  const {
+    aceLogId,
+    entryPrice,
+    exitPrice,
+    size,
+    side,
+    entryTime,
+    exitTime,
+    entryFee,
+    exitFee,
+    entryTax,
+    exitTax,
+    exitReason,
+  } = params;
 
   logger.info('ACE Outcome 업데이트 시작', {
     aceLogId,
@@ -110,6 +127,10 @@ export async function logACEOutcome(params: {
       side,
       entryTime,
       exitTime,
+      entryFee,
+      exitFee,
+      entryTax,
+      exitTax,
       exitReason,
     });
 

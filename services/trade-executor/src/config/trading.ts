@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '@workspace/shared-utils/env-loader';
 import { env, envBoolean, envNumber } from '@workspace/shared-utils';
 import { EXECUTE_MARKETS } from './markets.js';
 

@@ -8,7 +8,8 @@ import {
 
 const logger = createLogger('economic-events-collector');
 const FMP_API_KEY = requireEnv('FMP_API_KEY');
-const FMP_BASE_URL = 'https://financialmodelingprep.com/api/v3';
+const FMP_BASE_URL = 'https://financialmodelingprep.com';
+const ECONOMIC_ENDPOINTS = ['/stable/economic-calendar', '/api/v3/economic_calendar'];
 
 /**
  * FMP API에서 경제 이벤트 가져오기
@@ -18,29 +19,41 @@ export async function fetchEconomicEvents(params: {
   toDate: string; // YYYY-MM-DD
 }): Promise<EconomicEvent[]> {
   const { fromDate, toDate } = params;
-  const url = `${FMP_BASE_URL}/economic_calendar?from=${fromDate}&to=${toDate}&apikey=${FMP_API_KEY}`;
+  logger.info('경제 이벤트 조회 시작', {
+    fromDate,
+    toDate,
+    endpointCount: ECONOMIC_ENDPOINTS.length,
+  });
 
-  logger.info('경제 이벤트 조회 시작', { fromDate, toDate });
+  let lastError: Error | null = null;
 
-  try {
-    const response = await fetch(url);
+  for (const endpoint of ECONOMIC_ENDPOINTS) {
+    const url = `${FMP_BASE_URL}${endpoint}?from=${fromDate}&to=${toDate}&apikey=${FMP_API_KEY}`;
+    try {
+      const response = await fetch(url);
+      const rawText = await response.text();
 
-    if (!response.ok) {
-      throw new Error(`FMP API 요청 실패: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        const snippet = rawText.replace(/\s+/g, ' ').slice(0, 240);
+        throw new Error(
+          `FMP API 요청 실패 (${endpoint}): ${response.status} ${response.statusText}${snippet ? ` | ${snippet}` : ''}`,
+        );
+      }
+
+      const rawData = JSON.parse(rawText) as unknown;
+      const validatedData = EconomicEventsResponseSchema.parse(rawData);
+
+      logger.info('경제 이벤트 조회 완료', { endpoint, count: validatedData.length });
+      return validatedData;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      lastError = error instanceof Error ? error : new Error(message);
+      logger.warn('경제 이벤트 endpoint 실패', { endpoint, message });
     }
-
-    const rawData = await response.json();
-
-    // Zod 검증
-    const validatedData = EconomicEventsResponseSchema.parse(rawData);
-
-    logger.info('경제 이벤트 조회 완료', { count: validatedData.length });
-
-    return validatedData;
-  } catch (error) {
-    logger.error('경제 이벤트 조회 실패', { error });
-    throw error;
   }
+
+  logger.error('경제 이벤트 조회 실패', { error: lastError });
+  throw lastError ?? new Error('경제 이벤트 조회 실패');
 }
 
 /**
@@ -128,7 +141,11 @@ function inferAffectedSectors(event: EconomicEvent): string[] {
   const sectors: string[] = [];
 
   // FOMC, Fed Funds Rate → 전 섹터 영향
-  if (eventName.includes('fomc') || eventName.includes('fed funds') || eventName.includes('interest rate decision')) {
+  if (
+    eventName.includes('fomc') ||
+    eventName.includes('fed funds') ||
+    eventName.includes('interest rate decision')
+  ) {
     return ['Financials', 'Real Estate', 'Utilities', 'Technology', 'Consumer Discretionary'];
   }
 
@@ -138,7 +155,12 @@ function inferAffectedSectors(event: EconomicEvent): string[] {
   }
 
   // Employment, NFP, Jobless Claims → 소비재, 금융
-  if (eventName.includes('employment') || eventName.includes('nfp') || eventName.includes('jobless') || eventName.includes('unemployment')) {
+  if (
+    eventName.includes('employment') ||
+    eventName.includes('nfp') ||
+    eventName.includes('jobless') ||
+    eventName.includes('unemployment')
+  ) {
     return ['Consumer Discretionary', 'Financials', 'Industrials'];
   }
 
@@ -153,7 +175,11 @@ function inferAffectedSectors(event: EconomicEvent): string[] {
   }
 
   // Manufacturing, PMI → 산업재
-  if (eventName.includes('manufacturing') || eventName.includes('pmi') || eventName.includes('industrial')) {
+  if (
+    eventName.includes('manufacturing') ||
+    eventName.includes('pmi') ||
+    eventName.includes('industrial')
+  ) {
     return ['Industrials', 'Materials'];
   }
 

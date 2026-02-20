@@ -81,7 +81,7 @@ export async function checkEventRisk(symbol: string): Promise<EventRiskResult> {
  * @returns 권장사항
  */
 export function getRecommendation(
-  riskLevel: 'low' | 'medium' | 'high'
+  riskLevel: 'low' | 'medium' | 'high',
 ): 'proceed' | 'reduce_size' | 'block' {
   switch (riskLevel) {
     case 'low':

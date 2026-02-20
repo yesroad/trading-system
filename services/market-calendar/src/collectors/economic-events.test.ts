@@ -4,7 +4,8 @@ import type { EconomicEvent } from '../types.js';
 
 // requireEnv 모킹
 vi.mock('@workspace/shared-utils', async () => {
-  const actual = await vi.importActual<typeof import('@workspace/shared-utils')>('@workspace/shared-utils');
+  const actual =
+    await vi.importActual<typeof import('@workspace/shared-utils')>('@workspace/shared-utils');
   return {
     ...actual,
     requireEnv: vi.fn((key: string) => {
@@ -15,7 +16,8 @@ vi.mock('@workspace/shared-utils', async () => {
 });
 
 // fetch 모킹
-global.fetch = vi.fn();
+const fetchMock = vi.fn<typeof fetch>();
+global.fetch = fetchMock;
 
 describe('Economic Events Collector', () => {
   describe('transformEconomicEvent', () => {
@@ -27,7 +29,7 @@ describe('Economic Events Collector', () => {
         date: '2026-03-18T14:00:00Z',
         impact: 'High',
         estimate: 5.25,
-        previous: 5.00,
+        previous: 5.0,
         actual: null,
       };
 
@@ -114,7 +116,7 @@ describe('Economic Events Collector', () => {
           date: '2026-03-18T14:00:00Z',
           impact: 'High',
           estimate: 5.25,
-          previous: 5.00,
+          previous: 5.0,
           actual: null,
         },
         {
@@ -129,10 +131,12 @@ describe('Economic Events Collector', () => {
         },
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      });
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify(mockResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
 
       const result = await collectEconomicEvents({
         fromDate: '2026-03-10',
@@ -147,11 +151,12 @@ describe('Economic Events Collector', () => {
     });
 
     it('API 요청 실패 시 에러 처리', async () => {
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: false,
-        status: 401,
-        statusText: 'Unauthorized',
-      });
+      fetchMock.mockResolvedValueOnce(
+        new Response('Unauthorized', {
+          status: 401,
+          statusText: 'Unauthorized',
+        }),
+      );
 
       const result = await collectEconomicEvents({
         fromDate: '2026-03-10',
@@ -166,10 +171,12 @@ describe('Economic Events Collector', () => {
     });
 
     it('빈 결과 처리', async () => {
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      });
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
 
       const result = await collectEconomicEvents({
         fromDate: '2026-03-10',
