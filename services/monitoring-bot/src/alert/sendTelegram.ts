@@ -1,3 +1,4 @@
+import { request } from 'node:https';
 import { env } from '../config/env.js';
 
 type TelegramResponse = {
@@ -33,27 +34,54 @@ async function postTelegram(text: string): Promise<void> {
     disable_web_page_preview: true,
   };
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10_000),
+  const payload = JSON.stringify(body);
+
+  const responseText = await new Promise<string>((resolve, reject) => {
+    const req = request(
+      url,
+      {
+        method: 'POST',
+        family: 4, // IPv6 라우팅 이슈 환경 대응
+        timeout: 10_000,
+        headers: {
+          'content-type': 'application/json',
+          'content-length': String(Buffer.byteLength(payload)),
+        },
+      },
+      (res) => {
+        let raw = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => {
+          raw += chunk;
+        });
+        res.on('end', () => {
+          const statusCode = res.statusCode ?? 0;
+          if (statusCode < 200 || statusCode >= 300) {
+            reject(new Error(`텔레그램 HTTP 오류: ${statusCode} ${res.statusMessage ?? ''}`.trim()));
+            return;
+          }
+          resolve(raw);
+        });
+      },
+    );
+
+    req.on('timeout', () => {
+      req.destroy(new Error('request timeout'));
     });
-  } catch (error: unknown) {
-    throw new Error(`텔레그램 API 요청 실패: ${formatUnknownError(error)}`);
-  }
+
+    req.on('error', (error) => {
+      reject(new Error(`텔레그램 API 요청 실패: ${formatUnknownError(error)}`));
+    });
+
+    req.write(payload);
+    req.end();
+  });
 
   let data: TelegramResponse;
   try {
-    data = (await res.json()) as TelegramResponse;
+    data = JSON.parse(responseText) as TelegramResponse;
   } catch (error: unknown) {
-    throw new Error(`텔레그램 응답 파싱 실패: HTTP ${res.status} ${formatUnknownError(error)}`);
-  }
-
-  if (!res.ok) {
-    throw new Error(`텔레그램 HTTP 오류: ${res.status} ${res.statusText}`);
+    throw new Error(`텔레그램 응답 파싱 실패: ${formatUnknownError(error)}`);
   }
 
   if (!data.ok) {
