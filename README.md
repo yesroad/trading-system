@@ -69,9 +69,10 @@
 
 **OpenAI 기반 시장 분석**
 
+- 1회성 잡 실행 (PM2 `cron_restart`, 기본 30분 주기)
 - 시장 모드별 분석 (PRE_OPEN, INTRADAY, CLOSE, POST_CLOSE)
 - 기술적 지표 + AI 신뢰도 블렌딩 (60% AI + 40% Technical)
-- AI 호출 최소화 (심볼별 쿨다운 + 월별 예산 제한)
+- AI 호출 최소화 (시장별 게이트 + 심볼별 쿨다운 + 예산 제한)
 
 **통합 기능:**
 
@@ -149,10 +150,14 @@
 
 **시스템 상태 추적 및 알림**
 
-- 워커 상태 모니터링 (장시간 미실행 감지)
-- 데이터 수집 현황 (성공률, 에러율)
-- 거래 실행 추적
-- Telegram 알림 (거래, 에러, 일일 리포트)
+- 내부 점검 알림은 `CRIT`만 Telegram 전송 (`WARN`/`INFO` 미전송)
+- 워커/수집 파이프라인/거래 실패율/리스크 이벤트 점검
+- 미소비 신호 적체는 조건부 감지:
+  - `system_guard.trading_enabled=true`
+  - `LOOP_MODE=true`
+  - 신호 시장이 `EXECUTE_MARKETS`에 포함
+- 외부 `notification_events`는 에러 및 핵심 이벤트 화이트리스트만 전송
+- 일일 리포트는 별도 잡(`monitoring-daily-report`)으로 1회 전송 가능
 
 ### 🖥️ 대시보드 (Web)
 
@@ -249,7 +254,7 @@
 
 ### 프레임워크
 
-- **Next.js 15** - 대시보드 (App Router)
+- **Next.js 16** - 대시보드 (App Router)
 - **React 19** - UI 컴포넌트
 - **TailwindCSS 4** - 스타일링
 
@@ -308,6 +313,13 @@ FMP_API_KEY=your-fmp-api-key
 # Monitoring Bot
 TELEGRAM_BOT_TOKEN=your-telegram-token
 TELEGRAM_CHAT_ID=your-chat-id
+AI_MONTHLY_BUDGET_USD=10
+AI_DAILY_LIMIT=35
+AI_HOURLY_LIMIT=6
+
+# Trade Executor / Monitoring Bot 공통
+LOOP_MODE=true
+EXECUTE_MARKETS=CRYPTO,KRX
 
 # 서비스 override 예시 (services/upbit-collector/.env)
 LOOP_INTERVAL_MS=10000

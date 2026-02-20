@@ -43,7 +43,7 @@ check-types: yarn check-types
 
 ## trading_signals 적체 CRIT 조건
 - `consumed_at IS NULL` 신호가 60분 이상 적체
-- `system_guard.trading_enabled=true` (또는 `is_trading_enabled=true`)
+- `system_guard.trading_enabled=true`
 - `LOOP_MODE=true`
 - 신호의 시장이 `EXECUTE_MARKETS`에 포함
 
