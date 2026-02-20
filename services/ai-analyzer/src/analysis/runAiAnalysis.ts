@@ -8,7 +8,7 @@ import { buildPrompt } from '../llm/buildPrompt.js';
 import { callLLM } from '../llm/callLLM.js';
 import { canCallLLM, recordLLMCall } from '../llm/aiBudget.js';
 import { saveAiResults } from '../db/saveAiResults.js';
-import { shouldCallAIBySnapshot } from './shouldCallAIBySnapshot.js';
+import { shouldCallByMarketEventGate } from './market-event-gate.js';
 import { nowIso } from '@workspace/shared-utils';
 import { buildMarketContext } from '@workspace/db-client';
 
@@ -37,10 +37,16 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
     return;
   }
 
-  // ✅ 데이터 변화 기준 게이트(가장 중요)
-  if (!shouldCallAIBySnapshot({ market, mode, snapshot, targets })) {
+  const marketGate = await shouldCallByMarketEventGate({ market, mode, targets, snapshot });
+  if (!marketGate.ok) {
+    console.log(
+      `[AI] 시장 호출 조건 미충족 → 스킵 | market=${market} | mode=${mode} | reason=${marketGate.reason}`,
+    );
     return;
   }
+  console.log(
+    `[AI] 시장 호출 조건 충족 | market=${market} | mode=${mode} | reason=${marketGate.reason}`,
+  );
 
   // ✅ 쿨다운/예산 게이트(최종)
   if (!(await canCallLLM(market, mode))) {
@@ -51,7 +57,7 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
   // ✅ 마켓 컨텍스트 수집 (경제 이벤트, 실적 발표 등)
   const marketContext = await buildMarketContext();
   console.log(
-    `[AI] 마켓 컨텍스트 수집 완료 | upcomingEvents=${marketContext.upcomingEvents.length}개`
+    `[AI] 마켓 컨텍스트 수집 완료 | upcomingEvents=${marketContext.upcomingEvents.length}개`,
   );
 
   const prompt = buildPrompt({

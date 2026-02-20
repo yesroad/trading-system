@@ -1,7 +1,8 @@
 import { Market } from '../config/markets.js';
 import type { MarketMode } from '../config/schedule.js';
 import { DateTime } from 'luxon';
-import { getDailyCallCount, recordAICall } from '@workspace/db-client';
+import { getDailyCallCount, getMonthlyAICost, recordAICall } from '@workspace/db-client';
+import { env } from '../config/env.js';
 
 type BudgetState = {
   lastCallAt: number | null;
@@ -44,7 +45,7 @@ export function getCooldownMs(market: Market, mode: MarketMode): number {
  *
  * - 쿨다운: 메모리 기반 (재시작 시 리셋)
  * - 시간당 제한: 메모리 기반 (재시작 시 리셋)
- * - 일일 제한: DB 기반 (재시작해도 유지)
+ * - 일/월 제한: DB 기반 (재시작해도 유지)
  */
 export async function canCallLLM(market: Market, mode: MarketMode): Promise<boolean> {
   const key = `${market}`;
@@ -72,29 +73,35 @@ export async function canCallLLM(market: Market, mode: MarketMode): Promise<bool
   }
 
   // 3. 시간당 제한 (메모리)
-  const HOURLY_LIMIT = process.env.AI_HOURLY_LIMIT
-    ? parseInt(process.env.AI_HOURLY_LIMIT, 10)
-    : 120;
-  if (s.hourlyCount >= HOURLY_LIMIT) {
+  if (s.hourlyCount >= env.AI_HOURLY_LIMIT) {
     return false;
   }
 
-  // 4. 일일 제한 (DB 조회)
+  // 4. 일/월 제한 (DB 조회)
   try {
     const dailyCount = await getDailyCallCount({ date: today(), market });
-    const DAILY_LIMIT = process.env.AI_DAILY_LIMIT
-      ? parseInt(process.env.AI_DAILY_LIMIT, 10)
-      : 2000;
-
-    if (dailyCount >= DAILY_LIMIT) {
+    if (dailyCount >= env.AI_DAILY_LIMIT) {
       console.log(
-        `[AI Budget] 일일 한도 도달 | market=${market} | count=${dailyCount}/${DAILY_LIMIT}`
+        `[AI Budget] 일일 한도 도달 | market=${market} | count=${dailyCount}/${env.AI_DAILY_LIMIT}`,
+      );
+      return false;
+    }
+
+    const nowUtc = DateTime.now().toUTC();
+    const monthlyCost = await getMonthlyAICost({
+      year: nowUtc.year,
+      month: nowUtc.month,
+    });
+
+    if (monthlyCost >= env.AI_MONTHLY_BUDGET_USD) {
+      console.log(
+        `[AI Budget] 월 예산 한도 도달 | cost=$${monthlyCost.toFixed(4)} / budget=$${env.AI_MONTHLY_BUDGET_USD.toFixed(2)}`,
       );
       return false;
     }
   } catch (error) {
-    console.error('[AI Budget] DB 조회 실패 - 예산 체크 스킵', error);
-    // DB 조회 실패 시 메모리 기반으로만 제한 (fail-open)
+    console.error('[AI Budget] DB 조회 실패 - 예산 보호를 위해 호출 차단', error);
+    return false;
   }
 
   return true;

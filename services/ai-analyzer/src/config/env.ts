@@ -28,6 +28,28 @@ export const env = {
    * =============================== */
   AI_RUN_MODE: parseAiRunMode(readEnv('AI_RUN_MODE')),
   AI_MAX_TARGETS_PER_MARKET: envNumber('AI_MAX_TARGETS_PER_MARKET', 30) ?? 30,
+  AI_CALL_INTERVAL_MINUTES: envNumber('AI_CALL_INTERVAL_MINUTES', 30) ?? 30,
+  AI_GATE_TIME_TOLERANCE_MIN: envNumber('AI_GATE_TIME_TOLERANCE_MIN', 5) ?? 5,
+  AI_GATE_TARGET_SCAN_LIMIT: envNumber('AI_GATE_TARGET_SCAN_LIMIT', 10) ?? 10,
+
+  /** ===============================
+   * AI 예산 제어
+   * =============================== */
+  AI_HOURLY_LIMIT: envNumber('AI_HOURLY_LIMIT', 120) ?? 120,
+  AI_DAILY_LIMIT: envNumber('AI_DAILY_LIMIT', 2000) ?? 2000,
+  AI_MONTHLY_BUDGET_USD: envNumber('AI_MONTHLY_BUDGET_USD', 10) ?? 10,
+
+  /** ===============================
+   * 시장별 호출 트리거
+   * =============================== */
+  AI_CRYPTO_RETURN_5M_PCT: envNumber('AI_CRYPTO_RETURN_5M_PCT', 1.2) ?? 1.2,
+  AI_CRYPTO_VOLUME_SPIKE_X: envNumber('AI_CRYPTO_VOLUME_SPIKE_X', 3.0) ?? 3.0,
+  AI_KRX_RETURN_5M_PCT: envNumber('AI_KRX_RETURN_5M_PCT', 0.6) ?? 0.6,
+  AI_KRX_VOLUME_SPIKE_X: envNumber('AI_KRX_VOLUME_SPIKE_X', 3.0) ?? 3.0,
+  AI_US_RETURN_15M_PCT: envNumber('AI_US_RETURN_15M_PCT', 1.8) ?? 1.8,
+  AI_US_VOLUME_SPIKE_X: envNumber('AI_US_VOLUME_SPIKE_X', 3.0) ?? 3.0,
+  AI_US_VOLATILITY_TOP_PERCENT: envNumber('AI_US_VOLATILITY_TOP_PERCENT', 15) ?? 15,
+  AI_US_HEARTBEAT_HOURS: envNumber('AI_US_HEARTBEAT_HOURS', 2) ?? 2,
 
   /** ===============================
    * LLM 설정

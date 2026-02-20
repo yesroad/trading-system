@@ -85,7 +85,7 @@ module.exports = {
     },
 
     // ──────────────────────────────────────────────────────────
-    // 5. AI Analyzer — 1회성 잡 (5분 주기 재실행)
+    // 5. AI Analyzer — 1회성 잡 (30분 주기 재실행)
     //    상시 데몬이 아니라 cron_restart + autorestart=false 사용
     // ──────────────────────────────────────────────────────────
     {
@@ -93,7 +93,7 @@ module.exports = {
       script: 'dist/index.js',
       cwd: './services/ai-analyzer',
       instances: 1,
-      cron_restart: '*/5 * * * *',
+      cron_restart: '*/30 * * * *',
       autorestart: false,
       watch: false,
       max_memory_restart: '300M',
