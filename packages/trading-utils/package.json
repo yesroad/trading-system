@@ -20,6 +20,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@workspace/db-client": "*",
+    "@workspace/shared-utils": "*",
     "big.js": "^6.2.2"
   },
   "devDependencies": {
