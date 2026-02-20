@@ -8,7 +8,6 @@ import { shouldSendAlert, recordAlertSent } from './alert/alertCooldown.js';
 
 import { checkWorkers } from './checks/checkWorkers.js';
 import { checkIngestionRuns } from './checks/checkIngestionRuns.js';
-import { checkAiResults } from './checks/checkAiResults.js';
 import { checkAiBudget } from './checks/checkAiBudget.js';
 import { checkNotificationEvents } from './checks/checkNotificationEvents.js';
 import { checkTradingSignals } from './checks/checkTradingSignals.js';
@@ -98,7 +97,6 @@ async function runChecksOnce() {
   const all = [
     ...(await safeRunCheck('workers', checkWorkers)),
     ...(await safeRunCheck('ingestion-runs', checkIngestionRuns)),
-    ...(await safeRunCheck('ai-results', checkAiResults)),
     ...(await safeRunCheck('ai-budget', checkAiBudget)),
     ...(await safeRunCheck('trading-signals', checkTradingSignals)),
     ...(await safeRunCheck('risk-events', checkRiskEvents)),

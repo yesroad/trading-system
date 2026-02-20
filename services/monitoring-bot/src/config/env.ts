@@ -7,6 +7,7 @@ function str(key: string, def: string) {
 }
 
 export type MonitoringRunMode = 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK';
+export type ExecuteMarket = 'CRYPTO' | 'KRX' | 'US';
 
 function parseMonitoringRunMode(raw: string | undefined): MonitoringRunMode {
   const normalized = raw?.trim().toUpperCase();
@@ -18,6 +19,30 @@ function parseMonitoringRunMode(raw: string | undefined): MonitoringRunMode {
   throw new Error(
     `MONITORING_RUN_MODE must be one of MARKET|PREMARKET|AFTERMARKET|EXTENDED|NO_CHECK, got: ${raw}`,
   );
+}
+
+function parseExecuteMarkets(raw: string | undefined): ExecuteMarket[] {
+  if (!raw) return ['CRYPTO', 'KRX', 'US'];
+
+  const out = new Set<ExecuteMarket>();
+  for (const token of raw.split(',')) {
+    const normalized = token.trim().toUpperCase();
+    if (!normalized) continue;
+
+    if (normalized === 'CRYPTO') {
+      out.add('CRYPTO');
+      continue;
+    }
+    if (normalized === 'KRX' || normalized === 'KR') {
+      out.add('KRX');
+      continue;
+    }
+    if (normalized === 'US') {
+      out.add('US');
+    }
+  }
+
+  return out.size > 0 ? [...out] : ['CRYPTO', 'KRX', 'US'];
 }
 
 export const env = {
@@ -41,6 +66,8 @@ export const env = {
   ENABLE_KR: envBoolean('ENABLE_KR', true),
   ENABLE_US: envBoolean('ENABLE_US', true),
   ENABLE_CRYPTO: envBoolean('ENABLE_CRYPTO', true),
+  LOOP_MODE: envBoolean('LOOP_MODE', true),
+  EXECUTE_MARKETS: parseExecuteMarkets(readEnv('EXECUTE_MARKETS')),
   MONITORING_RUN_MODE: parseMonitoringRunMode(readEnv('MONITORING_RUN_MODE')),
 
   TELEGRAM_BOT_TOKEN: requireEnv('TELEGRAM_BOT_TOKEN'),
