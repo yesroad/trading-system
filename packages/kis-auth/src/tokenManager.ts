@@ -7,7 +7,6 @@ import { TokenCooldownError, KisTokenError } from './errors.js';
 import type { KisTokenResponse, SystemGuardKisToken } from './types/types.js';
 import { DateTime } from 'luxon';
 import { env, requireEnv } from '@workspace/shared-utils';
-import 'dotenv/config';
 
 // KIS API 설정
 const KIS_ENV = (env('KIS_ENV') ?? 'REAL').toUpperCase();
