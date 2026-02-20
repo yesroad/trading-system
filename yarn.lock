@@ -4729,7 +4729,9 @@ __metadata:
   dependencies:
     "@types/big.js": "npm:^6.2.2"
     "@vitest/coverage-v8": "npm:^2.1.8"
+    "@workspace/db-client": "npm:*"
     "@workspace/eslint-config": "npm:*"
+    "@workspace/shared-utils": "npm:*"
     big.js: "npm:^6.2.2"
     eslint: "npm:^9.39.2"
     typescript: "npm:^5.9.2"
