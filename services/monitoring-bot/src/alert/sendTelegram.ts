@@ -5,6 +5,20 @@ type TelegramResponse = {
   description?: string;
 };
 
+function formatUnknownError(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = error.cause;
+    if (cause instanceof Error) {
+      return `${error.message} (cause: ${cause.message})`;
+    }
+    if (cause !== undefined && cause !== null) {
+      return `${error.message} (cause: ${String(cause)})`;
+    }
+    return error.message;
+  }
+  return String(error);
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -19,13 +33,28 @@ async function postTelegram(text: string): Promise<void> {
     disable_web_page_preview: true,
   };
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error: unknown) {
+    throw new Error(`텔레그램 API 요청 실패: ${formatUnknownError(error)}`);
+  }
 
-  const data = (await res.json()) as TelegramResponse;
+  let data: TelegramResponse;
+  try {
+    data = (await res.json()) as TelegramResponse;
+  } catch (error: unknown) {
+    throw new Error(`텔레그램 응답 파싱 실패: HTTP ${res.status} ${formatUnknownError(error)}`);
+  }
+
+  if (!res.ok) {
+    throw new Error(`텔레그램 HTTP 오류: ${res.status} ${res.statusText}`);
+  }
 
   if (!data.ok) {
     throw new Error(`텔레그램 전송 실패: ${data.description ?? 'unknown error'}`);

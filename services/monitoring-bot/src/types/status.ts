@@ -20,7 +20,8 @@ export type AlertCategory =
   | 'trades_high_failure'
   | 'trades_no_ace'
   | 'signal_failures_error'
-  | 'signal_failure_rate_high';
+  | 'signal_failure_rate_high'
+  | 'monitoring_runtime_error';
 
 export type AlertEvent = {
   level: AlertLevel;

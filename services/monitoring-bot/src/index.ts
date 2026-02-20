@@ -1,5 +1,6 @@
 import { env } from './config/env.js';
 import { DateTime } from 'luxon';
+import { nowIso } from '@workspace/shared-utils';
 import { formatMessage } from './alert/formatMessage.js';
 import { sendTelegram } from './alert/sendTelegram.js';
 import { shouldSendAlert, recordAlertSent } from './alert/alertCooldown.js';
@@ -13,6 +14,21 @@ import { checkRiskEvents } from './checks/checkRiskEvents.js';
 import { checkTrades } from './checks/checkTrades.js';
 import { checkSignalFailures } from './checks/checkSignalFailures.js';
 import { buildDailyReportText } from './checks/dailyReport.js';
+import type { AlertEvent } from './types/status.js';
+
+function formatUnknownError(error: unknown): string {
+  if (error instanceof Error) {
+    const cause = error.cause;
+    if (cause instanceof Error) {
+      return `${error.message} (cause: ${cause.message})`;
+    }
+    if (cause !== undefined && cause !== null) {
+      return `${error.message} (cause: ${String(cause)})`;
+    }
+    return error.message;
+  }
+  return String(error);
+}
 
 function isSessionActiveForEnabledMarkets(): boolean {
   if (env.MONITORING_RUN_MODE === 'NO_CHECK') return true;
@@ -45,6 +61,29 @@ function isSessionActiveForEnabledMarkets(): boolean {
   return isKrActive || isUsActive || isCryptoActive;
 }
 
+async function safeRunCheck(
+  checkName: string,
+  run: () => Promise<AlertEvent[]>,
+): Promise<AlertEvent[]> {
+  try {
+    return await run();
+  } catch (error: unknown) {
+    const message = formatUnknownError(error);
+    console.error(`[TRADING] 체크 실패(${checkName}): ${message}`);
+
+    return [
+      {
+        level: 'WARN',
+        category: 'monitoring_runtime_error',
+        title: `${checkName} 체크 실패`,
+        message,
+        market: 'GLOBAL',
+        at: nowIso(),
+      },
+    ];
+  }
+}
+
 async function runChecksOnce() {
   if (!isSessionActiveForEnabledMarkets()) {
     console.log(`[TRADING] 세션 외 스킵 (MONITORING_RUN_MODE=${env.MONITORING_RUN_MODE})`);
@@ -52,13 +91,13 @@ async function runChecksOnce() {
   }
 
   const all = [
-    ...(await checkWorkers()),
-    ...(await checkIngestionRuns()),
-    ...(await checkAiResults()),
-    ...(await checkTradingSignals()),
-    ...(await checkRiskEvents()),
-    ...(await checkTrades()),
-    ...(await checkSignalFailures()),
+    ...(await safeRunCheck('workers', checkWorkers)),
+    ...(await safeRunCheck('ingestion-runs', checkIngestionRuns)),
+    ...(await safeRunCheck('ai-results', checkAiResults)),
+    ...(await safeRunCheck('trading-signals', checkTradingSignals)),
+    ...(await safeRunCheck('risk-events', checkRiskEvents)),
+    ...(await safeRunCheck('trades', checkTrades)),
+    ...(await safeRunCheck('signal-failures', checkSignalFailures)),
   ];
 
   // WARN/CRIT만 알림
@@ -69,19 +108,27 @@ async function runChecksOnce() {
     if (!decision.send) continue;
 
     const text = formatMessage(e);
-    await sendTelegram(text, { isCriticalRepeat: decision.isCriticalRepeat });
-    recordAlertSent(e);
+    try {
+      await sendTelegram(text, { isCriticalRepeat: decision.isCriticalRepeat });
+      recordAlertSent(e);
+    } catch (error: unknown) {
+      console.error(`[TRADING] 알림 전송 실패: ${formatUnknownError(error)}`);
+    }
   }
 
   if (events.length === 0) {
     console.log('[TRADING] 이상 징후 없음');
   }
 
-  const external = await checkNotificationEvents();
-  if (external.sent > 0 || external.failed > 0 || external.skipped > 0) {
-    console.log(
-      `[TRADING] 외부 알림 처리: sent=${external.sent} failed=${external.failed} skipped=${external.skipped}`,
-    );
+  try {
+    const external = await checkNotificationEvents();
+    if (external.sent > 0 || external.failed > 0 || external.skipped > 0) {
+      console.log(
+        `[TRADING] 외부 알림 처리: sent=${external.sent} failed=${external.failed} skipped=${external.skipped}`,
+      );
+    }
+  } catch (error: unknown) {
+    console.error(`[TRADING] 외부 알림 처리 실패: ${formatUnknownError(error)}`);
   }
 }
 
@@ -108,7 +155,6 @@ async function main() {
   await runChecksOnce();
 }
 
-main().catch((e) => {
-  console.error(`[TRADING] 치명적 오류: ${(e as Error).message}`);
-  process.exit(1);
+main().catch((error: unknown) => {
+  console.error(`[TRADING] 치명적 오류: ${formatUnknownError(error)}`);
 });
