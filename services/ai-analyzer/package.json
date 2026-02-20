@@ -15,10 +15,12 @@
     "@workspace/shared-utils": "*",
     "@workspace/stock-screener": "*",
     "@workspace/trading-utils": "*",
+    "big.js": "^7.0.1",
     "dotenv": "^17.2.3",
     "openai": "^6.16.0"
   },
   "devDependencies": {
+    "@types/big.js": "^6.2.2",
     "@types/luxon": "^3.7.1",
     "@workspace/eslint-config": "*",
     "eslint": "^9.39.2",
