@@ -1,3 +1,4 @@
+import { setDefaultResultOrder } from 'node:dns';
 import { env } from './config/env.js';
 import { DateTime } from 'luxon';
 import { nowIso } from '@workspace/shared-utils';
@@ -15,6 +16,9 @@ import { checkTrades } from './checks/checkTrades.js';
 import { checkSignalFailures } from './checks/checkSignalFailures.js';
 import { buildDailyReportText } from './checks/dailyReport.js';
 import type { AlertEvent } from './types/status.js';
+
+// 서버 IPv6 라우팅 불안정 환경에서 fetch 실패를 줄이기 위해 IPv4 우선으로 해석한다.
+setDefaultResultOrder('ipv4first');
 
 function formatUnknownError(error: unknown): string {
   if (error instanceof Error) {
