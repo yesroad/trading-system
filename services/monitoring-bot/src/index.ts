@@ -9,6 +9,7 @@ import { shouldSendAlert, recordAlertSent } from './alert/alertCooldown.js';
 import { checkWorkers } from './checks/checkWorkers.js';
 import { checkIngestionRuns } from './checks/checkIngestionRuns.js';
 import { checkAiResults } from './checks/checkAiResults.js';
+import { checkAiBudget } from './checks/checkAiBudget.js';
 import { checkNotificationEvents } from './checks/checkNotificationEvents.js';
 import { checkTradingSignals } from './checks/checkTradingSignals.js';
 import { checkRiskEvents } from './checks/checkRiskEvents.js';
@@ -77,7 +78,7 @@ async function safeRunCheck(
 
     return [
       {
-        level: 'WARN',
+        level: 'CRIT',
         category: 'monitoring_runtime_error',
         title: `${checkName} 체크 실패`,
         message,
@@ -98,14 +99,15 @@ async function runChecksOnce() {
     ...(await safeRunCheck('workers', checkWorkers)),
     ...(await safeRunCheck('ingestion-runs', checkIngestionRuns)),
     ...(await safeRunCheck('ai-results', checkAiResults)),
+    ...(await safeRunCheck('ai-budget', checkAiBudget)),
     ...(await safeRunCheck('trading-signals', checkTradingSignals)),
     ...(await safeRunCheck('risk-events', checkRiskEvents)),
     ...(await safeRunCheck('trades', checkTrades)),
     ...(await safeRunCheck('signal-failures', checkSignalFailures)),
   ];
 
-  // WARN/CRIT만 알림
-  const events = all.filter((e) => e.level !== 'OK');
+  // 운영 정책: 내부 체크 알림은 CRIT만 전송
+  const events = all.filter((e) => e.level === 'CRIT');
 
   for (const e of events) {
     const decision = shouldSendAlert(e);
