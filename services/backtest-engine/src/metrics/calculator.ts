@@ -84,7 +84,7 @@ export function calculateTotalReturn(initialCapital: Big, finalCapital: Big): nu
  * @param initialCapital - 초기 자본
  * @returns Sharpe Ratio
  */
-export function calculateSharpeRatio(equity: EquityPoint[], initialCapital: Big): number {
+export function calculateSharpeRatio(equity: EquityPoint[], _initialCapital: Big): number {
   if (equity.length < 2) {
     return 0;
   }

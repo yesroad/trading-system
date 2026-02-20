@@ -1,10 +1,9 @@
 import { createLogger } from '@workspace/shared-utils';
 import { createACELog, updateACEOutcome } from '@workspace/db-client';
 import { buildAspiration, buildCapability, buildExecution, buildOutcome } from './builders.js';
-import type { CreateACELogParams, UpdateOutcomeParams, ACELog } from './types.js';
+import type { ACELog } from './types.js';
 import type { GeneratedSignal } from '@workspace/trading-utils';
 import type { RiskValidationResult } from '../risk/types.js';
-import type Big from 'big.js';
 
 const logger = createLogger('ace-logger');
 
@@ -141,7 +140,7 @@ export async function logACEOutcome(params: {
  * @param aceLog - ACE 로그
  * @returns 품질 점수 (0~1)
  */
-export function calculateTradeQuality(aceLog: ACELog): number {
+export function calculateTradeQuality(_aceLog: ACELog): number {
   // TODO: 실제 품질 점수 계산 로직 구현
   // - 계획 대비 실행 정확도
   // - 리스크 관리 준수 여부

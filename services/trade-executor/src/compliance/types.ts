@@ -1,5 +1,3 @@
-import type Big from 'big.js';
-
 /**
  * ACE Framework - Aspiration-Capability-Execution-Outcome
  *

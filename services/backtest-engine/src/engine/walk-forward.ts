@@ -40,6 +40,9 @@ export async function runWalkForward(
 
   logger.info('윈도우 생성 완료', { windowCount: windows.length });
 
+  const minOosTrades = wfConfig.minOosTrades ?? 3;
+  const warmupDays = wfConfig.warmupDays ?? 0;
+
   // 2. 각 윈도우에서 백테스트 실행
   const windowResults: WalkForwardWindowResult[] = [];
 
@@ -49,38 +52,80 @@ export async function runWalkForward(
       outSampleEnd: window.outSampleEnd,
     });
 
-    // In-Sample 백테스트
-    const inSampleResult = await runBacktest(strategy, {
-      ...config,
-      startDate: window.inSampleStart,
-      endDate: window.inSampleEnd,
-    });
+    let inSampleResult;
+    let outSampleResult;
 
-    // Out-of-Sample 백테스트
-    const outSampleResult = await runBacktest(strategy, {
-      ...config,
-      startDate: window.outSampleStart,
-      endDate: window.outSampleEnd,
-    });
+    // 워밍업: IS/OOS 시작일을 앞당겨 MA 지표 계산에 충분한 캔들 확보
+    // 200MA 필터 사용 시 warmupDays=210 권장 (약 200 거래일)
+    const isStartWithWarmup = warmupDays > 0
+      ? DateTime.fromISO(window.inSampleStart)
+          .minus({ days: warmupDays })
+          .toISODate() ?? window.inSampleStart
+      : window.inSampleStart;
+
+    const oosStartWithWarmup = warmupDays > 0
+      ? DateTime.fromISO(window.outSampleStart)
+          .minus({ days: warmupDays })
+          .toISODate() ?? window.outSampleStart
+      : window.outSampleStart;
+
+    try {
+      // In-Sample 백테스트 (워밍업 기간 포함 로드)
+      inSampleResult = await runBacktest(strategy, {
+        ...config,
+        startDate: isStartWithWarmup,
+        endDate: window.inSampleEnd,
+      });
+
+      // Out-of-Sample 백테스트 (워밍업 기간 포함 로드)
+      outSampleResult = await runBacktest(strategy, {
+        ...config,
+        startDate: oosStartWithWarmup,
+        endDate: window.outSampleEnd,
+      });
+    } catch (err) {
+      // 데이터 없음 등의 에러 → 이 윈도우를 insufficient_trades로 처리하고 계속
+      logger.warn('윈도우 처리 실패 (스킵)', {
+        inSampleStart: window.inSampleStart,
+        outSampleEnd: window.outSampleEnd,
+        error: String(err),
+      });
+      continue;
+    }
+
+    // OOS 거래 수 = SELL 거래 수 (완결된 라운드트립)
+    const oosTrades = outSampleResult.trades.filter((t) => t.side === 'SELL').length;
+    const status: import('../types.js').WalkForwardWindowStatus =
+      oosTrades >= minOosTrades ? 'valid' : 'insufficient_trades';
 
     windowResults.push({
       window,
       inSampleResult,
       outSampleResult,
+      status,
+      oosTrades,
     });
 
     logger.info('윈도우 처리 완료', {
       inSampleReturn: `${inSampleResult.totalReturn.toFixed(2)}%`,
       outSampleReturn: `${outSampleResult.totalReturn.toFixed(2)}%`,
+      oosTrades,
+      status,
     });
   }
 
+  if (windowResults.length === 0) {
+    throw new Error('유효한 윈도우가 없습니다. 데이터 기간을 확인해주세요.');
+  }
+
   // 3. 전체 In-Sample 및 Out-of-Sample 성과 집계
+  //    OOS 집계는 valid 윈도우만 포함 (insufficient_trades 제외)
+  const validWindows = windowResults.filter((wr) => wr.status === 'valid');
   const inSampleMetrics = aggregateMetrics(
     windowResults.map((wr) => wr.inSampleResult.metrics)
   );
   const outSampleMetrics = aggregateMetrics(
-    windowResults.map((wr) => wr.outSampleResult.metrics)
+    (validWindows.length > 0 ? validWindows : windowResults).map((wr) => wr.outSampleResult.metrics)
   );
   const aggregatedMetrics = aggregateMetrics([inSampleMetrics, outSampleMetrics]);
 

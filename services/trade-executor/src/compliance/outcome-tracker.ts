@@ -5,19 +5,6 @@ import { logACEOutcome } from './ace-logger.js';
 const logger = createLogger('outcome-tracker');
 
 /**
- * 거래 정보
- */
-interface TradeInfo {
-  id: string;
-  symbol: string;
-  side: 'BUY' | 'SELL';
-  qty: number;
-  price: number;
-  executedAt: string;
-  aceLogId?: string;
-}
-
-/**
  * 종료된 거래의 Outcome 추적
  *
  * 포지션이 청산된 거래를 찾아 ACE Outcome을 업데이트합니다.

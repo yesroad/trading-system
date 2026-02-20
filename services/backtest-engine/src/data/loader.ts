@@ -27,13 +27,17 @@ export async function loadCandles(params: {
 
   logger.info('캔들 데이터 로드 시작', { symbol, startDate, endDate, source });
 
+  // upbit는 market 컬럼, kis/yf는 symbol 컬럼 사용
+  const symbolCol = source === 'upbit' ? 'market' : 'symbol';
+  const timeCol = 'candle_time_utc';
+
   const { data, error } = await supabase
     .from(tableName)
     .select('*')
-    .eq('symbol', symbol)
-    .gte('candle_time', startDate)
-    .lte('candle_time', endDate)
-    .order('candle_time', { ascending: true });
+    .eq(symbolCol, symbol)
+    .gte(timeCol, startDate)
+    .lte(timeCol, endDate)
+    .order(timeCol, { ascending: true });
 
   if (error) {
     logger.error('캔들 데이터 로드 실패', { error });
@@ -48,14 +52,14 @@ export async function loadCandles(params: {
   logger.info('캔들 데이터 로드 완료', { count: data.length });
 
   // DB 결과를 Candle 타입으로 변환
-  return data.map((row: CandleRaw) => ({
-    symbol: row.symbol,
-    candleTime: row.candle_time,
-    open: new Big(row.open),
-    high: new Big(row.high),
-    low: new Big(row.low),
-    close: new Big(row.close),
-    volume: new Big(row.volume),
+  return (data as CandleRaw[]).map((row) => ({
+    symbol: (row.market ?? row.symbol ?? symbol),
+    candleTime: row.candle_time_utc,
+    open: new Big(String(row.open)),
+    high: new Big(String(row.high)),
+    low: new Big(String(row.low)),
+    close: new Big(String(row.close)),
+    volume: new Big(String(row.volume)),
   }));
 }
 

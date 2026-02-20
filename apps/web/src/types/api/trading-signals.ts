@@ -1,7 +1,7 @@
 export interface TradingSignalDTO {
   id: string;
   symbol: string;
-  market: 'CRYPTO' | 'KR' | 'US';
+  market: 'CRYPTO' | 'KRX' | 'US';
   broker: 'KIS' | 'UPBIT';
   signal_type: 'BUY' | 'SELL' | 'HOLD';
   entry_price: string;

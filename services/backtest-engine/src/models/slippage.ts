@@ -13,36 +13,43 @@ import type { SlippageParams } from '../types.js';
  * @returns 슬리피지 비율 (%)
  */
 export function calculateSlippage(params: SlippageParams): Big {
-  const { model, orderSize, avgVolume, bidAskSpread, fixedPct } = params;
+  const { model, orderSize, avgVolume, bidAskSpread, fixedPct, stressMultiplier } = params;
+  const stress = new Big(stressMultiplier ?? 1.0);
+
+  let baseSlippage: Big;
 
   switch (model) {
     case 'fixed':
-      return new Big(fixedPct ?? 0.05); // 기본값 0.05%
+      baseSlippage = new Big(fixedPct ?? 0.05); // 기본값 0.05%
+      break;
 
     case 'linear': {
       if (avgVolume.lte(0)) {
-        return new Big(0); // 거래량 0이면 슬리피지 0
+        baseSlippage = new Big(0);
+        break;
       }
-
-      // orderSize / avgVolume × bidAskSpread
       const ratio = orderSize.div(avgVolume);
-      return ratio.times(bidAskSpread);
+      baseSlippage = ratio.times(bidAskSpread);
+      break;
     }
 
     case 'sqrt': {
       if (avgVolume.lte(0)) {
-        return new Big(0);
+        baseSlippage = new Big(0);
+        break;
       }
-
-      // sqrt(orderSize / avgVolume) × bidAskSpread
       const ratio = orderSize.div(avgVolume);
       const sqrtRatio = Math.sqrt(ratio.toNumber());
-      return new Big(sqrtRatio).times(bidAskSpread);
+      baseSlippage = new Big(sqrtRatio).times(bidAskSpread);
+      break;
     }
 
     default:
       throw new Error(`알 수 없는 슬리피지 모델: ${model}`);
   }
+
+  // 스트레스 모드: 기본 슬리피지에 배수 적용 (기본 1.0 = Normal)
+  return baseSlippage.times(stress);
 }
 
 /**

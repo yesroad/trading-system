@@ -12,11 +12,11 @@ export async function GET(req: Request) {
     const minConfidenceParam = url.searchParams.get('minConfidence');
 
     // 파라미터 파싱
-    const market = marketParam as 'CRYPTO' | 'KR' | 'US' | null;
+    const market = marketParam as 'CRYPTO' | 'KRX' | 'US' | null;
     const minConfidence = minConfidenceParam ? parseFloat(minConfidenceParam) : 0;
 
     // Validate market
-    if (market && !['CRYPTO', 'KR', 'US'].includes(market)) {
+    if (market && !['CRYPTO', 'KRX', 'US'].includes(market)) {
       return NextResponse.json(
         { error: { message: 'Invalid market parameter' } },
         { status: 400 }
