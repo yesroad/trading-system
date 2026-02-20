@@ -13,8 +13,30 @@ function normalizeLevel(level: string): 'INFO' | 'WARNING' | 'ERROR' {
   return 'INFO';
 }
 
+const ALLOWED_INFO_EVENT_TYPES = new Set([
+  'TRADE_FILLED',
+  'BUY_FILLED',
+  'SELL_FILLED',
+  'TRADE_FAILED',
+  'TRADE_EXECUTION_ERROR',
+  'CIRCUIT_BREAKER',
+  'LIQUIDATION',
+]);
+
+function shouldForwardNotification(row: NotificationEventRow): boolean {
+  const level = normalizeLevel(row.level);
+  if (level === 'ERROR') return true;
+
+  const eventType = String(row.event_type ?? '')
+    .trim()
+    .toUpperCase();
+
+  return ALLOWED_INFO_EVENT_TYPES.has(eventType);
+}
+
 function normalizeMarket(market: string | null): 'KR' | 'US' | 'CRYPTO' | 'GLOBAL' {
-  if (market === 'KR' || market === 'US' || market === 'CRYPTO' || market === 'GLOBAL') return market;
+  if (market === 'KR' || market === 'US' || market === 'CRYPTO' || market === 'GLOBAL')
+    return market;
   return 'GLOBAL';
 }
 
@@ -41,7 +63,11 @@ function formatExternalNotification(row: NotificationEventRow): string {
 /**
  * trade-executor 등 외부 서비스가 적재한 notification_events를 전송한다.
  */
-export async function checkNotificationEvents(): Promise<{ sent: number; failed: number; skipped: number }> {
+export async function checkNotificationEvents(): Promise<{
+  sent: number;
+  failed: number;
+  skipped: number;
+}> {
   if (!env.NOTIFICATION_EVENTS_ENABLED) {
     return { sent: 0, failed: 0, skipped: 0 };
   }
@@ -57,6 +83,12 @@ export async function checkNotificationEvents(): Promise<{ sent: number; failed:
 
   for (const row of rows) {
     try {
+      if (!shouldForwardNotification(row)) {
+        await markNotificationEventSent(row.id);
+        skipped += 1;
+        continue;
+      }
+
       const text = formatExternalNotification(row);
       const level = normalizeLevel(row.level);
 

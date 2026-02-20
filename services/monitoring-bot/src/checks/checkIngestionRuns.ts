@@ -19,13 +19,11 @@ type IngestionRun = {
 
 function levelOfRunningLag(mins: number): AlertLevel | null {
   if (mins >= env.INGESTION_RUNNING_CRIT_MIN) return 'CRIT';
-  if (mins >= env.INGESTION_RUNNING_WARN_MIN) return 'WARN';
   return null;
 }
 
 function levelOfStale(mins: number): AlertLevel | null {
   if (mins >= env.INGESTION_STALE_CRIT_MIN) return 'CRIT';
-  if (mins >= env.INGESTION_STALE_WARN_MIN) return 'WARN';
   return null;
 }
 
@@ -37,7 +35,7 @@ export async function checkIngestionRuns(): Promise<AlertEvent[]> {
     enabled: boolean;
     jobs: string[];
   }> = [
-    { market: 'KR', enabled: env.ENABLE_KR, jobs: [] },
+    { market: 'KR', enabled: env.ENABLE_KR, jobs: ['kis-equity'] },
     { market: 'US', enabled: env.ENABLE_US, jobs: ['yfinance-equity'] },
     { market: 'CRYPTO', enabled: env.ENABLE_CRYPTO, jobs: ['upbit-candle'] },
   ];
@@ -58,7 +56,7 @@ export async function checkIngestionRuns(): Promise<AlertEvent[]> {
       const list = byJob.get(job) ?? [];
       if (!list.length) {
         events.push({
-          level: 'WARN',
+          level: 'CRIT',
           category: 'ingestion_missing',
           market: cfg.market,
           title: `수집 실행 기록 없음`,
@@ -99,7 +97,7 @@ export async function checkIngestionRuns(): Promise<AlertEvent[]> {
 
       if (!success) {
         events.push({
-          level: 'WARN',
+          level: 'CRIT',
           category: 'ingestion_missing',
           market: cfg.market,
           title: `수집 성공 기록 없음`,
@@ -122,7 +120,7 @@ export async function checkIngestionRuns(): Promise<AlertEvent[]> {
           `job: ${job}`,
           `최근 성공 시각: ${toKstIso(success.started_at)}`,
           `경과: ${staleMin.toFixed(1)}분`,
-          `기준: WARN=${env.INGESTION_STALE_WARN_MIN}m / CRIT=${env.INGESTION_STALE_CRIT_MIN}m`,
+          `기준: CRIT=${env.INGESTION_STALE_CRIT_MIN}m`,
         ].join('\n'),
         at: nowIso(),
       });
