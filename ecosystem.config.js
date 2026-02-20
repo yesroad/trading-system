@@ -1,7 +1,7 @@
 /**
  * PM2 Ecosystem - Trading System
  *
- * 코인 자동매매 최소 구성 (KRW-BTC, Upbit)
+ * 멀티마켓 자동매매 운영 구성 (CRYPTO + KRX, KIS 모의투자)
  *
  * 실행:
  *   pm2 start ecosystem.config.js
@@ -27,6 +27,7 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '200M',
+      time: true,
       env: { NODE_ENV: 'production' },
     },
 
@@ -42,12 +43,69 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '200M',
+      time: true,
+      env: {
+        NODE_ENV: 'production',
+        KIS_ENV: 'PAPER',
+      },
+    },
+
+    // ──────────────────────────────────────────────────────────
+    // 3. KIS Collector — KRX 시세/예수금 수집 (장중 루프)
+    //    KIS_ENV=PAPER 강제
+    // ──────────────────────────────────────────────────────────
+    {
+      name: 'kis-collector',
+      script: 'dist/index.js',
+      cwd: './services/kis-collector',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '250M',
+      time: true,
+      env: {
+        NODE_ENV: 'production',
+        KIS_ENV: 'PAPER',
+      },
+    },
+
+    // ──────────────────────────────────────────────────────────
+    // 4. Market Calendar — 실적/이벤트 수집 (서비스 내부 24h 주기)
+    // ──────────────────────────────────────────────────────────
+    {
+      name: 'market-calendar',
+      script: 'dist/index.js',
+      cwd: './services/market-calendar',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '150M',
+      time: true,
       env: { NODE_ENV: 'production' },
     },
 
     // ──────────────────────────────────────────────────────────
-    // 3. Trade Executor — 신호 감지 → 실주문 (24시간 루프)
-    //    LOOP_MODE=true, DRY_RUN=false, EXECUTE_MARKETS=CRYPTO
+    // 5. AI Analyzer — 1회성 잡 (5분 주기 재실행)
+    //    상시 데몬이 아니라 cron_restart + autorestart=false 사용
+    // ──────────────────────────────────────────────────────────
+    {
+      name: 'ai-analyzer',
+      script: 'dist/index.js',
+      cwd: './services/ai-analyzer',
+      instances: 1,
+      cron_restart: '*/5 * * * *',
+      autorestart: false,
+      watch: false,
+      max_memory_restart: '300M',
+      time: true,
+      env: { NODE_ENV: 'production' },
+    },
+
+    // ──────────────────────────────────────────────────────────
+    // 6. Trade Executor — 신호 감지 → 주문 실행 (24시간 루프)
+    //    실행 설정은 루트 .env + services/trade-executor/.env(override) 사용
+    //    예: LOOP_MODE=true, DRY_RUN=false, EXECUTE_MARKETS=CRYPTO,KRX
+    //    KIS_ENV=PAPER 강제
     // ──────────────────────────────────────────────────────────
     {
       name: 'trade-executor',
@@ -57,11 +115,15 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '300M',
-      env: { NODE_ENV: 'production' },
+      time: true,
+      env: {
+        NODE_ENV: 'production',
+        KIS_ENV: 'PAPER',
+      },
     },
 
     // ──────────────────────────────────────────────────────────
-    // 4. Portfolio Signal — 신호 생성 (매일 08:00 KST = 23:00 UTC)
+    // 7. Portfolio Signal — 신호 생성 (매일 08:00 KST = 23:00 UTC)
     //    --no-dry-run: trading_signals DB INSERT 활성화
     // ──────────────────────────────────────────────────────────
     {
@@ -70,22 +132,26 @@ module.exports = {
       cwd: './services/backtest-engine',
       args: [
         'portfolio-signal',
-        '--symbols', 'KRW-BTC',
-        '--crypto-strategy', 'bb-squeeze',
+        '--symbols',
+        'KRW-BTC',
+        '--crypto-strategy',
+        'bb-squeeze',
         '--spy-filter',
         '--symbol-ma-filter',
-        '--symbol-ma-period', '50',
+        '--symbol-ma-period',
+        '50',
         '--no-dry-run',
       ].join(' '),
       instances: 1,
-      cron_restart: '0 23 * * *',   // 매일 23:00 UTC = 08:00 KST
+      cron_restart: '0 23 * * *', // 매일 23:00 UTC = 08:00 KST
       autorestart: false,
       watch: false,
+      time: true,
       env: { NODE_ENV: 'production' },
     },
 
     // ──────────────────────────────────────────────────────────
-    // 5. Monitoring Bot — 시스템 상태 체크 + Telegram 알림
+    // 8. Monitoring Bot — 시스템 상태 체크 + Telegram 알림
     //    10분 간격 실행 (TELEGRAM_BOT_TOKEN 설정 필요)
     // ──────────────────────────────────────────────────────────
     {
@@ -97,6 +163,25 @@ module.exports = {
       autorestart: false,
       watch: false,
       max_memory_restart: '100M',
+      time: true,
+      env: { NODE_ENV: 'production' },
+    },
+
+    // ──────────────────────────────────────────────────────────
+    // 9. Monitoring Daily Report — 하루 요약 전송 (일 1회)
+    //    DAILY_REPORT_ENABLED=true 이어야 실제 전송
+    // ──────────────────────────────────────────────────────────
+    {
+      name: 'monitoring-daily-report',
+      script: 'dist/index.js',
+      cwd: './services/monitoring-bot',
+      args: '--daily-report',
+      instances: 1,
+      cron_restart: '0 0 * * *', // 매일 00:00 UTC = 09:00 KST
+      autorestart: false,
+      watch: false,
+      max_memory_restart: '100M',
+      time: true,
       env: { NODE_ENV: 'production' },
     },
   ],

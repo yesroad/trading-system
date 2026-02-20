@@ -21,7 +21,8 @@ export function marketToBroker(market: Market): Broker {
 }
 
 /**
- * EXECUTE_MARKETS 예시: "CRYPTO,KR,US"
+ * EXECUTE_MARKETS 예시: "CRYPTO,KRX,US"
+ * - 호환 별칭: KR -> KRX
  * - 비어있거나 누락이면 전체 시장 기본값 사용
  * - 잘못된 값이 있으면 에러 발생
  */
@@ -32,7 +33,10 @@ export function parseExecuteMarkets(raw: string | undefined): Market[] {
 
   const parsed = raw
     .split(',')
-    .map((m) => m.trim().toUpperCase())
+    .map((m) => {
+      const normalized = m.trim().toUpperCase();
+      return normalized === 'KR' ? 'KRX' : normalized;
+    })
     .filter((m) => m.length > 0);
 
   const invalid = parsed.filter((m) => !isMarket(m));

@@ -130,6 +130,12 @@ export interface Outcome {
   exitPrice: number;
   /** 실현 손익 (금액) */
   realizedPnL: number;
+  /** 비용 차감 전 총 손익 */
+  grossPnL: number;
+  /** 총 수수료 */
+  totalFees: number;
+  /** 총 세금 */
+  totalTaxes: number;
   /** 실현 손익 (퍼센트) */
   pnLPct: number;
   /** 보유 기간 */

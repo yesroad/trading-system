@@ -43,7 +43,10 @@ function createAuthToken(payloadParams?: Record<string, string>): string {
 export class UpbitClient implements BrokerClient {
   public readonly broker = 'UPBIT' as const;
 
-  async getCurrentPrice(params: { market: OrderRequest['market']; symbol: string }): Promise<number | null> {
+  async getCurrentPrice(params: {
+    market: OrderRequest['market'];
+    symbol: string;
+  }): Promise<number | null> {
     if (params.market !== 'CRYPTO') return null;
 
     const marketCode = params.symbol.startsWith('KRW-') ? params.symbol : `KRW-${params.symbol}`;

@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '@workspace/shared-utils/env-loader';
 import Big from 'big.js';
 import { DateTime } from 'luxon';
 import { createLogger, sleep } from '@workspace/shared-utils';
@@ -17,6 +17,7 @@ import { checkCircuitBreaker } from './risk/circuit-breaker.js';
 import { logACEEntry } from './compliance/ace-logger.js';
 import { startOutcomeTracking } from './compliance/outcome-tracker.js';
 import { executeOrder } from './execution/order-executor.js';
+import { reconcileTradeCostsOnce, startCostReconciliation } from './reconciliation/cost-reconciler.js';
 
 const logger = createLogger('trade-executor');
 
@@ -332,6 +333,9 @@ async function startLoopMode(): Promise<void> {
   // ✨ Outcome 추적 시작 (Phase 5)
   startOutcomeTracking();
 
+  // 브로커 원천 수수료/세금 정산 워커 시작
+  startCostReconciliation();
+
   // 시작 시 1회 즉시 실행
   await mainLoop();
 
@@ -369,6 +373,7 @@ async function main(): Promise<void> {
 
   if (!TRADING_CONFIG.loopMode) {
     await mainLoop();
+    await reconcileTradeCostsOnce();
     return;
   }
 

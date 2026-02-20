@@ -1,3 +1,4 @@
+import Big from 'big.js';
 import { createLogger, nowIso } from '@workspace/shared-utils';
 import { getSupabase } from '@workspace/db-client';
 import type { KISClient } from '../brokers/kis/client.js';
@@ -6,6 +7,51 @@ import type { OrderRequest, OrderResult } from '../brokers/types.js';
 import type { ExecuteOrderParams, OrderExecutionResult } from './types.js';
 
 const logger = createLogger('order-executor');
+
+type InsertError = {
+  code?: string;
+  message?: string;
+};
+
+type TradeCostInfo = {
+  feeAmount: string;
+  taxAmount: string;
+  source: 'BROKER' | 'UNAVAILABLE';
+};
+
+function isMissingCostColumnsError(error: InsertError | null): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST204' || error.code === '42703') return true;
+  const message = error.message ?? '';
+  return message.includes('fee_amount') || message.includes('tax_amount');
+}
+
+function toAmountString(value: string | undefined): string {
+  if (!value || value.trim().length === 0) return '0';
+
+  try {
+    const parsed = new Big(value);
+    return parsed.gt(0) ? parsed.toString() : '0';
+  } catch {
+    return '0';
+  }
+}
+
+function resolveTradeCosts(orderResult: OrderResult): TradeCostInfo {
+  return {
+    feeAmount: toAmountString(orderResult.feeAmount),
+    taxAmount: toAmountString(orderResult.taxAmount),
+    source: orderResult.costSource ?? 'UNAVAILABLE',
+  };
+}
+
+function emptyTradeCosts(): TradeCostInfo {
+  return {
+    feeAmount: '0',
+    taxAmount: '0',
+    source: 'UNAVAILABLE',
+  };
+}
 
 /**
  * 주문 실행
@@ -17,9 +63,19 @@ export async function executeOrder(
   clients: {
     KIS: KISClient;
     UPBIT: UpbitClient;
-  }
+  },
 ): Promise<OrderExecutionResult> {
-  const { symbol, broker, market, side, qty, price, orderType = 'market', dryRun = false, aceLogId } = params;
+  const {
+    symbol,
+    broker,
+    market,
+    side,
+    qty,
+    price,
+    orderType = 'market',
+    dryRun = false,
+    aceLogId,
+  } = params;
 
   logger.info('주문 실행 시작', {
     symbol,
@@ -69,22 +125,31 @@ export async function executeOrder(
     let tradeId: string | undefined;
 
     if (orderResult.status === 'SUCCESS' || orderResult.dryRun) {
+      const executedPrice = orderResult.executedPrice ?? orderResult.requestedPrice ?? '0';
+      const costs = resolveTradeCosts(orderResult);
+
       tradeId = await saveTrade({
         symbol,
         broker,
         market,
         side,
         qty: orderResult.requestedQty,
-        price: orderResult.executedPrice ?? orderResult.requestedPrice ?? '0',
+        price: executedPrice,
         orderId: orderResult.orderId,
         status: orderResult.status === 'SUCCESS' ? 'filled' : 'simulated',
         dryRun: orderResult.dryRun,
         aceLogId,
+        feeAmount: costs.feeAmount,
+        taxAmount: costs.taxAmount,
+        costs,
       });
 
       logger.info('거래 기록 저장 완료', {
         tradeId,
         symbol,
+        feeAmount: costs.feeAmount,
+        taxAmount: costs.taxAmount,
+        costSource: costs.source,
       });
     } else {
       // 실패한 주문도 기록
@@ -100,6 +165,9 @@ export async function executeOrder(
         error: orderResult.message,
         dryRun: orderResult.dryRun,
         aceLogId,
+        feeAmount: '0',
+        taxAmount: '0',
+        costs: emptyTradeCosts(),
       });
 
       logger.warn('거래 실패 기록 저장', {
@@ -140,6 +208,9 @@ export async function executeOrder(
       error: errorMessage,
       dryRun,
       aceLogId,
+      feeAmount: '0',
+      taxAmount: '0',
+      costs: emptyTradeCosts(),
     });
 
     return {
@@ -166,10 +237,13 @@ async function saveTrade(params: {
   error?: string;
   dryRun: boolean;
   aceLogId?: string;
+  feeAmount?: string;
+  taxAmount?: string;
+  costs?: TradeCostInfo;
 }): Promise<string> {
   const supabase = getSupabase();
 
-  const payload = {
+  const basePayload = {
     symbol: params.symbol,
     broker: params.broker,
     market: params.market,
@@ -184,14 +258,32 @@ async function saveTrade(params: {
     metadata: {
       dryRun: params.dryRun,
       aceLogId: params.aceLogId,
+      costs: params.costs ?? emptyTradeCosts(),
     },
   };
 
-  const { data, error } = await supabase
+  const payloadWithCosts = {
+    ...basePayload,
+    fee_amount: params.feeAmount ?? '0',
+    tax_amount: params.taxAmount ?? '0',
+  };
+
+  let { data, error } = await supabase
     .from('trades')
-    .insert(payload)
+    .insert(payloadWithCosts)
     .select('id')
     .single();
+
+  if (error && isMissingCostColumnsError(error)) {
+    logger.warn('trades 수수료/세금 컬럼 없음 - metadata로 저장', {
+      symbol: params.symbol,
+      error: error.message,
+    });
+
+    const retried = await supabase.from('trades').insert(basePayload).select('id').single();
+    data = retried.data;
+    error = retried.error;
+  }
 
   if (error) {
     logger.error('거래 기록 저장 실패', {

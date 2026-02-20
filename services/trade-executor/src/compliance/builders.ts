@@ -1,4 +1,6 @@
-import type Big from 'big.js';
+import Big from 'big.js';
+import { DateTime } from 'luxon';
+import { nowIso } from '@workspace/shared-utils';
 import type {
   Aspiration,
   Capability,
@@ -83,7 +85,8 @@ export function buildCapability(params: {
 
   // 노출도 정보 추가
   if (riskValidation.exposureValidation) {
-    riskAssessment.exposure = riskValidation.exposureValidation.newExposure.times(100).toFixed(2) + '%';
+    riskAssessment.exposure =
+      riskValidation.exposureValidation.newExposure.times(100).toFixed(2) + '%';
   }
 
   return {
@@ -122,7 +125,7 @@ export function buildExecution(params: {
     size: parseFloat(positionSize.toString()),
     tradeId,
     orderId,
-    timestamp: new Date().toISOString(),
+    timestamp: nowIso(),
     reason: reason || signal.reason || '리스크 검증 통과',
   };
 }
@@ -142,49 +145,72 @@ export function buildOutcome(params: {
   side: 'BUY' | 'SELL';
   entryTime: string;
   exitTime: string;
+  entryFee?: number;
+  exitFee?: number;
+  entryTax?: number;
+  exitTax?: number;
   exitReason?: string;
 }): {
   exitPrice: number;
   realizedPnL: number;
+  grossPnL: number;
+  totalFees: number;
+  totalTaxes: number;
   pnLPct: number;
   duration: string;
   result: 'WIN' | 'LOSS' | 'BREAKEVEN';
   exitReason?: string;
 } {
   const { entryPrice, exitPrice, size, side, entryTime, exitTime, exitReason } = params;
+  const entryFee = new Big(params.entryFee ?? 0);
+  const exitFee = new Big(params.exitFee ?? 0);
+  const entryTax = new Big(params.entryTax ?? 0);
+  const exitTax = new Big(params.exitTax ?? 0);
 
-  // 실현 손익 계산
-  let realizedPnL: number;
-  if (side === 'BUY') {
-    realizedPnL = (exitPrice - entryPrice) * size;
-  } else {
-    realizedPnL = (entryPrice - exitPrice) * size;
-  }
+  const entry = new Big(entryPrice);
+  const exit = new Big(exitPrice);
+  const quantity = new Big(size);
 
-  // 손익 퍼센트
-  const pnLPct = (realizedPnL / (entryPrice * size)) * 100;
+  // 총 비용(수수료/세금)
+  const totalFees = entryFee.plus(exitFee);
+  const totalTaxes = entryTax.plus(exitTax);
+  const totalCosts = totalFees.plus(totalTaxes);
+
+  // 총 손익 (비용 차감 전/후)
+  const grossPnL =
+    side === 'BUY' ? exit.minus(entry).times(quantity) : entry.minus(exit).times(quantity);
+  const realizedPnL = grossPnL.minus(totalCosts);
+
+  // 손익 퍼센트 (진입 원가 + 진입 비용 기준)
+  const costBasis = entry.times(quantity).plus(entryFee).plus(entryTax);
+  const pnLPct = costBasis.gt(0) ? realizedPnL.div(costBasis).times(100) : new Big(0);
 
   // 결과 판정
   let result: 'WIN' | 'LOSS' | 'BREAKEVEN';
-  if (pnLPct > 0.1) {
+  if (pnLPct.gt(0.1)) {
     result = 'WIN';
-  } else if (pnLPct < -0.1) {
+  } else if (pnLPct.lt(-0.1)) {
     result = 'LOSS';
   } else {
     result = 'BREAKEVEN';
   }
 
   // 보유 기간 계산
-  const entryDate = new Date(entryTime);
-  const exitDate = new Date(exitTime);
-  const durationMs = exitDate.getTime() - entryDate.getTime();
+  const entryDate = DateTime.fromISO(entryTime);
+  const exitDate = DateTime.fromISO(exitTime);
+  const durationMs =
+    entryDate.isValid && exitDate.isValid ? exitDate.toMillis() - entryDate.toMillis() : 0;
   const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
-  const duration = durationHours < 24 ? `${durationHours}시간` : `${Math.floor(durationHours / 24)}일`;
+  const duration =
+    durationHours < 24 ? `${durationHours}시간` : `${Math.floor(durationHours / 24)}일`;
 
   return {
     exitPrice,
-    realizedPnL,
-    pnLPct,
+    realizedPnL: Number(realizedPnL.toString()),
+    grossPnL: Number(grossPnL.toString()),
+    totalFees: Number(totalFees.toString()),
+    totalTaxes: Number(totalTaxes.toString()),
+    pnLPct: Number(pnLPct.toString()),
     duration,
     result,
     exitReason,

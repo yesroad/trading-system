@@ -1,15 +1,9 @@
-import 'dotenv/config';
-import { createLogger, nowIso } from '@workspace/shared-utils';
+import '@workspace/shared-utils/env-loader';
+import { createLogger, envBoolean, nowIso } from '@workspace/shared-utils';
 import { upsertWorkerStatus } from '@workspace/db-client';
 import { DateTime } from 'luxon';
-import {
-  fetchEconomicEvents,
-  transformEconomicEvent,
-} from './collectors/economic-events.js';
-import {
-  fetchEarningsCalendar,
-  transformEarningsEvent,
-} from './collectors/earnings-calendar.js';
+import { fetchEconomicEvents, transformEconomicEvent } from './collectors/economic-events.js';
+import { fetchEarningsCalendar, transformEarningsEvent } from './collectors/earnings-calendar.js';
 import { saveCalendarEvents } from './processors/event-saver.js';
 import type { CalendarEvent } from './types.js';
 
@@ -17,6 +11,7 @@ const logger = createLogger('market-calendar');
 const WORKER_ID = 'market-calendar';
 const LOOP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24시간 (하루 1회 실행)
 const LOOKAHEAD_DAYS = 7; // 향후 7일간의 이벤트 수집
+const ENABLE_ECONOMIC_EVENTS = envBoolean('MARKET_CALENDAR_ENABLE_ECONOMIC_EVENTS', false);
 
 /**
  * 메인 수집 루프
@@ -39,29 +34,61 @@ async function mainLoop(): Promise<void> {
   let totalEvents = 0;
   let successCount = 0;
   let errorCount = 0;
+  const collectorErrors: string[] = [];
 
   try {
-    // 1. 경제 이벤트 수집
-    logger.info('경제 이벤트 수집 시작');
-    const economicEvents = await fetchEconomicEvents({ fromDate, toDate });
-    const transformedEconomicEvents = economicEvents.map(transformEconomicEvent);
-    totalEvents += transformedEconomicEvents.length;
+    const allEvents: CalendarEvent[] = [];
 
-    logger.info('경제 이벤트 수집 완료', { count: transformedEconomicEvents.length });
+    // 1. 경제 이벤트 수집 (기본 비활성)
+    if (ENABLE_ECONOMIC_EVENTS) {
+      logger.info('경제 이벤트 수집 시작');
+      try {
+        const economicEvents = await fetchEconomicEvents({ fromDate, toDate });
+        const transformedEconomicEvents = economicEvents.map(transformEconomicEvent);
+        totalEvents += transformedEconomicEvents.length;
+        allEvents.push(...transformedEconomicEvents);
+
+        logger.info('경제 이벤트 수집 완료', { count: transformedEconomicEvents.length });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        collectorErrors.push(`economic: ${message}`);
+        logger.warn('경제 이벤트 수집 실패(계속 진행)', { message });
+      }
+    } else {
+      logger.info('경제 이벤트 수집 비활성화', {
+        env: 'MARKET_CALENDAR_ENABLE_ECONOMIC_EVENTS',
+      });
+    }
 
     // 2. 실적 발표 일정 수집
     logger.info('실적 발표 일정 수집 시작');
-    const earningsEvents = await fetchEarningsCalendar({ fromDate, toDate });
-    const transformedEarningsEvents = earningsEvents.map(transformEarningsEvent);
-    totalEvents += transformedEarningsEvents.length;
+    try {
+      const earningsEvents = await fetchEarningsCalendar({ fromDate, toDate });
+      const transformedEarningsEvents = earningsEvents.map(transformEarningsEvent);
+      totalEvents += transformedEarningsEvents.length;
+      allEvents.push(...transformedEarningsEvents);
 
-    logger.info('실적 발표 일정 수집 완료', { count: transformedEarningsEvents.length });
+      logger.info('실적 발표 일정 수집 완료', { count: transformedEarningsEvents.length });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      collectorErrors.push(`earnings: ${message}`);
+      logger.warn('실적 발표 일정 수집 실패(계속 진행)', { message });
+    }
 
-    // 3. 모든 이벤트 저장
-    const allEvents: CalendarEvent[] = [
-      ...transformedEconomicEvents,
-      ...transformedEarningsEvents,
-    ];
+    // 둘 다 실패하면 저장 없이 실패 처리
+    if (allEvents.length === 0 && collectorErrors.length > 0) {
+      const message = collectorErrors.join(' | ');
+      await upsertWorkerStatus({
+        service: WORKER_ID,
+        last_event_at: nowIso(),
+        state: 'failed',
+        message,
+      });
+      logger.error('수집 배치 실패: 유효 이벤트 없음', { message });
+      return;
+    }
+
+    // 3. 이벤트 저장
 
     logger.info('이벤트 저장 시작', { totalCount: allEvents.length });
     const saveResult = await saveCalendarEvents(allEvents);
@@ -73,20 +100,29 @@ async function mainLoop(): Promise<void> {
       total: allEvents.length,
       success: saveResult.successCount,
       error: saveResult.errorCount,
+      collectorErrors: collectorErrors.length,
     });
+
+    const hasCollectorErrors = collectorErrors.length > 0;
+    const hasSaveErrors = errorCount > 0;
+    const status = hasSaveErrors && successCount === 0 ? 'failed' : 'success';
+    const messageParts: string[] = [];
+    if (hasSaveErrors) messageParts.push(`${errorCount}개 이벤트 저장 실패`);
+    if (hasCollectorErrors) messageParts.push(`collector 오류: ${collectorErrors.join(' | ')}`);
 
     // 워커 상태 업데이트
     await upsertWorkerStatus({
       service: WORKER_ID,
       last_event_at: nowIso(),
-      state: errorCount > 0 ? 'failed' : 'success',
-      message: errorCount > 0 ? `${errorCount}개 이벤트 저장 실패` : null,
+      state: status,
+      message: messageParts.length > 0 ? messageParts.join(' / ') : null,
     });
 
     logger.info('수집 배치 완료', {
       totalEvents,
       successCount,
       errorCount,
+      collectorErrors,
     });
   } catch (error) {
     logger.error('수집 배치 실패', { error });

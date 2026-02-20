@@ -26,10 +26,15 @@ export const EconomicEventsResponseSchema = z.array(EconomicEventSchema);
 export const EarningsEventSchema = z.object({
   date: z.string(), // YYYY-MM-DD
   symbol: z.string(),
+  // Legacy v3 fields
   eps: z.number().nullable().optional(),
+  revenue: z.number().nullable().optional(),
+  // Stable fields
+  epsActual: z.number().nullable().optional(),
+  revenueActual: z.number().nullable().optional(),
+  lastUpdated: z.string().optional(),
   epsEstimated: z.number().nullable().optional(),
   time: z.enum(['bmo', 'amc', 'tbc']).optional(), // before market open, after close, to be confirmed
-  revenue: z.number().nullable().optional(),
   revenueEstimated: z.number().nullable().optional(),
 });
 

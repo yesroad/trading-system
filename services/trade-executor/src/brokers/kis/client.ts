@@ -57,8 +57,8 @@ function toKisOrderType(orderType: OrderRequest['orderType']): '00' | '01' {
 
 function toOrderTrId(side: OrderRequest['side']): string {
   const cfg = getKisConfig();
-  // 실전: TTTC0802U(매수), TTTC0801U(매도) / 모의: VTTC0802U, VTTC0801U
-  return side === 'BUY' ? `${cfg.trPrefix}TTC0802U` : `${cfg.trPrefix}TTC0801U`;
+  // 신 TR_ID: 실전 TTTC0012U(매수), TTTC0011U(매도) / 모의 VTTC0012U, VTTC0011U
+  return side === 'BUY' ? `${cfg.trPrefix}TTC0012U` : `${cfg.trPrefix}TTC0011U`;
 }
 
 export class KISClient implements BrokerClient {
@@ -239,6 +239,9 @@ export class KISClient implements BrokerClient {
       status: 'SUCCESS',
       dryRun,
       orderId: body.output?.ODNO,
+      feeAmount: '0',
+      taxAmount: '0',
+      costSource: 'UNAVAILABLE',
       message: 'KIS 주문 접수 성공',
       raw: body,
     };

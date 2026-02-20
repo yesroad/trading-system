@@ -28,6 +28,9 @@ export interface OrderResult {
   orderId?: string;
   executedQty?: string;
   executedPrice?: string;
+  feeAmount?: string;
+  taxAmount?: string;
+  costSource?: 'BROKER' | 'UNAVAILABLE';
   message: string;
   raw?: unknown;
 }

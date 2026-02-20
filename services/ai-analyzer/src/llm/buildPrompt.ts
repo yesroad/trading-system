@@ -52,7 +52,7 @@ ${
         .slice(0, 5)
         .map(
           (e) =>
-            `  * ${e.title} (임팩트: ${e.impactScore}/10, 날짜: ${e.publishedAt}, 영향 섹터: ${e.affectedSectors?.join(', ') || '전체'})`
+            `  * ${e.title} (임팩트: ${e.impactScore}/10, 날짜: ${e.publishedAt}, 영향 섹터: ${e.affectedSectors?.join(', ') || '전체'})`,
         )
         .join('\n')}`
     : ''
@@ -75,10 +75,12 @@ ${marketContextSection}
 
 [분석 지침]
 - 각 target(symbol)에 대해 "매매 개입 판단"을 내려라.
-- decision: ALLOW(개입 없음) | CAUTION(주의/포지션 축소/신중) | BLOCK(매매 중단/강한 경고)
+- decision: BUY(매수/추가매수) | SELL(청산/비중축소) | HOLD(보유 유지) | SKIP(신규 진입 회피)
 - confidence: 0~1
 - summary: 해당 symbol에 대한 한 줄 요약
 - reasons: 짧은 근거 리스트(문장 짧게)
+- decision은 반드시 BUY/SELL/HOLD/SKIP 중 하나의 대문자만 사용한다.
+- ALLOW/CAUTION/BLOCK 같은 값은 절대 사용하지 않는다.
 
 [출력 규칙 - 매우 중요]
 - 출력은 반드시 JSON "단일 객체"만.
@@ -92,7 +94,7 @@ ${marketContextSection}
   "results": [
     {
       "symbol": "AAPL",
-      "decision": "ALLOW|CAUTION|BLOCK",
+      "decision": "BUY|SELL|HOLD|SKIP",
       "confidence": 0.0,
       "summary": "한 줄 요약",
       "reasons": ["..."]

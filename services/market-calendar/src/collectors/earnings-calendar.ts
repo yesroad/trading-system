@@ -8,7 +8,8 @@ import {
 
 const logger = createLogger('earnings-calendar-collector');
 const FMP_API_KEY = requireEnv('FMP_API_KEY');
-const FMP_BASE_URL = 'https://financialmodelingprep.com/api/v3';
+const FMP_BASE_URL = 'https://financialmodelingprep.com';
+const EARNINGS_ENDPOINTS = ['/stable/earnings-calendar', '/api/v3/earning_calendar'];
 
 /**
  * FMP API에서 실적 발표 일정 가져오기
@@ -18,29 +19,41 @@ export async function fetchEarningsCalendar(params: {
   toDate: string; // YYYY-MM-DD
 }): Promise<EarningsEvent[]> {
   const { fromDate, toDate } = params;
-  const url = `${FMP_BASE_URL}/earning_calendar?from=${fromDate}&to=${toDate}&apikey=${FMP_API_KEY}`;
+  logger.info('실적 발표 일정 조회 시작', {
+    fromDate,
+    toDate,
+    endpointCount: EARNINGS_ENDPOINTS.length,
+  });
 
-  logger.info('실적 발표 일정 조회 시작', { fromDate, toDate });
+  let lastError: Error | null = null;
 
-  try {
-    const response = await fetch(url);
+  for (const endpoint of EARNINGS_ENDPOINTS) {
+    const url = `${FMP_BASE_URL}${endpoint}?from=${fromDate}&to=${toDate}&apikey=${FMP_API_KEY}`;
+    try {
+      const response = await fetch(url);
+      const rawText = await response.text();
 
-    if (!response.ok) {
-      throw new Error(`FMP API 요청 실패: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        const snippet = rawText.replace(/\s+/g, ' ').slice(0, 240);
+        throw new Error(
+          `FMP API 요청 실패 (${endpoint}): ${response.status} ${response.statusText}${snippet ? ` | ${snippet}` : ''}`,
+        );
+      }
+
+      const rawData = JSON.parse(rawText) as unknown;
+      const validatedData = EarningsEventsResponseSchema.parse(rawData);
+
+      logger.info('실적 발표 일정 조회 완료', { endpoint, count: validatedData.length });
+      return validatedData;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      lastError = error instanceof Error ? error : new Error(message);
+      logger.warn('실적 발표 endpoint 실패', { endpoint, message });
     }
-
-    const rawData = await response.json();
-
-    // Zod 검증
-    const validatedData = EarningsEventsResponseSchema.parse(rawData);
-
-    logger.info('실적 발표 일정 조회 완료', { count: validatedData.length });
-
-    return validatedData;
-  } catch (error) {
-    logger.error('실적 발표 일정 조회 실패', { error });
-    throw error;
   }
+
+  logger.error('실적 발표 일정 조회 실패', { error: lastError });
+  throw lastError ?? new Error('실적 발표 일정 조회 실패');
 }
 
 /**
@@ -71,11 +84,14 @@ export function transformEarningsEvent(event: EarningsEvent): CalendarEvent {
     publishedAt,
     metadata: {
       symbol: event.symbol,
+      epsActual: event.epsActual ?? event.eps ?? null,
       eps: event.eps,
       epsEstimated: event.epsEstimated,
+      revenueActual: event.revenueActual ?? event.revenue ?? null,
       revenue: event.revenue,
       revenueEstimated: event.revenueEstimated,
       time: event.time,
+      lastUpdated: event.lastUpdated ?? null,
     },
   };
 }
@@ -124,10 +140,11 @@ function buildSummary(event: EarningsEvent): string {
  * - 실제 EPS가 없으면 기본 점수 5
  */
 function calculateEarningsImpact(event: EarningsEvent): number {
-  const { eps, epsEstimated } = event;
+  const epsActual = event.epsActual ?? event.eps;
+  const { epsEstimated } = event;
 
   // 실제 EPS가 없으면 기본 점수
-  if (eps === null || eps === undefined) {
+  if (epsActual === null || epsActual === undefined) {
     return 5;
   }
 
@@ -137,7 +154,7 @@ function calculateEarningsImpact(event: EarningsEvent): number {
   }
 
   // EPS 서프라이즈 계산 (%)
-  const surprise = ((eps - epsEstimated) / Math.abs(epsEstimated)) * 100;
+  const surprise = ((epsActual - epsEstimated) / Math.abs(epsEstimated)) * 100;
 
   // 서프라이즈 크기에 따라 점수 부여
   if (Math.abs(surprise) >= 20) {

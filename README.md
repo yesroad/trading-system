@@ -284,10 +284,10 @@
 
 ### 환경 변수 설정
 
-각 서비스 디렉토리에 `.env` 파일 생성:
+루트 `.env`를 기본으로 사용하고, 서비스별 `.env`는 필요한 경우 override만 둔다:
 
 ```bash
-# 공통
+# 루트 .env (공통)
 SUPABASE_URL=your-supabase-url
 SUPABASE_KEY=your-supabase-key
 
@@ -298,7 +298,7 @@ OPENAI_API_KEY=your-openai-key
 UPBIT_ACCESS_KEY=your-upbit-access
 UPBIT_SECRET_KEY=your-upbit-secret
 
-# KIS Collector / Trade Executor
+# KIS Collector / Trade Executor / YF Collector
 KIS_APP_KEY=your-kis-app-key
 KIS_APP_SECRET=your-kis-app-secret
 
@@ -308,6 +308,9 @@ FMP_API_KEY=your-fmp-api-key
 # Monitoring Bot
 TELEGRAM_BOT_TOKEN=your-telegram-token
 TELEGRAM_CHAT_ID=your-chat-id
+
+# 서비스 override 예시 (services/upbit-collector/.env)
+LOOP_INTERVAL_MS=10000
 ```
 
 ### 설치 및 실행

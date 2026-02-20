@@ -2,7 +2,7 @@
  * KIS API 공통 설정
  */
 
-import 'dotenv/config';
+import '@workspace/shared-utils/env-loader';
 import { env, requireEnv } from '@workspace/shared-utils';
 
 // KIS 환경 설정

@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '@workspace/shared-utils/env-loader';
 import { requireEnv, envBoolean, envNumber, env as readEnv } from '@workspace/shared-utils';
 
 export type AiRunMode = 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK';
