@@ -120,7 +120,7 @@ async function getSystemGuardRow(): Promise<GuardRow> {
   return (data ?? {}) as GuardRow;
 }
 
-async function updateSystemGuardRow(row: GuardRow, patch: Record<string, unknown>): Promise<void> {
+async function updateSystemGuardRow(_row: GuardRow, patch: Record<string, unknown>): Promise<void> {
   if (Object.keys(patch).length === 0) return;
 
   const supabase = getSupabase();

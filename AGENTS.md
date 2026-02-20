@@ -98,7 +98,7 @@ trading-system/
 - **[AI Analyzer](./services/ai-analyzer/README.md)** - AI 분석 파이프라인 작업
 - **[Trade Executor](./services/trade-executor/trading-rules.md)** - 매매 룰/주문 실행 작업
 - **[Monitoring Bot](./services/monitoring-bot/README.md)** - 알림/운영 모니터링 작업
-- **[Backtest Engine](./services/backtest-engine/README.md)** - 전략 백테스팅 작업
+- **[Backtest Engine](./services/backtest-engine/AGENTS.md)** - 전략 백테스팅 작업 (포트폴리오 WF, 시장별 전략 분리, 실전 신호 생성)
 - **[Market Calendar](./services/market-calendar/README.md)** - 시장 이벤트 관리 작업
 - **[DB Client](./packages/db-client/package.json)** - 공통 DB 레이어 변경 작업
 - **[Shared Utils](./packages/shared-utils/package.json)** - 공통 유틸 변경 작업

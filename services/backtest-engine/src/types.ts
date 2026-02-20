@@ -15,13 +15,17 @@ export interface Candle {
 }
 
 export interface CandleRaw {
-  symbol: string;
-  candle_time: string;
-  open: string;
-  high: string;
-  low: string;
-  close: string;
-  volume: string;
+  // upbit: market 컬럼, kis/yf: symbol 컬럼
+  market?: string;
+  symbol?: string;
+  // 시간 컬럼
+  candle_time_utc: string;
+  // OHLCV
+  open: unknown;
+  high: unknown;
+  low: unknown;
+  close: unknown;
+  volume: unknown;
 }
 
 // ============================================================
@@ -83,9 +87,11 @@ export interface Strategy {
 // ============================================================
 
 export interface WalkForwardConfig {
-  inSampleDays: number; // In-sample 기간 (예: 180일)
-  outSampleDays: number; // Out-of-sample 기간 (예: 60일)
-  stepDays: number; // 이동 간격 (예: 30일)
+  inSampleDays: number; // In-sample 기간 (예: 90일)
+  outSampleDays: number; // Out-of-sample 기간 (예: 30일)
+  stepDays: number; // 이동 간격 (예: 15일)
+  minOosTrades?: number; // OOS 최소 거래 수 (미달 시 평가불가 처리, 기본: 3)
+  warmupDays?: number; // 지표 워밍업 기간: IS/OOS 시작 전 추가 로드 (기본: 0)
 }
 
 export interface WalkForwardWindow {
@@ -107,6 +113,7 @@ export interface SlippageParams {
   avgVolume: Big; // 평균 거래량
   bidAskSpread: Big; // 호가 스프레드 (%)
   fixedPct?: number; // Fixed 모델 슬리피지 (%)
+  stressMultiplier?: number; // 스트레스 모드 배수 (기본: 1.0, 스트레스: 3~5)
 }
 
 // ============================================================
@@ -170,10 +177,15 @@ export interface WalkForwardResult {
   outSampleMetrics: PerformanceMetrics;
 }
 
+/** OOS 거래 수 기준 평가 상태 */
+export type WalkForwardWindowStatus = 'valid' | 'insufficient_trades';
+
 export interface WalkForwardWindowResult {
   window: WalkForwardWindow;
   inSampleResult: BacktestResult;
   outSampleResult: BacktestResult;
+  status: WalkForwardWindowStatus; // valid: 충분한 거래, insufficient_trades: 평가불가
+  oosTrades: number; // OOS 실제 거래 수 (BUY+SELL 쌍 기준)
 }
 
 // ============================================================

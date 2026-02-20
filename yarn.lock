@@ -10086,6 +10086,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"risk-simulator@workspace:services/risk-simulator":
+  version: 0.0.0-use.local
+  resolution: "risk-simulator@workspace:services/risk-simulator"
+  dependencies:
+    "@types/big.js": "npm:^6.2.2"
+    "@types/luxon": "npm:^3.4.2"
+    "@types/node": "npm:^22.10.2"
+    "@workspace/db-client": "workspace:*"
+    "@workspace/shared-utils": "workspace:*"
+    big.js: "npm:^6.2.2"
+    commander: "npm:^12.1.0"
+    dotenv: "npm:^16.4.5"
+    luxon: "npm:^3.5.0"
+    tsx: "npm:^4.19.2"
+    typescript: "npm:^5.7.2"
+  languageName: unknown
+  linkType: soft
+
 "rollup@npm:^4.20.0, rollup@npm:^4.43.0":
   version: 4.57.1
   resolution: "rollup@npm:4.57.1"

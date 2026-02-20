@@ -4,7 +4,7 @@ import { DateTime } from 'luxon';
 import { createLogger, sleep } from '@workspace/shared-utils';
 import { getUnconsumedSignals, markSignalConsumed } from '@workspace/db-client';
 
-import { EXECUTE_MARKETS, marketToBroker, type Market } from './config/markets.js';
+import { EXECUTE_MARKETS, type Market } from './config/markets.js';
 import { TRADING_CONFIG } from './config/trading.js';
 import { checkAllGuards } from './decision/guards.js';
 import { enqueueNotificationEvent } from './db/notifications.js';

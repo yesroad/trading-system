@@ -199,12 +199,16 @@ export async function validateTradeRisk(params: RiskValidationParams): Promise<R
     const stopLossDistance = entry.minus(stopLoss).abs();
     const stopLossPct = stopLossDistance.div(entry);
 
+    // 시장별 손절 폭 상한: 코인은 변동성이 커서 15%, 주식은 5%
+    const maxStopLossPct = market === 'CRYPTO' ? 0.15 : 0.05;
+    const maxStopLossLabel = market === 'CRYPTO' ? '15%' : '5%';
+
     if (stopLossPct.lt(0.005)) {
       violations.push(`손절 폭이 너무 작습니다: ${stopLossPct.times(100).toFixed(2)}% (최소 0.5%)`);
     }
 
-    if (stopLossPct.gt(0.05)) {
-      violations.push(`손절 폭이 너무 큽니다: ${stopLossPct.times(100).toFixed(2)}% (최대 5%)`);
+    if (stopLossPct.gt(maxStopLossPct)) {
+      violations.push(`손절 폭이 너무 큽니다: ${stopLossPct.times(100).toFixed(2)}% (최대 ${maxStopLossLabel})`);
     }
 
     // ========================================

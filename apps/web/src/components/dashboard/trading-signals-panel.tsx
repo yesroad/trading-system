@@ -119,7 +119,10 @@ export const TradingSignalsPanel = React.memo(function TradingSignalsPanel() {
                 <XAxis dataKey="symbol" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
                 <Tooltip
-                  formatter={(value: number) => `${value.toFixed(1)}%`}
+                  formatter={(value) => {
+                    const num = typeof value === 'number' ? value : 0;
+                    return [`${num.toFixed(1)}%`, '신뢰도'] as [string, string];
+                  }}
                   contentStyle={{
                     backgroundColor: 'white',
                     border: '1px solid #e2e8f0',

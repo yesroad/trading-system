@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { createLogger } from '@workspace/shared-utils';
 import { getSupabase, logRiskEvent } from '@workspace/db-client';
 import { getCurrentPositionValue } from './exposure-tracker.js';
-import type { CircuitBreakerState, DailyPnLResult, Position, Broker } from './types.js';
+import type { CircuitBreakerState, DailyPnLResult, Broker } from './types.js';
 
 const logger = createLogger('circuit-breaker');
 
