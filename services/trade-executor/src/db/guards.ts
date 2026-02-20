@@ -58,7 +58,7 @@ function hasColumn(row: GuardRow, column: string): boolean {
 }
 
 function resolveTradingEnabled(row: GuardRow): boolean {
-  return asBoolean(row.trading_enabled ?? row.is_trading_enabled);
+  return asBoolean(row.trading_enabled);
 }
 
 function resolveCooldownUntil(row: GuardRow): string | null {
@@ -78,7 +78,6 @@ function buildGuardUpdate(row: GuardRow, patch: {
 
   if (patch.tradingEnabled !== undefined) {
     if (hasColumn(row, 'trading_enabled')) out.trading_enabled = patch.tradingEnabled;
-    if (hasColumn(row, 'is_trading_enabled')) out.is_trading_enabled = patch.tradingEnabled;
   }
 
   if (patch.reason !== undefined && hasColumn(row, 'reason')) {
@@ -132,7 +131,7 @@ async function updateSystemGuardRow(_row: GuardRow, patch: Record<string, unknow
 
 /**
  * system_guard 상태를 조회해 현재 주문 가능 여부를 반환한다.
- * - trading_enabled / is_trading_enabled 둘 다 지원
+ * - trading_enabled 값을 기준으로 주문 가능 여부를 판단
  * - cooldown_until이 현재 시각보다 미래면 차단
  */
 export async function checkSystemGuard(): Promise<SystemGuardCheckResult> {

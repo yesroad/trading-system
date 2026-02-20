@@ -14,7 +14,6 @@ type SignalRow = {
 
 type GuardRow = {
   trading_enabled?: unknown;
-  is_trading_enabled?: unknown;
 };
 
 type StaleSignalCandidate = {
@@ -44,7 +43,6 @@ function normalizeSignalMarket(raw: string): 'CRYPTO' | 'KRX' | 'US' | null {
 function isTradingEnabled(row: GuardRow | null): boolean {
   if (!row) return false;
   if (row.trading_enabled === true) return true;
-  if (row.is_trading_enabled === true) return true;
   return false;
 }
 
@@ -69,7 +67,7 @@ export async function checkTradingSignals(): Promise<AlertEvent[]> {
 
   const { data: guardData, error: guardError } = await supabase
     .from('system_guard')
-    .select('trading_enabled,is_trading_enabled')
+    .select('trading_enabled')
     .eq('id', 1)
     .maybeSingle();
 
