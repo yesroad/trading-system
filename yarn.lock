@@ -4708,7 +4708,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@workspace/stock-screener@workspace:packages/stock-screener":
+"@workspace/stock-screener@npm:*, @workspace/stock-screener@workspace:packages/stock-screener":
   version: 0.0.0-use.local
   resolution: "@workspace/stock-screener@workspace:packages/stock-screener"
   dependencies:
@@ -4723,7 +4723,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@workspace/trading-utils@workspace:*, @workspace/trading-utils@workspace:packages/trading-utils":
+"@workspace/trading-utils@npm:*, @workspace/trading-utils@workspace:*, @workspace/trading-utils@workspace:packages/trading-utils":
   version: 0.0.0-use.local
   resolution: "@workspace/trading-utils@workspace:packages/trading-utils"
   dependencies:
@@ -4800,8 +4800,11 @@ __metadata:
   dependencies:
     "@supabase/supabase-js": "npm:^2.90.1"
     "@types/luxon": "npm:^3.7.1"
+    "@workspace/db-client": "npm:*"
     "@workspace/eslint-config": "npm:*"
     "@workspace/shared-utils": "npm:*"
+    "@workspace/stock-screener": "npm:*"
+    "@workspace/trading-utils": "npm:*"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
     openai: "npm:^6.16.0"
@@ -8912,6 +8915,7 @@ __metadata:
   resolution: "monitoring-bot@workspace:services/monitoring-bot"
   dependencies:
     "@supabase/supabase-js": "npm:^2.90.1"
+    "@workspace/db-client": "npm:*"
     "@workspace/shared-utils": "npm:*"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
@@ -11092,6 +11096,7 @@ __metadata:
     "@workspace/eslint-config": "npm:*"
     "@workspace/kis-auth": "npm:*"
     "@workspace/shared-utils": "npm:*"
+    "@workspace/trading-utils": "npm:*"
     big.js: "npm:^7.0.1"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"

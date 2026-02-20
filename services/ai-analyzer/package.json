@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
+    "@workspace/db-client": "*",
     "@workspace/shared-utils": "*",
+    "@workspace/stock-screener": "*",
+    "@workspace/trading-utils": "*",
     "dotenv": "^17.2.3",
     "openai": "^6.16.0"
   },
