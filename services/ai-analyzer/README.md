@@ -1,6 +1,6 @@
 # ai-analyzer
 
-주식(KR/US) 및 코인(CRYPTO) 시장 데이터를 기반으로  
+주식(KRX/US) 및 코인(CRYPTO) 시장 데이터를 기반으로  
 **“AI를 언제, 왜 호출할지”를 엄격하게 제어하는 분석 서비스**입니다.
 
 ❗ 이 서비스의 핵심 목표는  
@@ -27,7 +27,7 @@ ai-analyzer는 다음 순서로 동작합니다.
 
 ### 시장(Market)
 
-- `KR` : 국내 주식
+- `KRX` : 국내 주식
 - `US` : 미국 주식
 - `CRYPTO` : 코인 (24/7)
 
@@ -58,7 +58,7 @@ ai-analyzer는 **계속 떠있는 데몬이 아님**.
 
 ```text
 [실행]
-→ runAiAnalysis(KR, mode)
+→ runAiAnalysis(KRX, mode)
 → runAiAnalysis(US, mode)
 → runAiAnalysis(CRYPTO, mode)
 → 종료
@@ -106,3 +106,23 @@ ai-analyzer는 **계속 떠있는 데몬이 아님**.
   2. `trading_signals` 생성 건수
   3. `signal_generation_failures` 사유 상위 항목
   4. `MIN_CONFIDENCE` / 이벤트 게이트 임계값
+
+## 8. 필수/핵심 환경변수
+
+- 필수
+  - `SUPABASE_URL`
+  - `SUPABASE_KEY`
+  - `OPENAI_API_KEY`
+  - `AI_MODEL`
+- HOLD 편향 완화
+  - `AI_LLM_TEMPERATURE` (기본 0.35)
+  - `AI_HOLD_RETRY_ENABLED` (기본 true)
+  - `AI_HOLD_RETRY_THRESHOLD` (기본 0.9)
+  - `AI_HOLD_RETRY_TEMPERATURE` (기본 0.45)
+- 예산/호출량
+  - `AI_HOURLY_LIMIT` (기본 120)
+  - `AI_DAILY_LIMIT` (기본 50)
+  - `AI_DAILY_LIMIT_CRYPTO` / `AI_DAILY_LIMIT_KRX` / `AI_DAILY_LIMIT_US`
+  - `AI_MONTHLY_BUDGET_USD` (기본 15)
+  - `AI_ESTIMATED_COST_PER_CALL_USD` (기본 0.0075)
+  - `AI_TECHNICAL_ENRICH_LIMIT` (기본 12)
