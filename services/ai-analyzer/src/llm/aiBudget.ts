@@ -25,6 +25,12 @@ function today() {
   return DateTime.now().toUTC().toISODate() ?? '';
 }
 
+function getDailyLimitForMarket(market: Market): number {
+  if (market === Market.CRYPTO) return env.AI_DAILY_LIMIT_CRYPTO;
+  if (market === Market.KRX) return env.AI_DAILY_LIMIT_KRX;
+  return env.AI_DAILY_LIMIT_US;
+}
+
 /** 시장/모드별 쿨다운(ms) */
 export function getCooldownMs(market: Market, mode: MarketMode): number {
   if (market === Market.CRYPTO) {
@@ -80,9 +86,10 @@ export async function canCallLLM(market: Market, mode: MarketMode): Promise<bool
   // 4. 일/월 제한 (DB 조회)
   try {
     const dailyCount = await getDailyCallCount({ date: today(), market });
-    if (dailyCount >= env.AI_DAILY_LIMIT) {
+    const dailyLimit = getDailyLimitForMarket(market);
+    if (dailyCount >= dailyLimit) {
       console.log(
-        `[AI Budget] 일일 한도 도달 | market=${market} | count=${dailyCount}/${env.AI_DAILY_LIMIT}`,
+        `[AI Budget] 일일 한도 도달 | market=${market} | count=${dailyCount}/${dailyLimit}`,
       );
       return false;
     }

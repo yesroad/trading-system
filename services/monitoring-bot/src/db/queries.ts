@@ -15,23 +15,25 @@ export async function fetchRecentIngestionRuns(limit: number) {
   return data ?? [];
 }
 
-export async function fetchLatestAiResultsByMarket(markets: Array<'KR' | 'US' | 'CRYPTO'>) {
+export async function fetchLatestAiResultsByMarket(markets: Array<'KR' | 'KRX' | 'US' | 'CRYPTO'>) {
   // 시장별 최신 created_at 하나만 가져오기 위해 “group by + max” 대신
   // 간단히 RPC나 view 없이도 동작하는 방식으로: markets를 돌면서 1개씩 가져옴 (시장 3개면 충분히 가벼움)
   const out: Array<{ market: string; latest_created_at: Nullable<string> }> = [];
 
   for (const m of markets) {
+    const queryMarkets = m === 'KR' ? ['KR', 'KRX'] : [m];
+
     const { data, error } = await supabase
       .from('ai_analysis_results')
       .select('created_at')
-      .eq('market', m)
+      .in('market', queryMarkets)
       .order('created_at', { ascending: false })
       .limit(1);
 
     if (error) throw new Error(`ai_analysis_results 조회 실패(${m}): ${error.message}`);
 
     out.push({
-      market: m,
+      market: m === 'KRX' ? 'KR' : m,
       latest_created_at:
         Array.isArray(data) && data[0]?.created_at ? String(data[0].created_at) : null,
     });

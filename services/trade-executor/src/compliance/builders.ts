@@ -26,14 +26,23 @@ export function buildAspiration(params: {
 }): Aspiration {
   const { signal, strategy } = params;
 
-  // 목표 수익률 계산
-  const entry = parseFloat(signal.entry_price);
-  const target = parseFloat(signal.target_price);
-  const targetProfitPct = ((target - entry) / entry) * 100;
+  // 목표 수익률 계산 (big.js 사용 — 금융 계산 정밀도 보장)
+  const entry = new Big(signal.entry_price);
+  const target = new Big(signal.target_price);
+  const targetProfitPct = entry.gt(0)
+    ? target.minus(entry).div(entry).times(100)
+    : new Big(0);
 
-  // 최대 손실 계산
-  const stopLoss = parseFloat(signal.stop_loss);
-  const maxLossPct = Math.abs(((stopLoss - entry) / entry) * 100);
+  // 최대 손실 계산 (진입가 기준 절댓값)
+  const stopLoss = new Big(signal.stop_loss);
+  const maxLossPct = entry.gt(0)
+    ? entry.minus(stopLoss).abs().div(entry).times(100)
+    : new Big(0);
+
+  // R:R 비율 — 분모(maxLossPct) 0 방어
+  const riskRewardRatio = maxLossPct.gt(0)
+    ? targetProfitPct.div(maxLossPct).toFixed(2)
+    : 'N/A';
 
   return {
     strategy: strategy || `${signal.signal_type} 신호 기반 거래`,
@@ -41,7 +50,7 @@ export function buildAspiration(params: {
     maxLoss: `${maxLossPct.toFixed(2)}%`,
     timeHorizon: '1-3일', // 기본값
     additionalGoals: {
-      riskRewardRatio: (targetProfitPct / maxLossPct).toFixed(2),
+      riskRewardRatio,
     },
   };
 }
@@ -117,12 +126,13 @@ export function buildExecution(params: {
 }): Execution {
   const { signal, positionSize, tradeId, orderId, reason } = params;
 
+  // Big으로 파싱 후 number 변환 — parseFloat 직접 사용 방지
   return {
     decision: signal.signal_type as 'BUY' | 'SELL' | 'SKIP',
-    actualEntry: parseFloat(signal.entry_price),
-    actualStopLoss: parseFloat(signal.stop_loss),
-    actualTarget: parseFloat(signal.target_price),
-    size: parseFloat(positionSize.toString()),
+    actualEntry: new Big(signal.entry_price).toNumber(),
+    actualStopLoss: new Big(signal.stop_loss).toNumber(),
+    actualTarget: new Big(signal.target_price).toNumber(),
+    size: positionSize.toNumber(),
     tradeId,
     orderId,
     timestamp: nowIso(),
