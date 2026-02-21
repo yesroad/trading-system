@@ -57,7 +57,9 @@ async function postTelegram(text: string): Promise<void> {
         res.on('end', () => {
           const statusCode = res.statusCode ?? 0;
           if (statusCode < 200 || statusCode >= 300) {
-            reject(new Error(`텔레그램 HTTP 오류: ${statusCode} ${res.statusMessage ?? ''}`.trim()));
+            reject(
+              new Error(`텔레그램 HTTP 오류: ${statusCode} ${res.statusMessage ?? ''}`.trim()),
+            );
             return;
           }
           resolve(raw);

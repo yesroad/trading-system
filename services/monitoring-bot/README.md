@@ -13,7 +13,7 @@ yarn lint
 
 ## 실행 방식
 - PM2 기준 `monitoring-bot`는 `cron_restart: */10 * * * *`로 10분 주기 실행
-- `monitoring-daily-report`는 `--daily-report`로 일 1회 실행
+- `monitoring-daily-report`는 `--daily-report`로 일 1회 실행 (09:10 KST)
 
 ## 내부 알림 정책
 - 내부 체크 결과는 `CRIT`만 Telegram 전송
@@ -25,8 +25,9 @@ yarn lint
 - 수집 파이프라인 missing/running 지연/stale (`ingestion_runs`)
 - 미소비 신호 장기 적체 (`trading_signals`) 단, 아래 조건 모두 충족 시:
   - `system_guard.trading_enabled=true`
-  - `LOOP_MODE=true`
+  - `trade-executor` 최근 동작 기록 존재
   - 해당 신호 시장이 `EXECUTE_MARKETS`에 포함
+  - 해당 시장 장중 상태
 - 최근 10분 내 `circuit_breaker` (`risk_events`)
 - 최근 1시간 거래 실패율 CRIT (`trades`)
 - 최근 24시간 신호 생성 실패율 CRIT (`signal_failures`)
