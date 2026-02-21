@@ -153,6 +153,7 @@ module.exports = {
     // ──────────────────────────────────────────────────────────
     // 8. Monitoring Bot — 시스템 상태 체크 + Telegram 알림
     //    10분 간격 실행 (TELEGRAM_BOT_TOKEN 설정 필요)
+    //    KST 고정 실행
     // ──────────────────────────────────────────────────────────
     {
       name: 'monitoring-bot',
@@ -164,12 +165,16 @@ module.exports = {
       watch: false,
       max_memory_restart: '100M',
       time: true,
-      env: { NODE_ENV: 'production' },
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Seoul',
+      },
     },
 
     // ──────────────────────────────────────────────────────────
     // 9. Monitoring Daily Report — 하루 요약 전송 (일 1회)
     //    DAILY_REPORT_ENABLED=true 이어야 실제 전송
+    //    KST 09:10 고정 실행
     // ──────────────────────────────────────────────────────────
     {
       name: 'monitoring-daily-report',
@@ -177,12 +182,15 @@ module.exports = {
       cwd: './services/monitoring-bot',
       args: '--daily-report',
       instances: 1,
-      cron_restart: '10 0 * * *', // 매일 00:10 UTC = 09:10 KST
+      cron_restart: '10 9 * * *', // 매일 09:10 KST
       autorestart: false,
       watch: false,
       max_memory_restart: '100M',
       time: true,
-      env: { NODE_ENV: 'production' },
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Seoul',
+      },
     },
   ],
 };
