@@ -5,7 +5,6 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org/)
 [![Turborepo](https://img.shields.io/badge/Turborepo-2.x-orange.svg)](https://turbo.build/)
-[![Tests](https://img.shields.io/badge/Tests-294%20passing-brightgreen.svg)](#)
 [![Claude Code](https://img.shields.io/badge/AI-Claude_Code-purple.svg)](https://claude.ai/)
 
 ---
@@ -71,7 +70,8 @@
 
 - 1회성 잡 실행 (PM2 `cron_restart`, 기본 30분 주기)
 - 시장 모드별 분석 (PRE_OPEN, INTRADAY, CLOSE, POST_CLOSE)
-- 기술적 지표 + AI 신뢰도 블렌딩 (60% AI + 40% Technical)
+- 타겟별 기술지표 컨텍스트 주입 (`trendBias`, `quality`, RSI, MACD, 거래량 비율 등)
+- HOLD 편향 완화 재시도 + reasons 태그 정책 (`HOLD_REASON:*`, `RR_POLICY:*`)
 - AI 호출 최소화 (시장별 게이트 + 심볼별 쿨다운 + 예산 제한)
 
 **통합 기능:**
@@ -185,7 +185,7 @@
 │  - upbit_candles, kis_candles, yf_candles      │
 │                                                 │
 │  [분석]                                         │
-│  - ai_analysis, trading_signals                 │
+│  - ai_analysis_results, trading_signals         │
 │                                                 │
 │  [거래]                                         │
 │  - trades, risk_events, ace_logs                │
@@ -212,7 +212,7 @@
    Collectors → DB (candles 테이블)
 
 2. 시장 분석
-   DB → AI Analyzer → DB (ai_analysis, trading_signals)
+   DB → AI Analyzer → DB (ai_analysis_results, trading_signals)
    ↓ (market-calendar, stock-screener 통합)
 
 3. 리스크 검증
@@ -267,7 +267,7 @@
 ### 테스팅
 
 - **Vitest** - 단위 테스트, 통합 테스트
-- **294개 테스트** - 92%+ 커버리지
+- **워크스페이스별 테스트 운영** - 서비스/패키지 단위로 실행
 
 ### 외부 API
 
@@ -298,6 +298,7 @@ SUPABASE_KEY=your-supabase-key
 
 # AI Analyzer
 OPENAI_API_KEY=your-openai-key
+AI_MODEL=gpt-5-mini
 
 # Upbit Collector / Trade Executor
 UPBIT_ACCESS_KEY=your-upbit-access
@@ -319,7 +320,8 @@ AI_DAILY_LIMIT=50              # 글로벌 일 상한(오토스케일 cap 상한
 AI_DAILY_LIMIT_CRYPTO=20       # 기본 시장별 배분
 AI_DAILY_LIMIT_KRX=10
 AI_DAILY_LIMIT_US=0
-AI_HOURLY_LIMIT=6
+AI_HOURLY_LIMIT=120
+AI_TECHNICAL_ENRICH_LIMIT=12   # LLM 호출 시 기술지표 보강 최대 종목 수
 
 # Trade Executor / Monitoring Bot 공통
 LOOP_MODE=true
@@ -353,15 +355,10 @@ pm2 start ecosystem.config.js
 ### 테스트 실행
 
 ```bash
-# 전체 테스트
-yarn test
-
-# 특정 패키지/서비스
-cd packages/trading-utils
-yarn test
-
-# 커버리지 확인
-yarn test --coverage
+# 대표 워크스페이스 테스트
+yarn workspace @workspace/trading-utils test
+yarn workspace trade-executor test
+yarn workspace backtest-engine test
 ```
 
 ---
@@ -476,29 +473,14 @@ trading-system/
 
 ## 🧪 테스트
 
-### 테스트 현황
-
-- **총 294개 테스트** - 모두 통과 ✅
-- **평균 커버리지** - 92%+
-
-**세부:**
-
-- trade-executor: 17개 통합 테스트
-- trading-utils: 212개 단위 테스트
-- market-calendar: 30개 테스트
-- stock-screener: 35개 테스트
-
-### 테스트 실행
+- 이 모노레포는 워크스페이스별 테스트 스크립트를 사용합니다.
+- 루트 `package.json`에는 `test` 스크립트가 없으므로 서비스/패키지 단위로 실행합니다.
 
 ```bash
-# 전체 테스트
-yarn test --run
-
-# 커버리지
-yarn test --coverage
-
-# Watch 모드
-yarn test
+# 예시
+yarn workspace @workspace/trading-utils test
+yarn workspace trade-executor test
+yarn workspace backtest-engine test
 ```
 
 ---

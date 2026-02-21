@@ -5,6 +5,7 @@
 ## 개요
 
 이 패키지는 trading-system 모노레포의 모든 워크스페이스에서 사용하는 공통 기능을 제공합니다:
+
 - 환경변수 접근 및 검증
 - 날짜/시간 유틸리티 (Luxon 기반)
 - 구조화된 로깅
@@ -25,35 +26,39 @@ yarn workspace your-workspace add @workspace/shared-utils@*
 환경변수를 안전하게 접근하고 검증합니다.
 
 #### `requireEnv(key: string): string`
+
 필수 환경변수를 조회합니다. 존재하지 않으면 예외를 발생시킵니다.
 
 ```typescript
 import { requireEnv } from '@workspace/shared-utils';
 
-const dbUrl = requireEnv('SUPABASE_URL');  // 없으면 throw
+const dbUrl = requireEnv('SUPABASE_URL'); // 없으면 throw
 const apiKey = requireEnv('API_KEY');
 ```
 
 #### `env(key: string): string | undefined`
+
 선택적 환경변수를 조회합니다.
 
 ```typescript
 import { env } from '@workspace/shared-utils';
 
-const debug = env('DEBUG');  // 없으면 undefined
+const debug = env('DEBUG'); // 없으면 undefined
 ```
 
-#### `envNumber(key: string, defaultValue: number): number`
-숫자형 환경변수를 조회합니다.
+#### `envNumber(key: string, defaultValue?: number): number | undefined`
+
+숫자형 환경변수를 조회합니다. 값이 없으면 `defaultValue`를 반환하고, `defaultValue`도 없으면 `undefined`를 반환합니다.
 
 ```typescript
 import { envNumber } from '@workspace/shared-utils';
 
-const timeout = envNumber('TIMEOUT_MS', 5000);  // 기본값 5000
+const timeout = envNumber('TIMEOUT_MS', 5000); // 기본값 5000
 const port = envNumber('PORT', 3000);
 ```
 
 #### `envBoolean(key: string, defaultValue: boolean): boolean`
+
 불린 환경변수를 조회합니다 ('true', '1' → true, 그 외 → false).
 
 ```typescript
@@ -68,34 +73,36 @@ const enableCache = envBoolean('ENABLE_CACHE', true);
 Luxon 기반 날짜 유틸리티를 제공합니다.
 
 #### `nowIso(): string`
-현재 시각을 ISO 8601 문자열로 반환합니다.
+
+현재 UTC 시각을 ISO 8601 문자열로 반환합니다.
 
 ```typescript
 import { nowIso } from '@workspace/shared-utils';
 
-const now = nowIso();  // '2026-02-11T12:34:56.789Z'
+const now = nowIso(); // '2026-02-11T12:34:56.789Z'
 ```
 
-#### `normalizeUtcIso(utcLike: string | DateTime): string`
-UTC 시간을 정규화된 ISO 문자열로 변환합니다.
+#### `normalizeUtcIso(utcLike: string): string`
+
+UTC 유사 문자열을 정규화된 ISO 문자열로 변환합니다.
 
 ```typescript
 import { normalizeUtcIso } from '@workspace/shared-utils';
-import { DateTime } from 'luxon';
 
 const iso1 = normalizeUtcIso('2026-02-11T12:34:56Z');
-const iso2 = normalizeUtcIso(DateTime.now());
+const iso2 = normalizeUtcIso('2026-02-11T12:34:56');
 ```
 
-#### `toIsoString(value: DateTime | string | null | undefined): string | null`
-DateTime 또는 문자열을 ISO 문자열로 변환합니다.
+#### `toIsoString(value: DateTime | string): string`
+
+DateTime 또는 문자열을 UTC ISO 문자열로 변환합니다. 유효하지 않은 값은 예외를 발생시킵니다.
 
 ```typescript
 import { toIsoString } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 
 const iso = toIsoString(DateTime.now());
-const null1 = toIsoString(null);  // null
+const iso2 = toIsoString('2026-02-11T12:34:56+09:00');
 ```
 
 ### 3. 로깅 (`logger.ts`)
@@ -103,6 +110,7 @@ const null1 = toIsoString(null);  // null
 구조화된 JSON 로깅을 제공합니다.
 
 #### `createLogger(serviceName: string): Logger`
+
 서비스별 로거 인스턴스를 생성합니다.
 
 ```typescript
@@ -117,6 +125,7 @@ logger.debug('상세 정보', { data: response });
 ```
 
 **출력 형식 (JSON):**
+
 ```json
 {
   "timestamp": "2026-02-11T12:34:56.789Z",
@@ -132,15 +141,16 @@ logger.debug('상세 정보', { data: response });
 지수 백오프 + 지터를 구현합니다.
 
 #### `createBackoff(opts): Backoff`
+
 백오프 인스턴스를 생성합니다.
 
 ```typescript
 import { createBackoff } from '@workspace/shared-utils';
 
 const backoff = createBackoff({
-  baseMs: 1000,      // 초기 대기 시간 (1초)
-  maxMs: 30000,      // 최대 대기 시간 (30초)
-  jitterMs: 500,     // 지터 (랜덤 요소)
+  baseMs: 1000, // 초기 대기 시간 (1초)
+  maxMs: 30000, // 최대 대기 시간 (30초)
+  jitterMs: 500, // 지터 (랜덤 요소)
 });
 
 // 사용 예시
@@ -148,7 +158,7 @@ let lastError;
 for (let attempt = 0; attempt < 5; attempt++) {
   try {
     const result = await fetchData();
-    backoff.reset();  // 성공 시 리셋
+    backoff.reset(); // 성공 시 리셋
     return result;
   } catch (error) {
     lastError = error;
@@ -162,6 +172,7 @@ throw lastError;
 ```
 
 **메서드:**
+
 - `next()`: 다음 시도로 이동 (내부 카운터 증가)
 - `nextDelayMs()`: 다음 대기 시간 계산 (ms)
 - `reset()`: 카운터 리셋
@@ -176,7 +187,7 @@ import { Nullable } from '@workspace/shared-utils';
 type User = {
   id: string;
   name: string;
-  email: Nullable<string>;  // string | null
+  email: Nullable<string>; // string | null
 };
 ```
 
@@ -236,7 +247,7 @@ async function fetchWithRetry(url: string) {
     } catch (error) {
       logger.warn('재시도', { attempt, error });
       const delayMs = backoff.nextDelayMs();
-      await new Promise(resolve => setTimeout(resolve, delayMs));
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
   throw new Error('최대 재시도 횟수 초과');
