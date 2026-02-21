@@ -180,6 +180,22 @@ describe('generateSignalFromAIAnalysis', () => {
     expect(entryPrice.toNumber()).toBe(100);
   });
 
+  it('진입가가 올바르게 보정되어야 함 (BUY - priceAtAnalysis가 0이면 현재가 사용)', async () => {
+    vi.mocked(analyzeTechnicalIndicators).mockResolvedValue(mockTechnicalSnapshot);
+    vi.mocked(insertTradingSignal).mockResolvedValue('signal-id');
+
+    const params: SignalGenerationParams = {
+      ...baseParams,
+      priceAtAnalysis: '0',
+    };
+
+    const result = await generateSignalFromAIAnalysis(params);
+
+    expect(result).not.toBeNull();
+    const entryPrice = new Big(result!.entry_price);
+    expect(entryPrice.toNumber()).toBe(100);
+  });
+
   it('목표가와 손절가가 올바르게 계산되어야 함', async () => {
     vi.mocked(analyzeTechnicalIndicators).mockResolvedValue(mockTechnicalSnapshot);
     vi.mocked(insertTradingSignal).mockResolvedValue('signal-id');
