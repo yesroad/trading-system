@@ -123,7 +123,7 @@ module.exports = {
     },
 
     // ──────────────────────────────────────────────────────────
-    // 7. Portfolio Signal — 신호 생성 (매일 08:00 KST = 23:00 UTC)
+    // 7. Portfolio Signal — 신호 생성 (매일 08:00 KST)
     //    --no-dry-run: trading_signals DB INSERT 활성화
     // ──────────────────────────────────────────────────────────
     {
@@ -143,11 +143,14 @@ module.exports = {
         '--no-dry-run',
       ].join(' '),
       instances: 1,
-      cron_restart: '0 23 * * *', // 매일 23:00 UTC = 08:00 KST
+      cron_restart: '0 8 * * *', // 매일 08:00 KST
       autorestart: false,
       watch: false,
       time: true,
-      env: { NODE_ENV: 'production' },
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Seoul',
+      },
     },
 
     // ──────────────────────────────────────────────────────────
