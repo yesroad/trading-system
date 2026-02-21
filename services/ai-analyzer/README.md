@@ -63,3 +63,22 @@ ai-analyzer는 **계속 떠있는 데몬이 아님**.
 → runAiAnalysis(CRYPTO, mode)
 → 종료
 ```
+
+---
+
+## 4. HOLD 편향 완화(2026-02 반영)
+
+- 기본 LLM temperature를 `AI_LLM_TEMPERATURE`로 제어한다. (기본: `0.35`)
+- 결과가 HOLD로 과도하게 쏠리면 1회 재시도한다.
+  - 조건: BUY/SELL 0건 + HOLD 비율이 `AI_HOLD_RETRY_THRESHOLD` 이상
+  - 재시도 temperature: `AI_HOLD_RETRY_TEMPERATURE` (기본: `0.45`)
+  - 재시도 토글: `AI_HOLD_RETRY_ENABLED` (기본: `true`)
+- 재시도 프롬프트는 방향성(BUY/SELL) 우선 판단을 강제하고, HOLD는 예외적으로만 허용한다.
+
+## 5. 운영 팁
+
+- 5시간 이상 신호가 0건이면 아래 순서로 점검한다.
+  1. `ai_analysis_results`의 decision 분포(HOLD 편향 여부)
+  2. `trading_signals` 생성 건수
+  3. `signal_generation_failures` 사유 상위 항목
+  4. `MIN_CONFIDENCE` / 이벤트 게이트 임계값
