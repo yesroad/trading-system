@@ -62,6 +62,7 @@ trading-system/
 - 공통 동작은 `@workspace/db-client`, `@workspace/shared-utils`, `@workspace/kis-auth` 우선 사용.
 - 외부 API 응답은 런타임 검증(Zod) 적용.
 - 모든 워크스페이스에서 `check-types`/`lint` 통과 유지.
+- 루트 `.env`를 수정하면 동일 변경을 `.env.production`에도 즉시 반영해 운영/로컬 설정 드리프트를 방지한다.
 - 규칙-구현 괴리 발견 시 AGENTS/룰 업데이트 제안.
 
 ### 하지 말아야 할 것
