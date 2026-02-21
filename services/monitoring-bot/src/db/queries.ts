@@ -86,6 +86,7 @@ export async function fetchSymbolCatalogRows(
 ): Promise<SymbolCatalogRow[]> {
   if (pairs.length === 0) return [];
 
+  const cryptoQuotePrefixes = ['KRW-', 'USDT-', 'USD-', 'BTC-', 'ETH-'] as const;
   const marketSet = new Set<string>();
   const symbolSet = new Set<string>();
 
@@ -107,6 +108,19 @@ export async function fetchSymbolCatalogRows(
     if (market === 'US') {
       if (symbol.startsWith('US:')) symbolSet.add(symbol.slice(3));
       else symbolSet.add(`US:${symbol}`);
+    }
+    if (market === 'CRYPTO') {
+      const normalized = symbol.toUpperCase();
+      const dashIndex = normalized.indexOf('-');
+
+      if (dashIndex > 0 && dashIndex < normalized.length - 1) {
+        const base = normalized.slice(dashIndex + 1);
+        symbolSet.add(base);
+      } else {
+        for (const prefix of cryptoQuotePrefixes) {
+          symbolSet.add(`${prefix}${normalized}`);
+        }
+      }
     }
   }
 
