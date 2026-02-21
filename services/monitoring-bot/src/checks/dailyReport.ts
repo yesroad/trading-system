@@ -1,7 +1,7 @@
 import Big from 'big.js';
 import { DateTime } from 'luxon';
-import { createLogger, type Nullable } from '@workspace/shared-utils';
-import { getMonthlyAICost } from '@workspace/db-client';
+import { createBackoff, createLogger, sleep, type Nullable } from '@workspace/shared-utils';
+import { getDailyCallCount, getMonthlyAICost } from '@workspace/db-client';
 import { env } from '../config/env.js';
 import {
   buildPreviousKstDayWindow,
@@ -21,14 +21,45 @@ import {
 import { formatSignedNumber, marketLabel, toKstDisplay } from '../utils/time.js';
 
 const logger = createLogger('monitoring-bot:daily-report');
+const AI_MARKETS = ['CRYPTO', 'KRX', 'US'] as const;
 
 type Currency = 'KRW' | 'USD';
+type AIMarket = (typeof AI_MARKETS)[number];
 type ParsedOutcome = {
   symbol: string;
   market: string;
   result: 'WIN' | 'LOSS' | 'BREAKEVEN';
   realizedPnL: Big;
 };
+type AIDailyUsage = {
+  byMarket: Record<AIMarket, number>;
+  total: number;
+  reachedMarkets: AIMarket[];
+};
+
+function getDailyLimitByMarket(market: AIMarket): number {
+  if (market === 'CRYPTO') return env.AI_DAILY_LIMIT_CRYPTO;
+  if (market === 'KRX') return env.AI_DAILY_LIMIT_KRX;
+  return env.AI_DAILY_LIMIT_US;
+}
+
+function isDailyLimitReached(market: AIMarket, count: number): boolean {
+  const limit = getDailyLimitByMarket(market);
+  if (limit <= 0) return count > 0;
+  return count >= limit;
+}
+
+function createEmptyAIDailyUsage(): AIDailyUsage {
+  return {
+    byMarket: {
+      CRYPTO: 0,
+      KRX: 0,
+      US: 0,
+    },
+    total: 0,
+    reachedMarkets: [],
+  };
+}
 
 function asRecord(value: unknown): Nullable<Record<string, unknown>> {
   if (typeof value !== 'object' || value === null) return null;
@@ -204,7 +235,7 @@ function hasKeywordInFailures(rows: SignalFailureReasonRow[], keywords: string[]
 function buildNoTradeReasons(params: {
   guardEnabled: Nullable<boolean>;
   circuitBreakerCount: number;
-  aiDailyCalls: number;
+  aiDailyReachedMarkets: AIMarket[];
   aiBuySellDecisions: number;
   signalBuySellCount: number;
   monthlyAiCost: number;
@@ -214,7 +245,7 @@ function buildNoTradeReasons(params: {
 
   if (params.guardEnabled === false) reasons.push('system_guard 비활성');
   if (params.circuitBreakerCount > 0) reasons.push('서킷 브레이커 작동');
-  if (params.aiDailyCalls >= env.AI_DAILY_LIMIT) reasons.push('AI 일 한도 도달');
+  if (params.aiDailyReachedMarkets.length > 0) reasons.push('AI 일 한도 도달');
   if (params.monthlyAiCost >= env.AI_MONTHLY_BUDGET_USD) reasons.push('AI 월 예산 초과');
 
   if (params.aiBuySellDecisions === 0) {
@@ -257,11 +288,66 @@ async function safeQuery<T>(label: string, run: () => Promise<T>, fallback: T): 
   }
 }
 
+async function getMonthlyAICostWithRetry(params: { year: number; month: number }): Promise<number> {
+  const maxAttempts = 3;
+  const backoff = createBackoff({ baseMs: 500, maxMs: 4000 });
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await getMonthlyAICost(params);
+    } catch (error: unknown) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const isFetchFailure = message.includes('fetch failed');
+      if (!isFetchFailure || attempt >= maxAttempts) break;
+
+      const delayMs = backoff.nextDelayMs();
+      logger.warn('daily-report ai_monthly_cost 재시도', {
+        attempt,
+        maxAttempts,
+        delayMs,
+        message,
+      });
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+async function getDailyAIUsage(params: { date: string }): Promise<AIDailyUsage> {
+  const entries = await Promise.all(
+    AI_MARKETS.map(async (market) => {
+      const count = await getDailyCallCount({
+        date: params.date,
+        market,
+      });
+      return [market, count] as const;
+    }),
+  );
+
+  const usage = createEmptyAIDailyUsage();
+
+  for (const [market, count] of entries) {
+    usage.byMarket[market] = count;
+  }
+
+  usage.total = AI_MARKETS.reduce((sum, market) => sum + usage.byMarket[market], 0);
+  usage.reachedMarkets = AI_MARKETS.filter((market) =>
+    isDailyLimitReached(market, usage.byMarket[market]),
+  );
+
+  return usage;
+}
+
 export async function buildDailyReportText(): Promise<string> {
   const window = buildPreviousKstDayWindow();
-  const reportDate = DateTime.fromFormat(window.dayIsoDate, 'yyyy-MM-dd', {
-    zone: 'Asia/Seoul',
-  });
+  const nowUtc = DateTime.now().toUTC();
+  const reportUtcDate =
+    DateTime.fromISO(window.toIso, { setZone: true }).toUTC().toISODate() ??
+    nowUtc.toISODate() ??
+    window.dayIsoDate;
 
   const [
     filledTrades,
@@ -271,6 +357,7 @@ export async function buildDailyReportText(): Promise<string> {
     circuitBreakerCount,
     signalFailures,
     aceOutcomeRows,
+    aiDailyUsage,
     monthlyAiCost,
   ] = await Promise.all([
     safeQuery(
@@ -295,12 +382,13 @@ export async function buildDailyReportText(): Promise<string> {
     ),
     safeQuery('ace_outcomes', () => fetchAceOutcomesInRange(window), [] as AceOutcomeRow[]),
     safeQuery(
+      'ai_daily_calls',
+      () => getDailyAIUsage({ date: reportUtcDate }),
+      createEmptyAIDailyUsage(),
+    ),
+    safeQuery(
       'ai_monthly_cost',
-      () =>
-        getMonthlyAICost({
-          year: reportDate.year,
-          month: reportDate.month,
-        }),
+      () => getMonthlyAICostWithRetry({ year: nowUtc.year, month: nowUtc.month }),
       0,
     ),
   ]);
@@ -344,9 +432,14 @@ export async function buildDailyReportText(): Promise<string> {
   const symbolCatalogMap = buildSymbolCatalogMap(symbolCatalogRows);
 
   const lines: string[] = [];
+  const todayKstLabel = DateTime.now().setZone('Asia/Seoul').toFormat('yyyy.MM.dd');
+  const reportDayKstLabel = DateTime.fromFormat(window.dayIsoDate, 'yyyy-MM-dd', {
+    zone: 'Asia/Seoul',
+  }).toFormat('yyyy.MM.dd');
   lines.push(env.DAILY_REPORT_TITLE);
-  lines.push(`${window.dateLabel} 데일리 리포트`);
-  lines.push(`기준: ${window.rangeLabel}`);
+  lines.push('표시 시간대: KST (Asia/Seoul)');
+  lines.push(`데일리 리포트 (${todayKstLabel})`);
+  lines.push(`기준: ${reportDayKstLabel}`);
   lines.push(`생성: ${toKstDisplay(DateTime.now())} (KST)`);
   lines.push('');
 
@@ -379,7 +472,7 @@ export async function buildDailyReportText(): Promise<string> {
     const reasons = buildNoTradeReasons({
       guardEnabled,
       circuitBreakerCount,
-      aiDailyCalls: aiCounts.totalCount,
+      aiDailyReachedMarkets: aiDailyUsage.reachedMarkets,
       aiBuySellDecisions: aiCounts.buySellCount,
       signalBuySellCount: signalCounts.buySellCount,
       monthlyAiCost,
@@ -392,11 +485,15 @@ export async function buildDailyReportText(): Promise<string> {
 
   lines.push('');
   lines.push('AI 사용:');
-  lines.push(`- 일 사용: ${aiCounts.totalCount} / ${env.AI_DAILY_LIMIT}`);
+  const dailyUsageByMarket = AI_MARKETS.map(
+    (market) => `${market} ${aiDailyUsage.byMarket[market]}/${getDailyLimitByMarket(market)}`,
+  );
+  lines.push(`- 일 사용(UTC 집계, 시장별): ${dailyUsageByMarket.join(' / ')}`);
+  lines.push(`- 일 사용 총합(참고): ${aiDailyUsage.total} / ${env.AI_DAILY_LIMIT}`);
   const monthlyRatio =
     env.AI_MONTHLY_BUDGET_USD > 0 ? (monthlyAiCost / env.AI_MONTHLY_BUDGET_USD) * 100 : 0;
   lines.push(
-    `- 월 사용: $${monthlyAiCost.toFixed(2)} / $${env.AI_MONTHLY_BUDGET_USD.toFixed(2)} (${monthlyRatio.toFixed(0)}%)`,
+    `- 월 사용(UTC 집계): $${monthlyAiCost.toFixed(2)} / $${env.AI_MONTHLY_BUDGET_USD.toFixed(2)} (${monthlyRatio.toFixed(0)}%)`,
   );
 
   return lines.join('\n');

@@ -45,6 +45,8 @@ function parseExecuteMarkets(raw: string | undefined): ExecuteMarket[] {
   return out.size > 0 ? [...out] : ['CRYPTO', 'KRX', 'US'];
 }
 
+const AI_DAILY_LIMIT_BASE = envNumber('AI_DAILY_LIMIT', 2000) ?? 2000;
+
 export const env = {
   WORKER_LAG_WARN_MIN: envNumber('WORKER_LAG_WARN_MIN', 3) ?? 3,
   WORKER_LAG_CRIT_MIN: envNumber('WORKER_LAG_CRIT_MIN', 10) ?? 10,
@@ -57,7 +59,11 @@ export const env = {
   AI_STALE_WARN_MIN: envNumber('AI_STALE_WARN_MIN', 30) ?? 30,
   AI_STALE_CRIT_MIN: envNumber('AI_STALE_CRIT_MIN', 120) ?? 120,
   AI_HOURLY_LIMIT: envNumber('AI_HOURLY_LIMIT', 120) ?? 120,
-  AI_DAILY_LIMIT: envNumber('AI_DAILY_LIMIT', 2000) ?? 2000,
+  AI_DAILY_LIMIT: AI_DAILY_LIMIT_BASE,
+  AI_DAILY_LIMIT_CRYPTO:
+    envNumber('AI_DAILY_LIMIT_CRYPTO', AI_DAILY_LIMIT_BASE) ?? AI_DAILY_LIMIT_BASE,
+  AI_DAILY_LIMIT_KRX: envNumber('AI_DAILY_LIMIT_KRX', AI_DAILY_LIMIT_BASE) ?? AI_DAILY_LIMIT_BASE,
+  AI_DAILY_LIMIT_US: envNumber('AI_DAILY_LIMIT_US', AI_DAILY_LIMIT_BASE) ?? AI_DAILY_LIMIT_BASE,
   AI_MONTHLY_BUDGET_USD: envNumber('AI_MONTHLY_BUDGET_USD', 10) ?? 10,
 
   ALERT_COOLDOWN_MIN: envNumber('ALERT_COOLDOWN_MIN', 10) ?? 10,

@@ -1,8 +1,10 @@
 import Big from 'big.js';
 import { DateTime } from 'luxon';
-import { createLogger, nowIso } from '@workspace/shared-utils';
+import { createLogger, envBoolean, envNumber, nowIso } from '@workspace/shared-utils';
 import { getSupabase, logRiskEvent } from '@workspace/db-client';
 import { getCurrentPositionValue } from './exposure-tracker.js';
+import { liquidateAllUpbitPositions, createLiveDeps } from './liquidator.js';
+import type { LiquidateOptions } from './liquidator.js';
 import type { CircuitBreakerState, DailyPnLResult, Broker } from './types.js';
 
 const logger = createLogger('circuit-breaker');
@@ -278,109 +280,24 @@ async function haltTrading(): Promise<void> {
 }
 
 /**
- * 전체 포지션 청산
+ * 전체 Upbit 포지션 청산
  *
- * 모든 보유 포지션을 시장가로 매도합니다.
- * Circuit Breaker 발동 시 호출됩니다.
+ * Upbit API에서 실시간 잔고를 조회하여 시장가 매도 주문을 실행합니다.
+ * 심볼별 3회 재시도(지수 백오프) 후 실패 시 알림을 발송합니다.
+ *
+ * @param liquidateOptions - 청산 옵션 (dryRun, liquidatePct)
  */
-async function liquidateAllPositions(): Promise<void> {
+async function liquidateAllPositions(liquidateOptions?: LiquidateOptions): Promise<void> {
   logger.warn('⚠️  전체 포지션 청산 시작 (Circuit Breaker)');
 
-  const supabase = getSupabase();
-
-  // 1. 모든 포지션 조회
-  const { data: positions, error } = await supabase
-    .from('positions')
-    .select('symbol, market, broker, qty, avg_price')
-    .gt('qty', 0);
-
-  if (error) {
-    logger.error('포지션 조회 실패', { error });
-    throw new Error(`포지션 조회 실패: ${error.message}`);
-  }
-
-  if (!positions || positions.length === 0) {
-    logger.info('청산할 포지션 없음');
-    return;
-  }
-
-  logger.info('청산할 포지션 수', { count: positions.length });
-
-  // 2. 각 포지션에 대해 시장가 매도 주문
-  const liquidations: Array<{ symbol: string; success: boolean; error?: string }> = [];
-
-  for (const position of positions) {
-    try {
-      // 현재가 조회 (최신 캔들)
-      const currentValue = await getCurrentPositionValue({
-        broker: position.broker,
-        market: position.market,
-        symbol: position.symbol,
-      });
-
-      const currentPrice = currentValue.div(new Big(position.qty));
-
-      // trades 테이블에 긴급 청산 기록
-      const { error: tradeError } = await supabase.from('trades').insert({
-        symbol: position.symbol,
-        broker: position.broker,
-        market: position.market,
-        side: 'SELL',
-        qty: position.qty,
-        price: currentPrice.toString(),
-        status: 'filled',
-        executed_at: nowIso(),
-      });
-
-      if (tradeError) {
-        logger.error('거래 기록 실패', { symbol: position.symbol, error: tradeError });
-        liquidations.push({
-          symbol: position.symbol,
-          success: false,
-          error: tradeError.message,
-        });
-        continue;
-      }
-
-      // 포지션 수량 0으로 업데이트
-      await supabase
-        .from('positions')
-        .update({ qty: '0', updated_at: nowIso() })
-        .eq('symbol', position.symbol)
-        .eq('broker', position.broker)
-        .eq('market', position.market);
-
-      liquidations.push({ symbol: position.symbol, success: true });
-
-      logger.info('포지션 청산 완료', {
-        symbol: position.symbol,
-        qty: position.qty,
-        price: currentPrice.toString(),
-      });
-    } catch (error) {
-      logger.error('포지션 청산 실패', { symbol: position.symbol, error });
-      liquidations.push({
-        symbol: position.symbol,
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  // 3. notification_events 발행
-  const successCount = liquidations.filter((l) => l.success).length;
-  const failCount = liquidations.filter((l) => !l.success).length;
-
-  await supabase.from('notification_events').insert({
-    type: 'circuit_breaker',
-    message: `🚨 Circuit Breaker 발동 - 전체 포지션 청산 (성공: ${successCount}, 실패: ${failCount})`,
-    metadata: { liquidations },
-  });
+  const result = await liquidateAllUpbitPositions(createLiveDeps(), liquidateOptions);
 
   logger.warn('전체 포지션 청산 완료', {
-    total: positions.length,
-    success: successCount,
-    fail: failCount,
+    total: result.total,
+    success: result.success,
+    failed: result.failed,
+    skipped: result.skipped,
+    dryRun: result.dryRun,
   });
 }
 
@@ -421,9 +338,12 @@ export async function checkCircuitBreaker(broker?: Broker): Promise<CircuitBreak
       severity: 'critical',
     });
 
-    // 4. 긴급 조치
+    // 4. 긴급 조치 (trading_enabled=false → Upbit 실시간 청산)
     await haltTrading();
-    await liquidateAllPositions();
+    await liquidateAllPositions({
+      dryRun: envBoolean('DRY_RUN', true),
+      liquidatePct: envNumber('LIQUIDATE_PCT', 1.0) ?? 1.0,
+    });
 
     // 5. 쿨다운 시간 계산 및 저장
     const cooldownUntil = DateTime.now()
