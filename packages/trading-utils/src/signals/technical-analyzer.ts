@@ -1,6 +1,6 @@
 import Big from 'big.js';
 import { getSupabase } from '@workspace/db-client';
-import { createLogger } from '@workspace/shared-utils';
+import { createLogger, nowIso } from '@workspace/shared-utils';
 import {
   calculateMA,
   calculateMACD,
@@ -15,30 +15,25 @@ import type { Market, TechnicalSnapshot } from './types.js';
 const logger = createLogger('technical-analyzer');
 
 /**
- * 시장별 캔들 테이블 매핑
+ * 시장별 캔들 조회 소스 매핑
+ * - 운영 스키마 차이를 흡수하기 위해 시장별 다중 소스를 허용한다.
  */
-const CANDLE_TABLES: Record<Market, string> = {
-  CRYPTO: 'upbit_candles',
-  KRX: 'kis_candles',
-  US: 'yf_candles',
+type CandleSource = {
+  table: string;
+  symbolColumn: string;
+  timeColumn: string;
 };
 
-/**
- * 시장별 심볼 컬럼 매핑
- */
-const SYMBOL_COLUMNS: Record<Market, string> = {
-  CRYPTO: 'market', // upbit_candles는 'market' 컬럼 사용 (예: KRW-BTC)
-  KRX: 'symbol',
-  US: 'symbol',
-};
-
-/**
- * 시장별 시간 컬럼 매핑
- */
-const TIME_COLUMNS: Record<Market, string> = {
-  CRYPTO: 'candle_time_utc',
-  KRX: 'candle_time',
-  US: 'candle_time',
+const CANDLE_SOURCES: Record<Market, CandleSource[]> = {
+  CRYPTO: [
+    { table: 'upbit_candles', symbolColumn: 'market', timeColumn: 'candle_time_utc' },
+    { table: 'upbit_candles', symbolColumn: 'market', timeColumn: 'candle_time' },
+  ],
+  KRX: [{ table: 'kis_candles', symbolColumn: 'symbol', timeColumn: 'candle_time' }],
+  US: [
+    { table: 'yf_candles', symbolColumn: 'symbol', timeColumn: 'candle_time' },
+    { table: 'equity_bars', symbolColumn: 'symbol', timeColumn: 'ts' },
+  ],
 };
 
 /**
@@ -53,10 +48,8 @@ export async function fetchCandles(params: {
   limit?: number;
 }): Promise<Candle[]> {
   const supabase = getSupabase();
-  const tableName = CANDLE_TABLES[params.market];
-  const symbolColumn = SYMBOL_COLUMNS[params.market];
-  const timeColumn = TIME_COLUMNS[params.market];
   const limit = params.limit ?? 200;
+  const sources = CANDLE_SOURCES[params.market];
 
   // CRYPTO 마켓은 심볼 형식 변환 (BTC -> KRW-BTC)
   let symbolValue = params.symbol;
@@ -64,38 +57,67 @@ export async function fetchCandles(params: {
     symbolValue = `KRW-${params.symbol}`;
   }
 
-  const { data, error } = await supabase
-    .from(tableName)
-    .select('candle_time,open,high,low,close,volume')
-    .eq(symbolColumn, symbolValue)
-    .order(timeColumn, { ascending: false })
-    .limit(limit);
+  let lastErrorMessage: string | null = null;
 
-  if (error) {
-    logger.error('캔들 데이터 조회 실패', { market: params.market, symbol: params.symbol, error });
-    throw new Error(`캔들 데이터 조회 실패: ${error.message}`);
+  for (const source of sources) {
+    const { data, error } = await supabase
+      .from(source.table)
+      .select(`${source.timeColumn},open,high,low,close,volume`)
+      .eq(source.symbolColumn, symbolValue)
+      .order(source.timeColumn, { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      lastErrorMessage = `${source.table}.${source.timeColumn}: ${error.message}`;
+      logger.warn('캔들 데이터 조회 소스 실패', {
+        market: params.market,
+        symbol: params.symbol,
+        table: source.table,
+        timeColumn: source.timeColumn,
+        error,
+      });
+      continue;
+    }
+
+    if (!data || data.length === 0) {
+      logger.info('캔들 데이터 소스 비어있음', {
+        market: params.market,
+        symbol: params.symbol,
+        table: source.table,
+        timeColumn: source.timeColumn,
+      });
+      continue;
+    }
+
+    const candles: Candle[] = data
+      .map((row: unknown) => {
+        const r = row as Record<string, unknown>;
+        const time = String(r[source.timeColumn] ?? '').trim();
+        return {
+          time,
+          open: r.open as string | number,
+          high: r.high as string | number,
+          low: r.low as string | number,
+          close: r.close as string | number,
+          volume: r.volume as string | number,
+        };
+      })
+      .filter((row) => row.time.length > 0);
+
+    if (candles.length === 0) {
+      continue;
+    }
+
+    // 최신순으로 정렬되어 있으므로 역순으로 변환 (오래된 것부터)
+    return candles.reverse();
   }
 
-  if (!data || data.length === 0) {
-    logger.warn('캔들 데이터 없음', { market: params.market, symbol: params.symbol });
-    return [];
+  if (lastErrorMessage) {
+    throw new Error(`캔들 데이터 조회 실패: ${lastErrorMessage}`);
   }
 
-  // Candle 타입으로 변환
-  const candles: Candle[] = data.map((row: unknown) => {
-    const r = row as Record<string, unknown>;
-    return {
-      time: r.candle_time as string,
-      open: r.open as string | number,
-      high: r.high as string | number,
-      low: r.low as string | number,
-      close: r.close as string | number,
-      volume: r.volume as string | number,
-    };
-  });
-
-  // 최신순으로 정렬되어 있으므로 역순으로 변환 (오래된 것부터)
-  return candles.reverse();
+  logger.warn('캔들 데이터 없음', { market: params.market, symbol: params.symbol });
+  return [];
 }
 
 /**
@@ -233,7 +255,7 @@ export async function analyzeTechnicalIndicators(params: {
     supportResistance,
     atr,
     currentPrice,
-    calculatedAt: new Date().toISOString(),
+    calculatedAt: nowIso(),
   };
 
   logger.info('기술적 지표 분석 완료', {

@@ -23,6 +23,7 @@ vi.mock('@workspace/shared-utils', () => ({
     error: vi.fn(),
     debug: vi.fn(),
   }),
+  nowIso: () => '2026-02-21T00:00:00.000Z',
 }));
 
 // 지표 계산 함수 모킹
@@ -168,6 +169,57 @@ describe('fetchCandles', () => {
     expect(mockSupabase.eq).toHaveBeenCalledWith('market', 'KRW-BTC');
   });
 
+  it('CRYPTO 1차 소스가 실패하면 동일 테이블 fallback 컬럼으로 재시도해야 함', async () => {
+    mockSupabase.limit
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: 'column candle_time_utc does not exist' },
+      })
+      .mockResolvedValueOnce({
+        data: mockCandleData,
+        error: null,
+      });
+
+    const result = await fetchCandles({
+      market: 'CRYPTO',
+      symbol: 'BTC',
+    });
+
+    expect(result).toHaveLength(3);
+    expect(mockSupabase.order).toHaveBeenNthCalledWith(1, 'candle_time_utc', { ascending: false });
+    expect(mockSupabase.order).toHaveBeenNthCalledWith(2, 'candle_time', { ascending: false });
+    expect(mockSupabase.from).toHaveBeenCalledTimes(2);
+  });
+
+  it('US 1차 소스가 비어있으면 equity_bars(ts)로 fallback해야 함', async () => {
+    const equityBarsData = [
+      { ts: '2026-02-15T10:03:00Z', open: 202, high: 203, low: 201, close: 202.5, volume: 3500 },
+      { ts: '2026-02-15T10:02:00Z', open: 201, high: 202, low: 200, close: 201.5, volume: 3200 },
+      { ts: '2026-02-15T10:01:00Z', open: 200, high: 201, low: 199, close: 200.5, volume: 3000 },
+    ];
+
+    mockSupabase.limit
+      .mockResolvedValueOnce({
+        data: [],
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: equityBarsData,
+        error: null,
+      });
+
+    const result = await fetchCandles({
+      market: 'US',
+      symbol: 'AAPL',
+    });
+
+    expect(result).toHaveLength(3);
+    expect(mockSupabase.from).toHaveBeenNthCalledWith(1, 'yf_candles');
+    expect(mockSupabase.from).toHaveBeenNthCalledWith(2, 'equity_bars');
+    expect(mockSupabase.order).toHaveBeenNthCalledWith(1, 'candle_time', { ascending: false });
+    expect(mockSupabase.order).toHaveBeenNthCalledWith(2, 'ts', { ascending: false });
+  });
+
   it('캔들 데이터가 없으면 빈 배열을 반환해야 함', async () => {
     mockSupabase.limit.mockResolvedValue({
       data: [],
@@ -192,7 +244,7 @@ describe('fetchCandles', () => {
       fetchCandles({
         market: 'KRX',
         symbol: '005930',
-      })
+      }),
     ).rejects.toThrow('캔들 데이터 조회 실패');
   });
 
@@ -304,7 +356,7 @@ describe('analyzeTechnicalIndicators', () => {
       analyzeTechnicalIndicators({
         market: 'KRX',
         symbol: '005930',
-      })
+      }),
     ).rejects.toThrow('캔들 데이터 부족');
   });
 
@@ -345,7 +397,7 @@ describe('analyzeTechnicalIndicators', () => {
       symbol: 'ETH',
     });
 
-    expect(result.calculatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect(result.calculatedAt).toBe('2026-02-21T00:00:00.000Z');
   });
 
   it('지지/저항 레벨이 배열이어야 함', async () => {
