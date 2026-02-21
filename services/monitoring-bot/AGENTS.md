@@ -33,7 +33,10 @@ check-types: yarn check-types
 - 월 비용이 `AI_MONTHLY_BUDGET_USD`의 80% 이상이면 `ai_budget_monthly_80`(CRIT)
 - 월 비용이 `AI_MONTHLY_BUDGET_USD` 이상이면 `ai_budget_monthly_limit`(CRIT)
 - 일 한도 알림(`ai_budget_daily_limit`)은 사용하지 않는다(제거)
-- 일 한도 상태는 daily report에서 오토스케일 계산 결과와 종목별 AI 사용량으로 확인한다.
+- 일 한도 상태는 daily report의 요약 지표로 확인한다:
+  - 일 사용 총합
+  - 월 사용
+  - 종목별 AI 사용(코인/국장/미장)
 
 ## notification_events 전송 필터
 - `level=ERROR`는 항상 Telegram 전송

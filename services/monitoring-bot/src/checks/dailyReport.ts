@@ -15,21 +15,17 @@ import { env } from '../config/env.js';
 import {
   buildPreviousKstDayWindow,
   fetchAceOutcomesInRange,
-  fetchAiUsageBySymbolInRange,
   fetchAiDecisionCountsInRange,
   fetchCircuitBreakerCountInRange,
   fetchSignalCountsInRange,
   fetchSignalFailureReasonsInRange,
-  fetchSymbolCatalogRows,
   fetchSystemGuardTradingEnabled,
   fetchTradesInRange,
   type AceOutcomeRow,
-  type AiUsageBySymbolRow,
   type SignalFailureReasonRow,
-  type SymbolCatalogRow,
   type TradeRow,
 } from '../db/queries.js';
-import { formatSignedNumber, marketLabel, toKstDisplay } from '../utils/time.js';
+import { formatSignedNumber } from '../utils/time.js';
 
 const logger = createLogger('monitoring-bot:daily-report');
 const AI_MARKETS = ['CRYPTO', 'KRX', 'US'] as const;
@@ -125,81 +121,6 @@ function normalizeMarketForLookup(
   return 'GLOBAL';
 }
 
-function toCatalogKey(market: string, symbol: string): string {
-  return `${market}:${symbol}`.toUpperCase();
-}
-
-function buildSymbolCatalogMap(rows: SymbolCatalogRow[]): Map<string, SymbolCatalogRow> {
-  const out = new Map<string, SymbolCatalogRow>();
-
-  for (const row of rows) {
-    const market = normalizeMarketForLookup(row.market);
-    if (market === 'GLOBAL') continue;
-    const symbol = String(row.symbol ?? '').trim();
-    if (!symbol) continue;
-
-    out.set(toCatalogKey(market, symbol), row);
-
-    if (market === 'KRX') {
-      if (symbol.startsWith('KRX:')) out.set(toCatalogKey(market, symbol.slice(4)), row);
-      else out.set(toCatalogKey(market, `KRX:${symbol}`), row);
-    }
-    if (market === 'US') {
-      if (symbol.startsWith('US:')) out.set(toCatalogKey(market, symbol.slice(3)), row);
-      else out.set(toCatalogKey(market, `US:${symbol}`), row);
-    }
-    if (market === 'CRYPTO') {
-      const hyphen = symbol.indexOf('-');
-      if (hyphen >= 0 && hyphen < symbol.length - 1) {
-        out.set(toCatalogKey(market, symbol.slice(hyphen + 1)), row);
-      }
-    }
-  }
-
-  return out;
-}
-
-function lookupCatalogRow(
-  map: Map<string, SymbolCatalogRow>,
-  market: 'KRX' | 'US' | 'CRYPTO' | 'GLOBAL',
-  symbol: string,
-): Nullable<SymbolCatalogRow> {
-  if (market === 'GLOBAL') return null;
-  const normalized = symbol.trim();
-  if (!normalized) return null;
-
-  const direct = map.get(toCatalogKey(market, normalized));
-  if (direct) return direct;
-
-  if (market === 'CRYPTO' && normalized.includes('-')) {
-    const quoteRemoved = normalized.split('-')[1];
-    if (quoteRemoved) {
-      const coin = map.get(toCatalogKey(market, quoteRemoved));
-      if (coin) return coin;
-    }
-  }
-
-  return null;
-}
-
-function resolveSymbolDisplay(
-  map: Map<string, SymbolCatalogRow>,
-  marketRaw: string,
-  symbol: string,
-): string {
-  const market = normalizeMarketForLookup(marketRaw);
-  const row = lookupCatalogRow(map, market, symbol);
-  if (!row) return symbol;
-
-  const name =
-    market === 'US'
-      ? (row.name_en ?? row.name_ko ?? '').trim()
-      : (row.name_ko ?? row.name_en ?? '').trim();
-
-  if (!name || name === symbol) return symbol;
-  return `${name} (${symbol})`;
-}
-
 function inferCurrency(marketRaw: string): Currency {
   const market = normalizeMarketForLookup(marketRaw);
   if (market === 'US') return 'USD';
@@ -291,7 +212,7 @@ function buildNoTradeReasons(params: {
     }
   }
 
-  return reasons.length > 0 ? reasons : ['거래 조건 미충족'];
+  return reasons.length > 0 ? reasons : ['사유 작성'];
 }
 
 function formatCurrencySummary(byCurrency: Map<Currency, Big>): string {
@@ -427,7 +348,6 @@ export async function buildDailyReportText(): Promise<string> {
     aceOutcomeRows,
     aiDailyCounts,
     monthlyAiCost,
-    aiUsageBySymbolRows,
   ] = await Promise.all([
     safeQuery(
       'trades',
@@ -460,11 +380,6 @@ export async function buildDailyReportText(): Promise<string> {
       () => getMonthlyAICostWithRetry({ year: nowUtc.year, month: nowUtc.month }),
       0,
     ),
-    safeQuery(
-      'ai_symbol_usage',
-      () => fetchAiUsageBySymbolInRange(window),
-      [] as AiUsageBySymbolRow[],
-    ),
   ]);
   const aiDailyUsage = buildDailyAIUsage({
     byMarket: aiDailyCounts,
@@ -495,34 +410,13 @@ export async function buildDailyReportText(): Promise<string> {
   const winRate =
     parsedOutcomes.length > 0 ? ((winCount / parsedOutcomes.length) * 100).toFixed(1) + '%' : '-';
 
-  const symbolPairs: Array<{ market: string; symbol: string }> = [];
-  for (const trade of filledTrades) {
-    symbolPairs.push({ market: trade.market, symbol: trade.symbol });
-  }
-  for (const outcome of parsedOutcomes) {
-    symbolPairs.push({ market: outcome.market, symbol: outcome.symbol });
-  }
-  for (const usage of aiUsageBySymbolRows) {
-    symbolPairs.push({ market: usage.market, symbol: usage.symbol });
-  }
-
-  const symbolCatalogRows = await safeQuery(
-    'symbol_catalog',
-    () => fetchSymbolCatalogRows(symbolPairs),
-    [] as SymbolCatalogRow[],
-  );
-  const symbolCatalogMap = buildSymbolCatalogMap(symbolCatalogRows);
-
   const lines: string[] = [];
   const todayKstLabel = DateTime.now().setZone('Asia/Seoul').toFormat('yyyy.MM.dd');
   const reportDayKstLabel = DateTime.fromFormat(window.dayIsoDate, 'yyyy-MM-dd', {
     zone: 'Asia/Seoul',
   }).toFormat('yyyy.MM.dd');
-  lines.push(env.DAILY_REPORT_TITLE);
-  lines.push('표시 시간대: KST (Asia/Seoul)');
-  lines.push(`데일리 리포트 (${todayKstLabel})`);
+  lines.push(`${env.ALERT_PREFIX} 데일리 리포트 (${todayKstLabel})`);
   lines.push(`기준: ${reportDayKstLabel}`);
-  lines.push(`생성: ${toKstDisplay(DateTime.now())} (KST)`);
   lines.push('');
 
   lines.push(`총 손익: ${formatCurrencySummary(byCurrency)}`);
@@ -530,26 +424,7 @@ export async function buildDailyReportText(): Promise<string> {
   lines.push(`승률: ${winRate}`);
   lines.push('');
 
-  if (filledTrades.length > 0) {
-    lines.push('체결 내역:');
-
-    if (parsedOutcomes.length > 0) {
-      for (const outcome of parsedOutcomes.slice(0, 10)) {
-        const symbolLabel = resolveSymbolDisplay(symbolCatalogMap, outcome.market, outcome.symbol);
-        const pnlText = formatCurrencyAmount(outcome.realizedPnL, inferCurrency(outcome.market));
-        lines.push(`- ${marketLabel(outcome.market)} | ${symbolLabel} | ${pnlText}`);
-      }
-    } else {
-      for (const trade of filledTrades.slice(0, 10)) {
-        const symbolLabel = resolveSymbolDisplay(symbolCatalogMap, trade.market, trade.symbol);
-        const cashflow = calcTradeCashflow(trade);
-        const currency = inferCurrency(trade.market);
-        lines.push(
-          `- ${marketLabel(trade.market)} | ${symbolLabel} | ${String(trade.side).toUpperCase()} | ${formatCurrencyAmount(cashflow, currency)}`,
-        );
-      }
-    }
-  } else {
+  if (filledTrades.length === 0) {
     lines.push('거래 없음 사유:');
     const reasons = buildNoTradeReasons({
       guardEnabled,
@@ -567,36 +442,16 @@ export async function buildDailyReportText(): Promise<string> {
 
   lines.push('');
   lines.push('AI 사용:');
-  const dailyUsageByMarket = AI_MARKETS.map(
-    (market) =>
-      `${market} ${aiDailyUsage.byMarket[market]}/${aiDailyUsage.effectiveLimitByMarket[market]}`,
-  );
-  lines.push(`- 일 사용(UTC 집계, 시장별): ${dailyUsageByMarket.join(' / ')}`);
-  lines.push(
-    `- 일 사용 총합(UTC 집계): ${aiDailyUsage.total} / ${aiDailyUsage.effectiveDailyCap} (base ${aiDailyUsage.baseDailyTotal}, shared ${aiDailyUsage.sharedPool})`,
-  );
-  lines.push(
-    `- 일 예산 모드: ${aiDailyUsage.scaledDown ? '축소(비율)' : '기본+공유풀'} (today_cap=${aiDailyUsage.todayCallCap})`,
-  );
+  lines.push(`- 일 사용 총합: ${aiDailyUsage.total} / ${aiDailyUsage.effectiveDailyCap}`);
   const monthlyRatio =
     env.AI_MONTHLY_BUDGET_USD > 0 ? (monthlyAiCost / env.AI_MONTHLY_BUDGET_USD) * 100 : 0;
   lines.push(
-    `- 월 사용(UTC 집계): $${monthlyAiCost.toFixed(2)} / $${env.AI_MONTHLY_BUDGET_USD.toFixed(2)} (${monthlyRatio.toFixed(0)}%)`,
+    `- 월 사용: $${monthlyAiCost.toFixed(2)} / $${env.AI_MONTHLY_BUDGET_USD.toFixed(2)} (${monthlyRatio.toFixed(0)}%)`,
   );
-
-  lines.push('- 종목별 AI 사용(UTC 집계, 상위 15):');
-  if (aiUsageBySymbolRows.length === 0) {
-    lines.push('  - 없음');
-  } else {
-    const maxRows = 15;
-    for (const row of aiUsageBySymbolRows.slice(0, maxRows)) {
-      const symbolLabel = resolveSymbolDisplay(symbolCatalogMap, row.market, row.symbol);
-      lines.push(`  - ${marketLabel(row.market)} | ${symbolLabel} | ${row.usageCount}회`);
-    }
-    if (aiUsageBySymbolRows.length > maxRows) {
-      lines.push(`  - 외 ${aiUsageBySymbolRows.length - maxRows}종목`);
-    }
-  }
+  lines.push('- 종목별 AI 사용:');
+  lines.push(`  - 코인 : ${aiDailyUsage.byMarket.CRYPTO}회`);
+  lines.push(`  - 국장 : ${aiDailyUsage.byMarket.KRX}회`);
+  lines.push(`  - 미장 : ${aiDailyUsage.byMarket.US}회`);
 
   return lines.join('\n');
 }

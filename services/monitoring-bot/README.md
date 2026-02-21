@@ -42,8 +42,9 @@ yarn lint
 ## AI 일 한도 운영
 - 일 한도 모니터링 알림(`ai_budget_daily_limit`)은 제거
 - 일 한도는 데일리 리포트에서 확인:
-  - 오토스케일 적용된 시장별 일 사용량/유효 한도
-  - 종목별 AI 사용량(상위 15)
+  - 일 사용 총합(`used / effective_daily_cap`)
+  - 월 사용(`used_usd / monthly_budget_usd`)
+  - 종목별 AI 사용(코인/국장/미장 호출 수)
 - 오토스케일 기준:
   - `today_call_cap = floor((remaining_month_budget / remaining_days) / AI_ESTIMATED_COST_PER_CALL_USD)`
   - `effective_daily_cap = min(AI_DAILY_LIMIT, today_call_cap)`
