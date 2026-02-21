@@ -1,7 +1,7 @@
 import Big from 'big.js';
 import { DateTime } from 'luxon';
 import { createBackoff, createLogger, sleep, type Nullable } from '@workspace/shared-utils';
-import { getMonthlyAICost } from '@workspace/db-client';
+import { getDailyCallCount, getMonthlyAICost } from '@workspace/db-client';
 import { env } from '../config/env.js';
 import {
   buildPreviousKstDayWindow,
@@ -21,6 +21,7 @@ import {
 import { formatSignedNumber, marketLabel, toKstDisplay } from '../utils/time.js';
 
 const logger = createLogger('monitoring-bot:daily-report');
+const AI_MARKETS = ['CRYPTO', 'KRX', 'US'] as const;
 
 type Currency = 'KRW' | 'USD';
 type ParsedOutcome = {
@@ -285,6 +286,19 @@ async function getMonthlyAICostWithRetry(params: { year: number; month: number }
   throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
+async function getDailyAICallCount(params: { date: string }): Promise<number> {
+  const counts = await Promise.all(
+    AI_MARKETS.map((market) =>
+      getDailyCallCount({
+        date: params.date,
+        market,
+      }),
+    ),
+  );
+
+  return counts.reduce((sum, value) => sum + value, 0);
+}
+
 export async function buildDailyReportText(): Promise<string> {
   const window = buildPreviousKstDayWindow();
   const reportDate = DateTime.fromFormat(window.dayIsoDate, 'yyyy-MM-dd', {
@@ -299,6 +313,7 @@ export async function buildDailyReportText(): Promise<string> {
     circuitBreakerCount,
     signalFailures,
     aceOutcomeRows,
+    aiDailyCalls,
     monthlyAiCost,
   ] = await Promise.all([
     safeQuery(
@@ -322,6 +337,7 @@ export async function buildDailyReportText(): Promise<string> {
       [] as SignalFailureReasonRow[],
     ),
     safeQuery('ace_outcomes', () => fetchAceOutcomesInRange(window), [] as AceOutcomeRow[]),
+    safeQuery('ai_daily_calls', () => getDailyAICallCount({ date: window.dayIsoDate }), 0),
     safeQuery(
       'ai_monthly_cost',
       () => getMonthlyAICostWithRetry({ year: reportDate.year, month: reportDate.month }),
@@ -370,8 +386,8 @@ export async function buildDailyReportText(): Promise<string> {
   const lines: string[] = [];
   lines.push(env.DAILY_REPORT_TITLE);
   lines.push(`${window.dateLabel} 데일리 리포트`);
-  lines.push(`기준: ${window.rangeLabel}`);
-  lines.push(`생성: ${toKstDisplay(DateTime.now())} (KST)`);
+  lines.push(`기준: ${window.rangeLabel.replace(' (KST)', '')}`);
+  lines.push(`생성: ${toKstDisplay(DateTime.now())}`);
   lines.push('');
 
   lines.push(`총 손익: ${formatCurrencySummary(byCurrency)}`);
@@ -403,7 +419,7 @@ export async function buildDailyReportText(): Promise<string> {
     const reasons = buildNoTradeReasons({
       guardEnabled,
       circuitBreakerCount,
-      aiDailyCalls: aiCounts.totalCount,
+      aiDailyCalls,
       aiBuySellDecisions: aiCounts.buySellCount,
       signalBuySellCount: signalCounts.buySellCount,
       monthlyAiCost,
@@ -416,7 +432,7 @@ export async function buildDailyReportText(): Promise<string> {
 
   lines.push('');
   lines.push('AI 사용:');
-  lines.push(`- 일 사용: ${aiCounts.totalCount} / ${env.AI_DAILY_LIMIT}`);
+  lines.push(`- 일 사용: ${aiDailyCalls} / ${env.AI_DAILY_LIMIT}`);
   const monthlyRatio =
     env.AI_MONTHLY_BUDGET_USD > 0 ? (monthlyAiCost / env.AI_MONTHLY_BUDGET_USD) * 100 : 0;
   lines.push(
