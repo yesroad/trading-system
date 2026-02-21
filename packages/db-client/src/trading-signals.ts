@@ -2,13 +2,19 @@ import { getSupabase } from './client.js';
 import { nowIso } from '@workspace/shared-utils';
 import type { TradingSignal, InsertTradingSignalParams } from './types.js';
 
+export type TradingSignalType = 'BUY' | 'SELL' | 'HOLD';
+
+export type GetUnconsumedSignalsParams = {
+  market?: 'CRYPTO' | 'KRX' | 'US';
+  minConfidence?: number;
+  signalTypes?: TradingSignalType[];
+};
+
 /**
  * Insert a new trading signal
  * @returns signal ID
  */
-export async function insertTradingSignal(
-  params: InsertTradingSignalParams
-): Promise<string> {
+export async function insertTradingSignal(params: InsertTradingSignalParams): Promise<string> {
   const supabase = getSupabase();
 
   const payload = {
@@ -45,12 +51,11 @@ export async function insertTradingSignal(
 
 /**
  * Get unconsumed signals (consumed_at IS NULL)
- * Optionally filter by market and minimum confidence
+ * Optionally filter by market, minimum confidence and signal types
  */
-export async function getUnconsumedSignals(params?: {
-  market?: 'CRYPTO' | 'KRX' | 'US';
-  minConfidence?: number;
-}): Promise<TradingSignal[]> {
+export async function getUnconsumedSignals(
+  params?: GetUnconsumedSignalsParams,
+): Promise<TradingSignal[]> {
   const supabase = getSupabase();
 
   let query = supabase
@@ -67,6 +72,10 @@ export async function getUnconsumedSignals(params?: {
     query = query.gte('confidence', params.minConfidence);
   }
 
+  if (params?.signalTypes && params.signalTypes.length > 0) {
+    query = query.in('signal_type', params.signalTypes);
+  }
+
   const { data, error } = await query;
 
   if (error) {
@@ -74,6 +83,39 @@ export async function getUnconsumedSignals(params?: {
   }
 
   return data ?? [];
+}
+
+/**
+ * Count unconsumed signals (consumed_at IS NULL)
+ * Optionally filter by market, minimum confidence and signal types
+ */
+export async function countUnconsumedSignals(params?: GetUnconsumedSignalsParams): Promise<number> {
+  const supabase = getSupabase();
+
+  let query = supabase
+    .from('trading_signals')
+    .select('id', { count: 'exact', head: true })
+    .is('consumed_at', null);
+
+  if (params?.market) {
+    query = query.eq('market', params.market);
+  }
+
+  if (params?.minConfidence !== undefined) {
+    query = query.gte('confidence', params.minConfidence);
+  }
+
+  if (params?.signalTypes && params.signalTypes.length > 0) {
+    query = query.in('signal_type', params.signalTypes);
+  }
+
+  const { count, error } = await query;
+
+  if (error) {
+    throw new Error(`Failed to count unconsumed signals: ${error.message}`);
+  }
+
+  return count ?? 0;
 }
 
 /**
@@ -95,10 +137,7 @@ export async function markSignalConsumed(signalId: string): Promise<void> {
 /**
  * Get recent signals by symbol (for analysis)
  */
-export async function getSignalsBySymbol(
-  symbol: string,
-  limit = 10
-): Promise<TradingSignal[]> {
+export async function getSignalsBySymbol(symbol: string, limit = 10): Promise<TradingSignal[]> {
   const supabase = getSupabase();
 
   const { data, error } = await supabase

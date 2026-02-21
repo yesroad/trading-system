@@ -31,7 +31,12 @@ function parseRunMode(value: string | undefined): RunMode {
   if (normalized === 'EXTENDED') return 'EXTENDED';
   if (normalized === 'PREMARKET') return 'PREMARKET';
   if (normalized === 'AFTERMARKET') return 'AFTERMARKET';
-  if (normalized === 'MARKET_ONLY' || normalized === 'MARKET' || normalized === undefined || normalized === '') {
+  if (
+    normalized === 'MARKET_ONLY' ||
+    normalized === 'MARKET' ||
+    normalized === undefined ||
+    normalized === ''
+  ) {
     return 'MARKET';
   }
   throw new Error(
@@ -58,7 +63,7 @@ const loopIntervalCryptoSec = envNumber('LOOP_INTERVAL_CRYPTO_SEC', 60) ?? 60;
 const loopIntervalUsSec = envNumber('LOOP_INTERVAL_US_SEC', 120) ?? 120;
 const loopIntervalKrSec = envNumber('LOOP_INTERVAL_KR_SEC', 120) ?? 120;
 const maxCandidatesPerMarket = envNumber('MAX_CANDIDATES_PER_MARKET', 30) ?? 30;
-const minConfidence = envNumber('MIN_CONFIDENCE', 0.7) ?? 0.7;
+const minConfidence = envNumber('MIN_CONFIDENCE', 0.6) ?? 0.6;
 const stopLossPct = envNumber('STOP_LOSS_PCT', 0.05) ?? 0.05;
 const takeProfitPct = envNumber('TAKE_PROFIT_PCT', 0.1) ?? 0.1;
 const maxDailyTrades = envNumber('MAX_DAILY_TRADES', 30) ?? 30;
@@ -92,6 +97,9 @@ export const TRADING_CONFIG: TradingConfig = {
     'AUTO_DISABLE_CONSECUTIVE_FAILURES',
     Math.floor(autoDisableConsecutiveFailures),
   ),
-  autoRecoveryCooldownMin: mustPositiveInt('AUTO_RECOVERY_COOLDOWN_MIN', Math.floor(autoRecoveryCooldownMin)),
+  autoRecoveryCooldownMin: mustPositiveInt(
+    'AUTO_RECOVERY_COOLDOWN_MIN',
+    Math.floor(autoRecoveryCooldownMin),
+  ),
   executeMarkets: EXECUTE_MARKETS,
 };

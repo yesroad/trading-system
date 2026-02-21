@@ -43,6 +43,7 @@
 - 조회 조건:
   - `consumed_at IS NULL`
   - `market = 현재 루프 시장`
+  - `signal_type IN (BUY, SELL)`
   - `confidence >= MIN_CONFIDENCE` (`TRADING_CONFIG.minConfidence`)
 - 정렬: `created_at DESC`
 
@@ -79,6 +80,7 @@
 ## 8. DB 기록
 
 ### trade_executions
+
 - 주문 시도 전 `PENDING` insert
 - 실행 결과에 따라 `SUCCESS`/`FAILED` update
 - `idempotency_key` 사용
@@ -86,11 +88,13 @@
   - 중복 충돌 시 기존 row 재사용
 
 ### daily_trading_stats
+
 - 실행 결과마다 통계 업데이트
 - 우선 RPC `increment_daily_stats` 호출
 - 실패 시 직접 upsert fallback
 
 ### trades 비용 기록
+
 - `fee_amount`, `tax_amount` 컬럼이 존재하면 별도 컬럼에 저장
 - 컬럼이 없으면 `metadata.costs`에 fallback 저장
 - `metadata.costs.source`로 원천 구분 (`BROKER` | `UNAVAILABLE`)
@@ -109,6 +113,7 @@
 ## 10. 알림 룰 (`notification_events`)
 
 trade-executor는 Telegram 직접 전송하지 않고 outbox에 적재:
+
 - `TRADE_FILLED` (체결 성공)
 - `TRADE_FAILED` (주문 실패)
 - `TRADE_EXECUTION_ERROR` (실행 예외)
@@ -123,7 +128,7 @@ trade-executor는 Telegram 직접 전송하지 않고 outbox에 적재:
 - 실행: `TRADE_EXECUTOR_ENABLED`, `LOOP_MODE`, `EXECUTE_MARKETS`
 - 런모드: `TRADE_EXECUTOR_RUN_MODE` (`MARKET_ONLY` | `EXTENDED` | `ALWAYS`)
 - 주기: `LOOP_INTERVAL_CRYPTO_SEC`, `LOOP_INTERVAL_US_SEC`, `LOOP_INTERVAL_KR_SEC`
-- 전략: `MIN_CONFIDENCE`, `STOP_LOSS_PCT`, `TAKE_PROFIT_PCT`, `MAX_TRADE_NOTIONAL`, `MAX_DAILY_TRADES`
+- 전략: `MIN_CONFIDENCE`(기본 0.6), `STOP_LOSS_PCT`, `TAKE_PROFIT_PCT`, `MAX_TRADE_NOTIONAL`, `MAX_DAILY_TRADES`
 - 가드: `ENABLE_MARKET_HOURS_GUARD`, `AUTO_DISABLE_CONSECUTIVE_FAILURES`, `AUTO_RECOVERY_COOLDOWN_MIN`
 - 안전: `DRY_RUN`
 - 비용정산: `COST_RECONCILE_ENABLED`, `COST_RECONCILE_INTERVAL_SEC`, `COST_RECONCILE_LOOKBACK_DAYS`, `COST_RECONCILE_BATCH_SIZE`, `COST_RECONCILE_UPBIT_POLL_MAX`, `COST_RECONCILE_UPBIT_POLL_MS`

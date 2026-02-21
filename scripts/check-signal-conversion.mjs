@@ -2,7 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import '@workspace/shared-utils/env-loader';
-import { requireEnv } from '@workspace/shared-utils';
+import { envNumber, requireEnv } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 
 function parseLookbackMinutes(raw) {
@@ -60,6 +60,7 @@ async function main() {
 
   const supabaseUrl = requireEnv('SUPABASE_URL');
   const supabaseKey = requireEnv('SUPABASE_KEY');
+  const minConfidence = envNumber('MIN_CONFIDENCE', 0.6) ?? 0.6;
 
   const sb = createClient(supabaseUrl, supabaseKey);
 
@@ -69,16 +70,16 @@ async function main() {
       .select('id, market, decision, created_at')
       .gte('created_at', fromIso)
       .lte('created_at', toIso)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }),
   );
 
   const signalRows = await fetchPaged(sb, (client) =>
     client
       .from('trading_signals')
-      .select('id, ai_analysis_id, market, signal_type, created_at, consumed_at')
+      .select('id, ai_analysis_id, market, signal_type, confidence, created_at, consumed_at')
       .gte('created_at', fromIso)
       .lte('created_at', toIso)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }),
   );
 
   const failureRows = await fetchPaged(sb, (client) =>
@@ -87,7 +88,16 @@ async function main() {
       .select('id, ai_analysis_id, market, symbol, failure_type, created_at')
       .gte('created_at', fromIso)
       .lte('created_at', toIso)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }),
+  );
+
+  const tradeRows = await fetchPaged(sb, (client) =>
+    client
+      .from('trades')
+      .select('id, market, side, status, created_at')
+      .gte('created_at', fromIso)
+      .lte('created_at', toIso)
+      .order('created_at', { ascending: false }),
   );
 
   const tradeableAiRows = aiRows.filter((row) => row.decision === 'BUY' || row.decision === 'SELL');
@@ -102,13 +112,29 @@ async function main() {
     failureRows
       .map((row) => row.ai_analysis_id)
       .filter((id) => id !== null)
-      .map((id) => String(id))
+      .map((id) => String(id)),
   );
 
   const conversionRate =
     tradeableAiRows.length === 0
       ? null
       : Number(((signalsFromAiRows.length / tradeableAiRows.length) * 100).toFixed(2));
+
+  const executableSignals = signalRows.filter(
+    (row) => row.signal_type === 'BUY' || row.signal_type === 'SELL',
+  );
+  const signalsPassingExecutorGate = executableSignals.filter((row) => {
+    const confidence = Number(row.confidence);
+    return Number.isFinite(confidence) && confidence >= minConfidence;
+  });
+  const confidenceFiltered = Math.max(
+    0,
+    executableSignals.length - signalsPassingExecutorGate.length,
+  );
+
+  const filledTrades = tradeRows.filter(
+    (row) => String(row.status ?? '').toLowerCase() === 'filled',
+  );
 
   const summary = {
     window: {
@@ -132,6 +158,18 @@ async function main() {
       unconsumed: signalRows.filter((row) => row.consumed_at === null).length,
       withoutAiAnalysisId: signalRows.filter((row) => row.ai_analysis_id === null).length,
     },
+    executorGate: {
+      minConfidence,
+      executableSignals: executableSignals.length,
+      passedByConfidence: signalsPassingExecutorGate.length,
+      filteredByConfidence: confidenceFiltered,
+      passRatioPct:
+        executableSignals.length > 0
+          ? Number(
+              ((signalsPassingExecutorGate.length / executableSignals.length) * 100).toFixed(2),
+            )
+          : null,
+    },
     failures: {
       totalCreatedInWindow: failureRows.length,
       byType: countBy(failureRows, (row) => String(row.failure_type ?? 'UNKNOWN')),
@@ -142,6 +180,12 @@ async function main() {
       generated: signalsFromAiRows.length,
       baseTradeableAi: tradeableAiRows.length,
       skippedTradeableAi: Math.max(0, tradeableAiRows.length - signalsFromAiRows.length),
+    },
+    executions: {
+      tradesTotal: tradeRows.length,
+      tradesFilled: filledTrades.length,
+      filledByMarket: countBy(filledTrades, (row) => String(row.market ?? 'UNKNOWN')),
+      filledBySide: countBy(filledTrades, (row) => String(row.side ?? 'UNKNOWN')),
     },
   };
 

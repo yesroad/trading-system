@@ -37,7 +37,7 @@ yarn test
 ## 핵심 입력/출력
 
 - 입력:
-  - `trading_signals` (`consumed_at IS NULL`, `confidence >= MIN_CONFIDENCE`)
+  - `trading_signals` (`consumed_at IS NULL`, `signal_type IN (BUY, SELL)`, `confidence >= MIN_CONFIDENCE`)
   - `positions`, 시세 테이블(`upbit_candles`, `kis_price_ticks`, `equity_bars`)
   - 최근 `ai_analysis_results`
 - 출력:
@@ -48,7 +48,7 @@ yarn test
 
 - 실행: `TRADE_EXECUTOR_ENABLED`, `LOOP_MODE`, `EXECUTE_MARKETS`
 - 런모드/가드: `TRADE_EXECUTOR_RUN_MODE`, `ENABLE_MARKET_HOURS_GUARD`
-- 전략: `MIN_CONFIDENCE`, `MAX_TRADE_NOTIONAL`, `MAX_DAILY_TRADES`, `STOP_LOSS_PCT`, `TAKE_PROFIT_PCT`
+- 전략: `MIN_CONFIDENCE`(기본 0.6), `MAX_TRADE_NOTIONAL`, `MAX_DAILY_TRADES`, `STOP_LOSS_PCT`, `TAKE_PROFIT_PCT`
 - 보호장치: `AUTO_DISABLE_CONSECUTIVE_FAILURES`, `AUTO_RECOVERY_COOLDOWN_MIN`
 - 안전: `DRY_RUN`
 
