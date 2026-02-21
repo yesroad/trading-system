@@ -1,5 +1,6 @@
 import { getSupabase } from '@workspace/db-client';
 import { nowIso } from '@workspace/shared-utils';
+import type { Nullable } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 import { diffMinutes, toKstDisplay } from '../utils/time.js';
 import type { AlertEvent } from '../types/status.js';
@@ -16,7 +17,7 @@ type SignalRow = {
 
 type StaleSignalCandidate = {
   row: SignalRow;
-  normalizedMarket: 'CRYPTO' | 'KRX' | 'US' | null;
+  normalizedMarket: Nullable<'CRYPTO' | 'KRX' | 'US'>;
   ageMinutes: number;
 };
 
@@ -30,7 +31,7 @@ function isStaleSignal(value: StaleSignalCandidate): value is StaleSignal {
   return value.normalizedMarket !== null && value.ageMinutes >= 60;
 }
 
-function normalizeSignalMarket(raw: string): 'CRYPTO' | 'KRX' | 'US' | null {
+function normalizeSignalMarket(raw: string): Nullable<'CRYPTO' | 'KRX' | 'US'> {
   const normalized = raw.trim().toUpperCase();
   if (normalized === 'CRYPTO') return 'CRYPTO';
   if (normalized === 'KRX' || normalized === 'KR' || normalized === 'KIS') return 'KRX';
@@ -93,7 +94,7 @@ export async function checkTradingSignals(): Promise<AlertEvent[]> {
   const supabase = getSupabase();
   const now = nowIso();
 
-  let tradingEnabled: boolean | null;
+  let tradingEnabled: Nullable<boolean>;
   try {
     tradingEnabled = await fetchSystemGuardTradingEnabled();
   } catch (error: unknown) {
