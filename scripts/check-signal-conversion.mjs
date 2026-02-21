@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { createClient } from '@supabase/supabase-js';
+import '@workspace/shared-utils/env-loader';
+import { requireEnv } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 
 function parseLookbackMinutes(raw) {
@@ -10,14 +12,6 @@ function parseLookbackMinutes(raw) {
     throw new Error(`lookback minutes must be positive number, got: ${raw}`);
   }
   return Math.floor(parsed);
-}
-
-function chunk(array, size) {
-  const chunks = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
-  }
-  return chunks;
 }
 
 function countBy(items, keyFn) {
@@ -64,13 +58,8 @@ async function main() {
     throw new Error('failed to build ISO window');
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error(
-      'SUPABASE_URL and SUPABASE_KEY are required. run with: set -a; source .env; set +a; node scripts/check-signal-conversion.mjs 60'
-    );
-  }
+  const supabaseUrl = requireEnv('SUPABASE_URL');
+  const supabaseKey = requireEnv('SUPABASE_KEY');
 
   const sb = createClient(supabaseUrl, supabaseKey);
 

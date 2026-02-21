@@ -15,18 +15,21 @@ import { validateSignal } from './validator.js';
 const logger = createLogger('signal-generator');
 
 function resolveAnalysisPrice(priceAtAnalysis: string, currentPrice: Big): Big {
+  let parseError: string | null = null;
+
   try {
     const parsed = new Big(priceAtAnalysis);
     if (parsed.gt(0)) {
       return parsed;
     }
-  } catch {
-    // ignore parse error and fallback to currentPrice
+  } catch (error: unknown) {
+    parseError = error instanceof Error ? error.message : String(error);
   }
 
   logger.warn('분석 시점 가격이 유효하지 않아 현재가로 대체', {
     priceAtAnalysis,
     currentPrice: currentPrice.toString(),
+    parseError,
   });
   return currentPrice;
 }
