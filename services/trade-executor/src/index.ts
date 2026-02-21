@@ -17,7 +17,10 @@ import { checkCircuitBreaker } from './risk/circuit-breaker.js';
 import { logACEEntry } from './compliance/ace-logger.js';
 import { startOutcomeTracking } from './compliance/outcome-tracker.js';
 import { executeOrder } from './execution/order-executor.js';
-import { reconcileTradeCostsOnce, startCostReconciliation } from './reconciliation/cost-reconciler.js';
+import {
+  reconcileTradeCostsOnce,
+  startCostReconciliation,
+} from './reconciliation/cost-reconciler.js';
 
 const logger = createLogger('trade-executor');
 
@@ -143,13 +146,14 @@ async function runMarketLoop(market: Market): Promise<void> {
     // ========================================
     // 3. ✨ 미소비 신호 조회 (NEW)
     // ========================================
+    const minConfidence = TRADING_CONFIG.minConfidence;
     const signals = await getUnconsumedSignals({
       market,
-      minConfidence: 0.7, // 최소 신뢰도 70%
+      minConfidence,
     });
 
     if (signals.length === 0) {
-      logger.info('미소비 신호 없음', { market });
+      logger.info('미소비 신호 없음', { market, minConfidence });
       return;
     }
 
@@ -229,7 +233,7 @@ async function runMarketLoop(market: Market): Promise<void> {
             dryRun: TRADING_CONFIG.dryRun,
             aceLogId,
           },
-          clients
+          clients,
         );
 
         if (orderResult.success) {
@@ -314,11 +318,14 @@ function startCircuitBreakerMonitoring(): void {
   });
 
   // 5분마다 실행
-  setInterval(() => {
-    checkCircuitBreaker().catch((error) => {
-      logger.error('서킷 브레이커 체크 실패', { error });
-    });
-  }, 5 * 60 * 1000);
+  setInterval(
+    () => {
+      checkCircuitBreaker().catch((error) => {
+        logger.error('서킷 브레이커 체크 실패', { error });
+      });
+    },
+    5 * 60 * 1000,
+  );
 }
 
 async function startLoopMode(): Promise<void> {

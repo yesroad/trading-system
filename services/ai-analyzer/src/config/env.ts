@@ -62,6 +62,10 @@ export const env = {
    * =============================== */
   OPENAI_API_KEY: requireEnv('OPENAI_API_KEY'),
   AI_MODEL: requireEnv('AI_MODEL'),
+  AI_LLM_TEMPERATURE: envNumber('AI_LLM_TEMPERATURE', 0.35) ?? 0.35,
+  AI_HOLD_RETRY_ENABLED: envBoolean('AI_HOLD_RETRY_ENABLED', true),
+  AI_HOLD_RETRY_THRESHOLD: envNumber('AI_HOLD_RETRY_THRESHOLD', 0.9) ?? 0.9,
+  AI_HOLD_RETRY_TEMPERATURE: envNumber('AI_HOLD_RETRY_TEMPERATURE', 0.45) ?? 0.45,
 
   /** ===============================
    * supabase 설정

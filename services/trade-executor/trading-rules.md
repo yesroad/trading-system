@@ -37,34 +37,24 @@
   - `KR`: `kis_price_ticks` 최신 `price`
   - `US`: `equity_bars` 최신 `close`
 
-## 4. 후보 선정 규칙 (`pickCandidates`)
+## 4. 신호 후보 조회 규칙
 
-기본 분기:
-- `confidence < MIN_CONFIDENCE` -> `SKIP`
-- `BLOCK` + 보유 포지션 있음 -> `SELL`
-- `ALLOW` + 미보유 -> `BUY`
-- 그 외 -> `SKIP`
+- 입력 소스: `trading_signals`
+- 조회 조건:
+  - `consumed_at IS NULL`
+  - `market = 현재 루프 시장`
+  - `confidence >= MIN_CONFIDENCE` (`TRADING_CONFIG.minConfidence`)
+- 정렬: `created_at DESC`
 
-정렬:
-- 실행 가능(`BUY/SELL`) 우선
-- 이후 confidence 내림차순
+## 5. 신호 처리 규칙
 
-## 5. 최종 매매 룰 (`applyTradingRules`)
-
-### 매수
-- `ALLOW` 이고 `confidence >= 0.7` 이고 미보유일 때 `BUY`
-
-### 매도
-- `BLOCK` + 보유 포지션 -> `SELL`
-- 손절: 수익률 `<= -5%` -> `SELL`
-- 익절: 수익률 `>= +10%` -> `SELL`
-
-수익률 계산식:
-- `(currentPrice - avgPrice) / avgPrice`
-- `big.js` 사용
-
-### 보류
-- 위 조건에 해당하지 않으면 `SKIP`
+- 처리 대상 신호 타입: `BUY` / `SELL`
+- 각 신호 처리 순서:
+  1. 리스크 검증 (`validateTradeRisk`)
+  2. ACE 로그 기록
+  3. 주문 실행 (`executeOrder`)
+  4. 신호 소비 처리 (`markSignalConsumed`)
+- 리스크 검증 실패/주문 실패/예외 발생 시에도 신호는 소비 처리하여 무한 재시도를 방지한다.
 
 ## 6. 주문 수량 산정 (`executeOrders`)
 

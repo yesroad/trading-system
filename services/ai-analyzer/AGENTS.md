@@ -18,6 +18,7 @@ check-types: yarn check-types
 ## 로컬 규칙
 - 외부 응답/모델 출력은 런타임 검증을 적용한다.
 - 분석 결과 스키마(`decision`, `confidence`, `market`, `symbol`) 정합성을 유지한다.
+- HOLD 편향(예: BUY/SELL 0건, HOLD 비율 과다) 발생 시 재시도 정책을 통해 방향성 분포를 보정한다.
 - 공통 env/date 유틸은 `@workspace/shared-utils`를 우선 사용한다.
 - 공유 패턴은 루트 `AGENTS.md`와 `.claude/rules/immutable-rules.md`를 따른다.
 
