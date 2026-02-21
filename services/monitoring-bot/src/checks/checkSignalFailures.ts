@@ -3,6 +3,8 @@ import { nowIso, toIsoString } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 import type { AlertEvent } from '../types/status.js';
 
+const MIN_SAMPLE_SIZE_FOR_SIGNAL_FAILURE_ALERT = 20;
+
 /**
  * 신호 생성 실패율 체크
  *
@@ -38,6 +40,10 @@ export async function checkSignalFailures(): Promise<AlertEvent[]> {
 
   if (totalAiAnalysis === 0) {
     return events; // AI 분석 없음 - 정상 (또는 비활성)
+  }
+
+  if (totalAiAnalysis < MIN_SAMPLE_SIZE_FOR_SIGNAL_FAILURE_ALERT) {
+    return events; // 표본이 너무 작으면 오탐 방지를 위해 알림 미발송
   }
 
   // 신호 생성 실패 통계 조회
