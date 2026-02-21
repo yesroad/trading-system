@@ -38,6 +38,8 @@ yarn lint
 - 최근 1시간 거래 실패율 CRIT (`trades`)
 - 최근 24시간 신호 생성 실패율 CRIT (`signal_failures`)
   - 단, 최근 24시간 `BUY/SELL` 표본이 20건 미만이면 오탐 방지를 위해 알림 미발송
+  - `validation_failed`만 존재하는 경우(장애성 실패 없음) 알림 미발송
+  - CRIT/WARN 판정은 `insufficient_technical_data + atr_missing + error` 비율 기준
 - 체크 함수 실행 실패/DB 조회 실패
 
 ## AI 예산 CRIT 알림

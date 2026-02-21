@@ -8,8 +8,9 @@ const MIN_SAMPLE_SIZE_FOR_SIGNAL_FAILURE_ALERT = 20;
 /**
  * 신호 생성 실패율 체크
  *
- * - 최근 24시간 내 신호 생성 실패율 30% 이상 → WARN
- * - 최근 24시간 내 신호 생성 실패율 50% 이상 → CRIT
+ * - 최근 24시간 내 장애성 실패율 30% 이상 → WARN
+ * - 최근 24시간 내 장애성 실패율 50% 이상 → CRIT
+ * - validation_failed만 있는 경우는 전략 필터링 성격으로 간주하여 알림 미발송
  */
 export async function checkSignalFailures(): Promise<AlertEvent[]> {
   const events: AlertEvent[] = [];
@@ -55,9 +56,16 @@ export async function checkSignalFailures(): Promise<AlertEvent[]> {
       return events; // 실패 없음 - 정상
     }
 
-    const failureRate = (totalFailures / totalAiAnalysis) * 100;
+    const hardFailureCount = byType.insufficient_technical_data + byType.atr_missing + byType.error;
 
-    if (failureRate >= 50) {
+    if (hardFailureCount === 0) {
+      return events; // validation_failed만 존재하면 오탐 방지를 위해 알림 미발송
+    }
+
+    const hardFailureRate = (hardFailureCount / totalAiAnalysis) * 100;
+    const totalFailureRate = (totalFailures / totalAiAnalysis) * 100;
+
+    if (hardFailureRate >= 50) {
       events.push({
         level: 'CRIT',
         category: 'signal_failure_rate_high',
@@ -65,7 +73,8 @@ export async function checkSignalFailures(): Promise<AlertEvent[]> {
         title: '신호 생성 실패율 높음 (심각)',
         message: [
           `최근 24시간 AI 분석: ${totalAiAnalysis}건`,
-          `신호 생성 실패: ${totalFailures}건 (${failureRate.toFixed(1)}%)`,
+          `장애성 실패: ${hardFailureCount}건 (${hardFailureRate.toFixed(1)}%)`,
+          `전체 실패: ${totalFailures}건 (${totalFailureRate.toFixed(1)}%)`,
           ``,
           `실패 유형별:`,
           `- 검증 실패: ${byType.validation_failed}건`,
@@ -77,7 +86,7 @@ export async function checkSignalFailures(): Promise<AlertEvent[]> {
         ].join('\n'),
         at: nowIso(),
       });
-    } else if (failureRate >= 30) {
+    } else if (hardFailureRate >= 30) {
       events.push({
         level: 'WARN',
         category: 'signal_failure_rate_high',
@@ -85,7 +94,8 @@ export async function checkSignalFailures(): Promise<AlertEvent[]> {
         title: '신호 생성 실패율 높음',
         message: [
           `최근 24시간 AI 분석: ${totalAiAnalysis}건`,
-          `신호 생성 실패: ${totalFailures}건 (${failureRate.toFixed(1)}%)`,
+          `장애성 실패: ${hardFailureCount}건 (${hardFailureRate.toFixed(1)}%)`,
+          `전체 실패: ${totalFailures}건 (${totalFailureRate.toFixed(1)}%)`,
           ``,
           `실패 유형별:`,
           `- 검증 실패: ${byType.validation_failed}건`,
