@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeUtcIso, toIsoString, type Nullable } from '@workspace/shared-utils';
 import { envBooleanServer, envServer } from '@/lib/env.server';
+import { requireApiUser } from '@/lib/auth/require-api-user';
 import type {
   MarketHealth,
   MarketCode,
@@ -125,7 +126,8 @@ function asBigOrZero(value: number | string | null | undefined): Big {
   if (value === null || value === undefined) return new Big(0);
   try {
     return new Big(value);
-  } catch {
+  } catch (error: unknown) {
+    void error;
     return new Big(0);
   }
 }
@@ -435,10 +437,7 @@ function isOutsideTradingWindow(nowUtc: DateTime, market: MarketCode, runMode: s
   return minute < 9 * 60 + 30 || minute > 16 * 60;
 }
 
-function getSessionStatus(
-  nowUtc: DateTime,
-  market: MarketCode,
-): 'MARKET' | 'SKIPPED' {
+function getSessionStatus(nowUtc: DateTime, market: MarketCode): 'MARKET' | 'SKIPPED' {
   if (market === 'CRYPTO') return 'MARKET';
 
   if (market === 'KR') {
@@ -505,7 +504,9 @@ async function fetchLatestAccountCashByMarket(
   return out;
 }
 
-async function fetchWorkerRows(client: ReturnType<typeof createClient>): Promise<DbWorkerStatusRow[]> {
+async function fetchWorkerRows(
+  client: ReturnType<typeof createClient>,
+): Promise<DbWorkerStatusRow[]> {
   const withRunMode = await client
     .from('worker_status')
     .select('service,state,run_mode,last_event_at')
@@ -528,11 +529,13 @@ async function fetchWorkerRows(client: ReturnType<typeof createClient>): Promise
     throw new Error(`worker_status 조회 실패: ${withoutRunMode.error.message}`);
   }
 
-  return ((withoutRunMode.data ?? []) as Array<{
-    service: string | null;
-    state: string | null;
-    last_event_at: string | null;
-  }>).map((row) => ({
+  return (
+    (withoutRunMode.data ?? []) as Array<{
+      service: string | null;
+      state: string | null;
+      last_event_at: string | null;
+    }>
+  ).map((row) => ({
     ...row,
     run_mode: null,
   }));
@@ -611,12 +614,12 @@ function buildMarketHealth(rows: DbWorkerStatusRow[]): Record<MarketCode, Market
       reason: isStoppedState
         ? '중지됨(사용 안함)'
         : healthy
-        ? isOutsideHours
-          ? `장외(${normalizeRunMode(runMode)})`
-          : '정상'
-        : !hasHealthyState
-          ? `state=${state ?? 'unknown'}`
-          : `최근 이벤트 지연(>${HEALTH_STALE_MINUTES}m)`,
+          ? isOutsideHours
+            ? `장외(${normalizeRunMode(runMode)})`
+            : '정상'
+          : !hasHealthyState
+            ? `state=${state ?? 'unknown'}`
+            : `최근 이벤트 지연(>${HEALTH_STALE_MINUTES}m)`,
     };
   });
 
@@ -624,6 +627,9 @@ function buildMarketHealth(rows: DbWorkerStatusRow[]): Record<MarketCode, Market
 }
 
 export async function GET(req: Request) {
+  const auth = await requireApiUser();
+  if (auth instanceof NextResponse) return auth;
+
   const force = new URL(req.url).searchParams.get('force') === '1';
   const nowMs = DateTime.utc().toMillis();
 

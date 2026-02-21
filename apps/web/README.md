@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Web Dashboard
 
-## Getting Started
+Next.js(App Router) 기반 트레이딩 모니터 대시보드입니다.
 
-First, run the development server:
+## 실행
 
 ```bash
-npm run dev
-# or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
+yarn build
+yarn lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 인증 구조
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- 로그인: `/login` (Google OAuth)
+- 콜백: `/auth/callback`
+- 보호 페이지: `/dashboard/*`
+- 보호 API: `/api/snapshot`, `/api/trade-history`, `/api/trading-signals`, `/api/risk-events`
+- 허용 이메일 화이트리스트: `ALLOWED_EMAILS`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 필수 환경변수
 
-## Learn More
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_APP_URL=
+ALLOWED_EMAILS=me@gmail.com,other@gmail.com
 
-To learn more about Next.js, take a look at the following resources:
+# 기존 대시보드 데이터 조회용 서버 키
+SUPABASE_URL=
+SUPABASE_KEY=
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Supabase 설정
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Supabase Dashboard > Authentication > Providers > Google 활성화
+2. Redirect URL 등록
+3. 로컬: `http://localhost:3000/auth/callback`
+4. 프로덕션: `https://<your-domain>/auth/callback`
 
-## Deploy on Vercel
+## Vercel 배포 주의사항
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `NEXT_PUBLIC_APP_URL`은 배포 도메인과 정확히 일치해야 합니다.
+- Preview/Production 환경별로 Redirect URL과 env를 분리 관리하세요.
+- 서비스 롤 키(`SUPABASE_KEY`)는 브라우저 노출 금지입니다.
