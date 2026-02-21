@@ -1,5 +1,6 @@
 import { getSupabase } from '@workspace/db-client';
 import { nowIso } from '@workspace/shared-utils';
+import { DateTime } from 'luxon';
 import type { AlertEvent } from '../types/status.js';
 
 /**
@@ -12,7 +13,8 @@ export async function checkTrades(): Promise<AlertEvent[]> {
   const events: AlertEvent[] = [];
   const supabase = getSupabase();
 
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const oneHourAgo = DateTime.now().minus({ hours: 1 }).toUTC().toISO();
+  if (!oneHourAgo) return events;
 
   // 최근 1시간 내 거래 조회
   const { data: recentTrades, error } = await supabase

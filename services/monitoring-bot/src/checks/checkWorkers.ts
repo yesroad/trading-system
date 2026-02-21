@@ -34,7 +34,9 @@ function isSkippedState(state: string): boolean {
   return state.trim().toUpperCase() === 'SKIPPED';
 }
 
-function normalizeRunMode(raw: string | null | undefined): 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK' {
+function normalizeRunMode(
+  raw: string | null | undefined,
+): 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK' {
   const normalized = String(raw ?? '')
     .trim()
     .toUpperCase();

@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js';
 import { nowIso } from '@workspace/shared-utils';
+import { DateTime } from 'luxon';
 
 export async function fetchRecentIngestionRuns(limit: number) {
   const { data, error } = await supabase
@@ -73,6 +74,267 @@ export async function fetchLatestIngestionSuccessByJobs(jobs: string[]) {
   return out;
 }
 
+export type SymbolCatalogRow = {
+  market: string;
+  symbol: string;
+  name_ko: string | null;
+  name_en: string | null;
+};
+
+export async function fetchSymbolCatalogRows(
+  pairs: Array<{ market: string; symbol: string }>,
+): Promise<SymbolCatalogRow[]> {
+  if (pairs.length === 0) return [];
+
+  const marketSet = new Set<string>();
+  const symbolSet = new Set<string>();
+
+  for (const pair of pairs) {
+    const market = String(pair.market ?? '')
+      .trim()
+      .toUpperCase();
+    const symbol = String(pair.symbol ?? '').trim();
+    if (!market || !symbol) continue;
+
+    marketSet.add(market);
+    symbolSet.add(symbol);
+
+    // 접두어가 섞인 데이터를 대비한 보조 키
+    if (market === 'KRX') {
+      if (symbol.startsWith('KRX:')) symbolSet.add(symbol.slice(4));
+      else symbolSet.add(`KRX:${symbol}`);
+    }
+    if (market === 'US') {
+      if (symbol.startsWith('US:')) symbolSet.add(symbol.slice(3));
+      else symbolSet.add(`US:${symbol}`);
+    }
+  }
+
+  const markets = [...marketSet];
+  const symbols = [...symbolSet];
+  if (markets.length === 0 || symbols.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('symbol_catalog')
+    .select('market,symbol,name_ko,name_en')
+    .in('market', markets)
+    .in('symbol', symbols);
+
+  if (error) throw new Error(`symbol_catalog 조회 실패: ${error.message}`);
+  return (data ?? []) as SymbolCatalogRow[];
+}
+
+export type TradeRow = {
+  id: string;
+  symbol: string;
+  market: string;
+  side: string;
+  status: string;
+  qty: string | number | null;
+  price: string | number | null;
+  executed_at: string | null;
+  created_at: string;
+  fee_amount?: string | number | null;
+  tax_amount?: string | number | null;
+  metadata?: unknown;
+};
+
+export async function fetchTradesInRange(params: {
+  fromIso: string;
+  toIso: string;
+  status?: string;
+}): Promise<TradeRow[]> {
+  let query = supabase
+    .from('trades')
+    .select(
+      'id,symbol,market,side,status,qty,price,executed_at,created_at,fee_amount,tax_amount,metadata',
+    )
+    .gte('created_at', params.fromIso)
+    .lte('created_at', params.toIso)
+    .order('created_at', { ascending: true });
+
+  if (params.status) {
+    query = query.eq('status', params.status);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(`trades 조회 실패: ${error.message}`);
+  return (data ?? []) as TradeRow[];
+}
+
+export async function fetchSignalCountsInRange(params: {
+  fromIso: string;
+  toIso: string;
+}): Promise<{ buySellCount: number; totalCount: number }> {
+  const [{ count: totalCount, error: totalError }, { count: buySellCount, error: buySellError }] =
+    await Promise.all([
+      supabase
+        .from('trading_signals')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', params.fromIso)
+        .lte('created_at', params.toIso),
+      supabase
+        .from('trading_signals')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', params.fromIso)
+        .lte('created_at', params.toIso)
+        .in('signal_type', ['BUY', 'SELL']),
+    ]);
+
+  if (totalError) throw new Error(`trading_signals(total) 조회 실패: ${totalError.message}`);
+  if (buySellError) throw new Error(`trading_signals(BUY/SELL) 조회 실패: ${buySellError.message}`);
+
+  return {
+    totalCount: totalCount ?? 0,
+    buySellCount: buySellCount ?? 0,
+  };
+}
+
+export type AceOutcomeRow = {
+  symbol: string;
+  market: string;
+  updated_at: string;
+  outcome: unknown;
+};
+
+export async function fetchAceOutcomesInRange(params: {
+  fromIso: string;
+  toIso: string;
+}): Promise<AceOutcomeRow[]> {
+  const { data, error } = await supabase
+    .from('ace_logs')
+    .select('symbol,market,updated_at,outcome')
+    .not('outcome', 'is', null)
+    .gte('updated_at', params.fromIso)
+    .lte('updated_at', params.toIso)
+    .order('updated_at', { ascending: true });
+
+  if (error) throw new Error(`ace_logs(outcome) 조회 실패: ${error.message}`);
+  return (data ?? []) as AceOutcomeRow[];
+}
+
+export type SignalFailureReasonRow = {
+  failure_type: string;
+  failure_reason: string;
+};
+
+export async function fetchSignalFailureReasonsInRange(params: {
+  fromIso: string;
+  toIso: string;
+}): Promise<SignalFailureReasonRow[]> {
+  const { data, error } = await supabase
+    .from('signal_generation_failures')
+    .select('failure_type,failure_reason')
+    .gte('created_at', params.fromIso)
+    .lte('created_at', params.toIso)
+    .order('created_at', { ascending: false })
+    .limit(300);
+
+  if (error) throw new Error(`signal_generation_failures 조회 실패: ${error.message}`);
+  return (data ?? []) as SignalFailureReasonRow[];
+}
+
+export async function fetchAiDecisionCountsInRange(params: {
+  fromIso: string;
+  toIso: string;
+}): Promise<{ buySellCount: number; totalCount: number }> {
+  const { data, error } = await supabase
+    .from('ai_analysis_results')
+    .select('decision')
+    .gte('created_at', params.fromIso)
+    .lte('created_at', params.toIso);
+
+  if (error) throw new Error(`ai_analysis_results 조회 실패: ${error.message}`);
+
+  const rows = Array.isArray(data) ? data : [];
+  let buySell = 0;
+  for (const row of rows) {
+    const decision = String((row as { decision?: unknown }).decision ?? '')
+      .trim()
+      .toUpperCase();
+    if (decision === 'BUY' || decision === 'SELL') buySell += 1;
+  }
+
+  return {
+    totalCount: rows.length,
+    buySellCount: buySell,
+  };
+}
+
+export async function fetchSystemGuardTradingEnabled(): Promise<boolean | null> {
+  const { data, error } = await supabase
+    .from('system_guard')
+    .select('trading_enabled')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (error) throw new Error(`system_guard 조회 실패: ${error.message}`);
+  if (!data) return null;
+  return (data as { trading_enabled?: unknown }).trading_enabled === true;
+}
+
+export type WorkerStatusSummary = {
+  service: string;
+  state: string;
+  run_mode: string | null;
+  last_event_at: string | null;
+  last_success_at: string | null;
+};
+
+export async function fetchWorkerStatusByService(
+  service: string,
+): Promise<WorkerStatusSummary | null> {
+  const { data, error } = await supabase
+    .from('worker_status')
+    .select('service,state,run_mode,last_event_at,last_success_at')
+    .eq('service', service)
+    .maybeSingle();
+
+  if (error) throw new Error(`worker_status(${service}) 조회 실패: ${error.message}`);
+  return (data ?? null) as WorkerStatusSummary | null;
+}
+
+export async function fetchCircuitBreakerCountInRange(params: {
+  fromIso: string;
+  toIso: string;
+}): Promise<number> {
+  const { count, error } = await supabase
+    .from('risk_events')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', params.fromIso)
+    .lte('created_at', params.toIso)
+    .in('event_type', ['circuit_breaker', 'circuit_breaker_triggered']);
+
+  if (error) throw new Error(`risk_events 조회 실패: ${error.message}`);
+  return count ?? 0;
+}
+
+export function buildPreviousKstDayWindow(now: DateTime = DateTime.now()): {
+  fromIso: string;
+  toIso: string;
+  dateLabel: string;
+  rangeLabel: string;
+  dayIsoDate: string;
+} {
+  const kst = now.setZone('Asia/Seoul');
+  const dayStart = kst.minus({ days: 1 }).startOf('day');
+  const dayEnd = dayStart.endOf('day');
+
+  const fromIso = dayStart.toUTC().toISO();
+  const toIso = dayEnd.toUTC().toISO();
+  if (!fromIso || !toIso) {
+    throw new Error('전일 KST 범위 계산 실패');
+  }
+
+  return {
+    fromIso,
+    toIso,
+    dateLabel: dayStart.toFormat('yy.MM.dd'),
+    rangeLabel: `${dayStart.toFormat('yy.MM.dd HH:mm')} ~ ${dayEnd.toFormat('yy.MM.dd HH:mm')} (KST)`,
+    dayIsoDate: dayStart.toFormat('yyyy-MM-dd'),
+  };
+}
+
 export type NotificationEventRow = {
   id: number;
   source_service: string;
@@ -86,7 +348,9 @@ export type NotificationEventRow = {
   created_at: string;
 };
 
-export async function fetchPendingNotificationEvents(limit: number): Promise<NotificationEventRow[]> {
+export async function fetchPendingNotificationEvents(
+  limit: number,
+): Promise<NotificationEventRow[]> {
   const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)));
 
   const { data, error } = await supabase

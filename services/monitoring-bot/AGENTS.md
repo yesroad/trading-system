@@ -44,8 +44,9 @@ check-types: yarn check-types
 ## trading_signals 적체 CRIT 조건
 - `consumed_at IS NULL` 신호가 60분 이상 적체
 - `system_guard.trading_enabled=true`
-- `LOOP_MODE=true`
+- `trade-executor` 최근 동작 기록 존재
 - 신호의 시장이 `EXECUTE_MARKETS`에 포함
+- 신호의 시장이 장중 상태
 
 
 ## React/UI 스킬 적용 범위

@@ -61,6 +61,9 @@ async function getMonthlyTotalCost(): Promise<number> {
 
 export async function checkAiBudget(): Promise<AlertEvent[]> {
   const events: AlertEvent[] = [];
+  const nowKst = DateTime.now().setZone('Asia/Seoul');
+  const nowKstLabel = nowKst.toFormat('yy.MM.dd HH:mm');
+  const dateKstLabel = nowKst.toFormat('yy.MM.dd');
 
   const [hourlyCalls, dailyCalls, monthlyCost] = await Promise.all([
     estimateCurrentHourCallCount(),
@@ -74,7 +77,10 @@ export async function checkAiBudget(): Promise<AlertEvent[]> {
       category: 'ai_budget_hourly_limit',
       market: 'GLOBAL',
       title: 'AI 시간 한도 초과',
-      message: `현재 사용(추정): ${hourlyCalls} / ${env.AI_HOURLY_LIMIT}`,
+      message: [
+        `현재 사용: ${hourlyCalls} / ${env.AI_HOURLY_LIMIT}`,
+        `시간: ${nowKstLabel} (KST)`,
+      ].join('\n'),
       at: nowIso(),
     });
   }
@@ -85,7 +91,9 @@ export async function checkAiBudget(): Promise<AlertEvent[]> {
       category: 'ai_budget_daily_limit',
       market: 'GLOBAL',
       title: 'AI 일일 한도 초과',
-      message: `현재 사용: ${dailyCalls} / ${env.AI_DAILY_LIMIT}`,
+      message: [`현재 사용: ${dailyCalls} / ${env.AI_DAILY_LIMIT}`, `날짜: ${dateKstLabel}`].join(
+        '\n',
+      ),
       at: nowIso(),
     });
   }
@@ -96,7 +104,10 @@ export async function checkAiBudget(): Promise<AlertEvent[]> {
       category: 'ai_budget_monthly_limit',
       market: 'GLOBAL',
       title: 'AI 월 예산 초과',
-      message: `현재 사용: $${monthlyCost.toFixed(4)} / $${env.AI_MONTHLY_BUDGET_USD.toFixed(2)}`,
+      message: [
+        `현재 사용: $${monthlyCost.toFixed(2)} / $${env.AI_MONTHLY_BUDGET_USD.toFixed(2)}`,
+        `시간: ${nowKstLabel} (KST)`,
+      ].join('\n'),
       at: nowIso(),
     });
   } else if (monthlyCost >= env.AI_MONTHLY_BUDGET_USD * MONTHLY_WARN_RATIO) {
@@ -105,7 +116,10 @@ export async function checkAiBudget(): Promise<AlertEvent[]> {
       category: 'ai_budget_monthly_80',
       market: 'GLOBAL',
       title: 'AI 월 예산 80% 도달',
-      message: `현재 사용: $${monthlyCost.toFixed(4)} / $${env.AI_MONTHLY_BUDGET_USD.toFixed(2)}`,
+      message: [
+        `현재 사용: $${monthlyCost.toFixed(2)} / $${env.AI_MONTHLY_BUDGET_USD.toFixed(2)}`,
+        `시간: ${nowKstLabel} (KST)`,
+      ].join('\n'),
       at: nowIso(),
     });
   }

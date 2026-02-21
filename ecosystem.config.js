@@ -177,7 +177,7 @@ module.exports = {
       cwd: './services/monitoring-bot',
       args: '--daily-report',
       instances: 1,
-      cron_restart: '0 0 * * *', // 매일 00:00 UTC = 09:00 KST
+      cron_restart: '10 0 * * *', // 매일 00:10 UTC = 09:10 KST
       autorestart: false,
       watch: false,
       max_memory_restart: '100M',
