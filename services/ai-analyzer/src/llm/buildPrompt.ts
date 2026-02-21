@@ -79,22 +79,47 @@ ${marketContextSection}
   - BUY_BIAS: 상승 방향 우세
   - SELL_BIAS: 하락 방향 우세
   - NEUTRAL: 방향성 혼조
-- technical.quality가 HIGH 또는 MEDIUM이고 trendBias가 BUY_BIAS/SELL_BIAS인 경우, HOLD보다 방향성(BUY/SELL)을 우선 검토하라.
-- technical이 없거나 quality가 LOW이면 보수적으로 판단하되, summary/reasons에 데이터 부족 사실을 명시하라.
+- technical.quality:
+  - HIGH: 신뢰도 높음
+  - MEDIUM: 신뢰도 중간
+  - LOW: 신뢰도 낮음
+- technical.quality가 HIGH 또는 MEDIUM이고 trendBias가 BUY_BIAS/SELL_BIAS이면 기본값은 해당 방향(BUY/SELL)이다.
+- 이 경우 HOLD는 예외 케이스로만 허용한다.
 
 [분석 지침]
 - 각 target(symbol)에 대해 "매매 개입 판단"을 내려라.
 - decision: BUY(매수/추가매수) | SELL(청산/비중축소) | HOLD(보유 유지) | SKIP(신규 진입 회피)
 - confidence: 0~1
 - summary: 해당 symbol에 대한 한 줄 요약
-- reasons: 짧은 근거 리스트(문장 짧게)
-- HOLD는 명확한 근거 부족, 신호 불일치, 하방 리스크 우세일 때만 선택하라.
-- HOLD는 "명확한 근거 부족 + 방향성 부재 + 리스크 우세"가 동시에 충족될 때만 선택하라.
-- HOLD의 confidence는 최대 0.65로 제한하라. 0.66 이상 확신이면 BUY 또는 SELL로 방향을 제시하라.
-- 상승 모멘텀과 거래량 증가가 동시에 확인되고, 손절 기준이 명확하여 기대수익/리스크 비율이 1.5 이상(산출 가능한 경우)이면 BUY를 적극 고려하라.
-- 하락 모멘텀과 거래량 증가가 동시에 확인되고, 반등 근거가 약하면 SELL을 적극 고려하라.
-- technical.trendBias가 BUY_BIAS인데도 HOLD를 선택하면 reasons에 "왜 방향 결정을 보류했는지"를 구체적으로 작성하라.
-- technical.trendBias가 SELL_BIAS인데도 HOLD를 선택하면 reasons에 "왜 방향 결정을 보류했는지"를 구체적으로 작성하라.
+- reasons: 짧은 근거 리스트(문장 짧게, 최소 2개)
+
+[R/R 및 방향성 규칙]
+- BUY/SELL은 손절 기준이 명확하고 기대수익/리스크 비율(R/R)이 1.5 이상일 때만 선택하라.
+- R/R 1.5 미만 또는 손절 기준 불명확이면 BUY/SELL 금지, HOLD 또는 SKIP으로 처리하라.
+- 상승 모멘텀 + 거래량 증가가 동시 확인되면 BUY를 적극 고려하라.
+- 하락 모멘텀 + 거래량 증가가 동시 확인되면 SELL을 적극 고려하라.
+- 명확한 근거가 있으면 HOLD를 남발하지 말고 BUY/SELL로 방향을 제시하라.
+
+[HOLD 제한 규칙]
+- HOLD는 "명확한 근거 부족 / 신호 충돌 / 리스크 과다 / 엣지 부족"일 때만 선택하라.
+- technical.quality가 HIGH인데 HOLD인 경우는 매우 예외적이어야 한다.
+- technical.trendBias가 BUY_BIAS 또는 SELL_BIAS인데 HOLD를 선택하면,
+  reasons에 "왜 방향 결정을 보류했는지"를 구체적으로 작성하라.
+- technical이 없거나 quality가 LOW면 보수적으로 HOLD 가능하지만,
+  reasons에 부족한 데이터 항목을 명시하라.
+
+[reasons 태그 규칙]
+- decision이 BUY 또는 SELL이면 reasons에 아래 태그를 반드시 포함하라:
+  - RR_POLICY:PASS(>=1.5)
+  - STOP_BASIS:<손절 근거>
+  - TP_BASIS:<익절 근거>
+- decision이 HOLD면 reasons 첫 항목을 반드시 아래 중 하나로 시작하라:
+  - HOLD_REASON:INSUFFICIENT_DATA
+  - HOLD_REASON:CONFLICTING_SIGNALS
+  - HOLD_REASON:RISK_TOO_HIGH
+  - HOLD_REASON:NO_EDGE
+- decision이 SKIP이면 reasons 첫 항목은 반드시 SKIP_REASON:<사유> 형식을 사용하라.
+
 - 명확한 근거가 존재할 경우 과도하게 보수적으로 HOLD를 선택하지 말고 BUY 또는 SELL로 방향성을 제시하라.
 - decision은 반드시 BUY/SELL/HOLD/SKIP 중 하나의 대문자만 사용한다.
 - ALLOW/CAUTION/BLOCK 같은 값은 절대 사용하지 않는다.

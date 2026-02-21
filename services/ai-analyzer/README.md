@@ -89,7 +89,17 @@ ai-analyzer는 **계속 떠있는 데몬이 아님**.
 - 관련 env:
   - `AI_TECHNICAL_ENRICH_LIMIT` (기본 12): 실행당 기술지표 보강 대상 종목 수
 
-## 6. 운영 팁
+## 6. 프롬프트 정합성(2026-02 추가)
+
+- 출력 스키마는 기존 런타임 파서와 동일하게 유지한다.
+  - `market`, `mode`, `results[]`, `decision`, `confidence`, `summary`, `reasons[]`
+- HOLD/리스크 사유는 필드 확장 대신 `reasons[]` 태그로 표현한다.
+  - 예: `HOLD_REASON:CONFLICTING_SIGNALS`
+  - 예: `RR_POLICY:PASS(>=1.5)`, `STOP_BASIS:...`, `TP_BASIS:...`
+- 목적:
+  - plan 기반 규칙을 적용하면서도 파서/저장 스키마 충돌을 방지한다.
+
+## 7. 운영 팁
 
 - 5시간 이상 신호가 0건이면 아래 순서로 점검한다.
   1. `ai_analysis_results`의 decision 분포(HOLD 편향 여부)
