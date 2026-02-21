@@ -33,6 +33,7 @@ export const env = {
   AI_CALL_INTERVAL_MINUTES: envNumber('AI_CALL_INTERVAL_MINUTES', 30) ?? 30,
   AI_GATE_TIME_TOLERANCE_MIN: envNumber('AI_GATE_TIME_TOLERANCE_MIN', 5) ?? 5,
   AI_GATE_TARGET_SCAN_LIMIT: envNumber('AI_GATE_TARGET_SCAN_LIMIT', 20) ?? 20,
+  AI_TECHNICAL_ENRICH_LIMIT: envNumber('AI_TECHNICAL_ENRICH_LIMIT', 12) ?? 12,
 
   /** ===============================
    * AI 예산 제어

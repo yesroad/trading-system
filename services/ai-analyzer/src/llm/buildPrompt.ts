@@ -73,6 +73,15 @@ ${marketContextSection}
 [분석 대상]
 - targets_json: ${safeJson(targets)}
 
+[타겟 기술지표 컨텍스트]
+- targets_json[*].technical 이 존재하면 해당 값을 우선 참고하라.
+- technical.trendBias:
+  - BUY_BIAS: 상승 방향 우세
+  - SELL_BIAS: 하락 방향 우세
+  - NEUTRAL: 방향성 혼조
+- technical.quality가 HIGH 또는 MEDIUM이고 trendBias가 BUY_BIAS/SELL_BIAS인 경우, HOLD보다 방향성(BUY/SELL)을 우선 검토하라.
+- technical이 없거나 quality가 LOW이면 보수적으로 판단하되, summary/reasons에 데이터 부족 사실을 명시하라.
+
 [분석 지침]
 - 각 target(symbol)에 대해 "매매 개입 판단"을 내려라.
 - decision: BUY(매수/추가매수) | SELL(청산/비중축소) | HOLD(보유 유지) | SKIP(신규 진입 회피)
@@ -84,6 +93,8 @@ ${marketContextSection}
 - HOLD의 confidence는 최대 0.65로 제한하라. 0.66 이상 확신이면 BUY 또는 SELL로 방향을 제시하라.
 - 상승 모멘텀과 거래량 증가가 동시에 확인되고, 손절 기준이 명확하여 기대수익/리스크 비율이 1.5 이상(산출 가능한 경우)이면 BUY를 적극 고려하라.
 - 하락 모멘텀과 거래량 증가가 동시에 확인되고, 반등 근거가 약하면 SELL을 적극 고려하라.
+- technical.trendBias가 BUY_BIAS인데도 HOLD를 선택하면 reasons에 "왜 방향 결정을 보류했는지"를 구체적으로 작성하라.
+- technical.trendBias가 SELL_BIAS인데도 HOLD를 선택하면 reasons에 "왜 방향 결정을 보류했는지"를 구체적으로 작성하라.
 - 명확한 근거가 존재할 경우 과도하게 보수적으로 HOLD를 선택하지 말고 BUY 또는 SELL로 방향성을 제시하라.
 - decision은 반드시 BUY/SELL/HOLD/SKIP 중 하나의 대문자만 사용한다.
 - ALLOW/CAUTION/BLOCK 같은 값은 절대 사용하지 않는다.

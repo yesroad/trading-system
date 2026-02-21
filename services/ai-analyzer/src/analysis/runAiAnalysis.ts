@@ -11,6 +11,7 @@ import { saveAiResults } from '../db/saveAiResults.js';
 import { shouldCallByMarketEventGate } from './market-event-gate.js';
 import { nowIso } from '@workspace/shared-utils';
 import { buildMarketContext } from '@workspace/db-client';
+import { enrichTargetsWithTechnical } from './enrichTargetsWithTechnical.js';
 
 export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<void> {
   console.log(`[AI] ${market} | ${mode} 시작`);
@@ -54,6 +55,15 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
     return;
   }
 
+  const technicalContext = await enrichTargetsWithTechnical({
+    market,
+    targets,
+    limit: env.AI_TECHNICAL_ENRICH_LIMIT,
+  });
+  console.log(
+    `[AI] 기술지표 컨텍스트 수집 완료 | market=${market} | enriched=${technicalContext.summary.enriched}/${technicalContext.summary.attempted} | failed=${technicalContext.summary.failed} | skippedByLimit=${technicalContext.summary.skippedByLimit}`,
+  );
+
   // ✅ 마켓 컨텍스트 수집 (경제 이벤트, 실적 발표 등)
   const marketContext = await buildMarketContext();
   console.log(
@@ -63,8 +73,12 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
   const prompt = buildPrompt({
     market,
     mode,
-    snapshot,
-    targets,
+    snapshot: {
+      ...snapshot,
+      technicalBySymbol: technicalContext.technicalBySymbol,
+      technicalContextSummary: technicalContext.summary,
+    },
+    targets: technicalContext.targets,
     nowIso: nowIso(),
     marketContext,
   });
