@@ -2,7 +2,11 @@ import '@workspace/shared-utils/env-loader';
 import Big from 'big.js';
 import { DateTime } from 'luxon';
 import { createLogger, sleep } from '@workspace/shared-utils';
-import { getUnconsumedSignals, markSignalConsumed } from '@workspace/db-client';
+import {
+  countUnconsumedSignals,
+  getUnconsumedSignals,
+  markSignalConsumed,
+} from '@workspace/db-client';
 
 import { EXECUTE_MARKETS, type Market } from './config/markets.js';
 import { TRADING_CONFIG } from './config/trading.js';
@@ -30,6 +34,7 @@ const clients = {
 } as const;
 
 const marketRunning = new Map<Market, boolean>();
+const EXECUTABLE_SIGNAL_TYPES = ['BUY', 'SELL'] as const;
 
 function nowMinuteKey(): string {
   const iso = DateTime.now().toUTC().startOf('minute').toISO();
@@ -40,6 +45,28 @@ function getMarketIntervalMs(market: Market): number {
   if (market === 'CRYPTO') return TRADING_CONFIG.loopIntervalCryptoSec * 1000;
   if (market === 'US') return TRADING_CONFIG.loopIntervalUsSec * 1000;
   return TRADING_CONFIG.loopIntervalKrSec * 1000;
+}
+
+type SignalDropReason =
+  | 'CONFIDENCE_FILTERED'
+  | 'INVALID_SIGNAL_TYPE'
+  | 'RISK_VALIDATION_FAILED'
+  | 'PROCESSING_ERROR';
+
+function logSignalDropped(params: {
+  market: Market;
+  reason: SignalDropReason;
+  signalId?: string;
+  symbol?: string;
+  detail?: string;
+}): void {
+  logger.warn('신호 탈락', {
+    market: params.market,
+    reason: params.reason,
+    signalId: params.signalId,
+    symbol: params.symbol,
+    detail: params.detail,
+  });
 }
 
 function isMarketOpen(market: Market): boolean {
@@ -147,13 +174,40 @@ async function runMarketLoop(market: Market): Promise<void> {
     // 3. ✨ 미소비 신호 조회 (NEW)
     // ========================================
     const minConfidence = TRADING_CONFIG.minConfidence;
+    const totalBuySellSignals = await countUnconsumedSignals({
+      market,
+      signalTypes: [...EXECUTABLE_SIGNAL_TYPES],
+    });
     const signals = await getUnconsumedSignals({
       market,
       minConfidence,
+      signalTypes: [...EXECUTABLE_SIGNAL_TYPES],
+    });
+    const confidenceFilteredCount = Math.max(0, totalBuySellSignals - signals.length);
+
+    logger.info('신호 게이트 결과', {
+      market,
+      signalTypes: [...EXECUTABLE_SIGNAL_TYPES],
+      minConfidence,
+      totalBuySellSignals,
+      passedSignals: signals.length,
+      confidenceFilteredCount,
     });
 
+    if (confidenceFilteredCount > 0) {
+      logSignalDropped({
+        market,
+        reason: 'CONFIDENCE_FILTERED',
+        detail: `minConfidence=${minConfidence}, filtered=${confidenceFilteredCount}`,
+      });
+    }
+
     if (signals.length === 0) {
-      logger.info('미소비 신호 없음', { market, minConfidence });
+      logger.info('실행 가능한 미소비 신호 없음', {
+        market,
+        minConfidence,
+        signalTypes: [...EXECUTABLE_SIGNAL_TYPES],
+      });
       return;
     }
 
@@ -171,6 +225,19 @@ async function runMarketLoop(market: Market): Promise<void> {
 
     for (const signal of signals) {
       try {
+        if (signal.signal_type !== 'BUY' && signal.signal_type !== 'SELL') {
+          logSignalDropped({
+            market,
+            reason: 'INVALID_SIGNAL_TYPE',
+            signalId: signal.id,
+            symbol: signal.symbol,
+            detail: `signal_type=${signal.signal_type}`,
+          });
+          rejectedCount++;
+          await markSignalConsumed(signal.id);
+          continue;
+        }
+
         logger.info('신호 처리 시작', {
           signalId: signal.id,
           symbol: signal.symbol,
@@ -189,10 +256,12 @@ async function runMarketLoop(market: Market): Promise<void> {
         });
 
         if (!riskValidation.approved) {
-          logger.warn('리스크 검증 실패 - 신호 거부', {
+          logSignalDropped({
+            market,
+            reason: 'RISK_VALIDATION_FAILED',
             signalId: signal.id,
             symbol: signal.symbol,
-            violations: riskValidation.violations,
+            detail: riskValidation.violations.join(' | '),
           });
 
           rejectedCount++;
@@ -264,6 +333,14 @@ async function runMarketLoop(market: Market): Promise<void> {
           aceLogId,
         });
       } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        logSignalDropped({
+          market,
+          reason: 'PROCESSING_ERROR',
+          signalId: signal.id,
+          symbol: signal.symbol,
+          detail,
+        });
         logger.error('신호 처리 중 에러', {
           signalId: signal.id,
           symbol: signal.symbol,

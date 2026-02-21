@@ -35,7 +35,7 @@ monitoring-daily-report (1일 1회) → Telegram
 | `upbit-collector`         | BTC 시세 수집      | 24시간 루프    |
 | `yf-collector`            | SPY 시세 수집      | 루프 (US 장중) |
 | `trade-executor`          | 신호 감지 → 실주문 | 24시간 루프    |
-| `portfolio-signal`        | 매매 신호 생성     | cron 1일 1회   |
+| `portfolio-signal`        | 매매 신호 생성     | cron 30분      |
 | `monitoring-bot`          | 상태 알림          | cron 10분 간격 |
 | `monitoring-daily-report` | 일일 요약          | cron 1일 1회   |
 
