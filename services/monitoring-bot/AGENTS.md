@@ -30,7 +30,9 @@ check-types: yarn check-types
 
 ## AI 예산 알림 규칙
 - `AI_HOURLY_LIMIT` 도달 시 `ai_budget_hourly_limit`(CRIT)
-- `AI_DAILY_LIMIT` 도달 시 `ai_budget_daily_limit`(CRIT)
+- 시장별 일 한도(`AI_DAILY_LIMIT_CRYPTO`, `AI_DAILY_LIMIT_KRX`, `AI_DAILY_LIMIT_US`) 도달 시 `ai_budget_daily_limit`(CRIT)
+- `AI_DAILY_LIMIT`는 시장별 키 미지정 시 fallback(공통 기준값)
+- 일 한도 알림은 도달한 시장 단위로 개별 전송
 - 월 비용이 `AI_MONTHLY_BUDGET_USD`의 80% 이상이면 `ai_budget_monthly_80`(CRIT)
 - 월 비용이 `AI_MONTHLY_BUDGET_USD` 이상이면 `ai_budget_monthly_limit`(CRIT)
 
