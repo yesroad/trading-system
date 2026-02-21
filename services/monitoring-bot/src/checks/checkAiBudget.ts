@@ -1,4 +1,4 @@
-import { getDailyCallCount, getMonthlyAICost, getSupabase } from '@workspace/db-client';
+import { getMonthlyAICost, getSupabase } from '@workspace/db-client';
 import { createBackoff, createLogger, nowIso, sleep, toIsoString } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 import { env } from '../config/env.js';
@@ -8,7 +8,6 @@ const AI_MARKETS = ['KRX', 'US', 'CRYPTO'] as const;
 const MONTHLY_WARN_RATIO = 0.8;
 const logger = createLogger('monitoring-bot:check-ai-budget');
 type AIMarket = (typeof AI_MARKETS)[number];
-type BudgetAlertMarket = Exclude<AlertEvent['market'], 'GLOBAL'>;
 
 function normalizeAiMarket(raw: unknown): AIMarket | null {
   const value = String(raw ?? '')
@@ -29,31 +28,8 @@ function emptyMarketCounts(): Record<AIMarket, number> {
   };
 }
 
-function getDailyLimitByMarket(market: AIMarket): number {
-  if (market === 'CRYPTO') return env.AI_DAILY_LIMIT_CRYPTO;
-  if (market === 'KRX') return env.AI_DAILY_LIMIT_KRX;
-  return env.AI_DAILY_LIMIT_US;
-}
-
-function isDailyLimitReached(market: AIMarket, count: number): boolean {
-  const limit = getDailyLimitByMarket(market);
-  if (limit <= 0) return count > 0;
-  return count >= limit;
-}
-
-function toAlertMarket(market: AIMarket): BudgetAlertMarket {
-  if (market === 'KRX') return 'KR';
-  return market;
-}
-
 function formatMarketCounts(counts: Record<AIMarket, number>): string {
   return AI_MARKETS.map((market) => `${market} ${counts[market]}`).join(' / ');
-}
-
-function formatDailyUsageWithLimit(counts: Record<AIMarket, number>): string {
-  return AI_MARKETS.map(
-    (market) => `${market} ${counts[market]}/${getDailyLimitByMarket(market)}`,
-  ).join(' / ');
 }
 
 async function estimateCurrentHourCallCount(nowUtc: DateTime): Promise<Record<AIMarket, number>> {
@@ -94,31 +70,8 @@ async function estimateCurrentHourCallCount(nowUtc: DateTime): Promise<Record<AI
   return counts;
 }
 
-async function getDailyCallCounts(date: string): Promise<Record<AIMarket, number>> {
-  const entries = await Promise.all(
-    AI_MARKETS.map(async (market) => {
-      const count = await getDailyCallCount({
-        date,
-        market,
-      });
-      return [market, count] as const;
-    }),
-  );
-
-  const counts = emptyMarketCounts();
-  for (const [market, count] of entries) {
-    counts[market] = count;
-  }
-
-  return counts;
-}
-
 function findExceededMarkets(counts: Record<AIMarket, number>, limit: number): AIMarket[] {
   return AI_MARKETS.filter((market) => counts[market] >= limit);
-}
-
-function findExceededDailyMarkets(counts: Record<AIMarket, number>): AIMarket[] {
-  return AI_MARKETS.filter((market) => isDailyLimitReached(market, counts[market]));
 }
 
 async function getMonthlyTotalCostWithRetry(params: {
@@ -152,12 +105,9 @@ export async function checkAiBudget(): Promise<AlertEvent[]> {
   const nowUtc = DateTime.now().toUTC();
   const nowKst = nowUtc.setZone('Asia/Seoul');
   const nowKstLabel = nowKst.toFormat('yy.MM.dd HH:mm');
-  const dateUtc = nowUtc.toISODate();
-  if (!dateUtc) return events;
 
-  const [hourlyCalls, dailyCalls, monthlyCost] = await Promise.all([
+  const [hourlyCalls, monthlyCost] = await Promise.all([
     estimateCurrentHourCallCount(nowUtc),
-    getDailyCallCounts(dateUtc),
     getMonthlyTotalCostWithRetry({
       year: nowUtc.year,
       month: nowUtc.month,
@@ -178,28 +128,6 @@ export async function checkAiBudget(): Promise<AlertEvent[]> {
       ].join('\n'),
       at: nowIso(),
     });
-  }
-
-  const dailyExceededMarkets = findExceededDailyMarkets(dailyCalls);
-  if (dailyExceededMarkets.length > 0) {
-    for (const market of dailyExceededMarkets) {
-      const limit = getDailyLimitByMarket(market);
-      const used = dailyCalls[market];
-
-      events.push({
-        level: 'CRIT',
-        category: 'ai_budget_daily_limit',
-        market: toAlertMarket(market),
-        title: `AI 일일 한도 도달 (${market})`,
-        message: [
-          `시장: ${market}`,
-          `현재 사용/한도: ${used}/${limit}`,
-          `전체 시장 사용/한도: ${formatDailyUsageWithLimit(dailyCalls)}`,
-          `시간: ${nowKstLabel} (KST)`,
-        ].join('\n'),
-        at: nowIso(),
-      });
-    }
   }
 
   if (monthlyCost >= env.AI_MONTHLY_BUDGET_USD) {

@@ -15,7 +15,7 @@ function parseAiRunMode(raw: string | undefined): AiRunMode {
   );
 }
 
-const AI_DAILY_LIMIT_BASE = envNumber('AI_DAILY_LIMIT', 2000) ?? 2000;
+const AI_DAILY_LIMIT_BASE = envNumber('AI_DAILY_LIMIT', 50) ?? 50;
 
 export const env = {
   /** ===============================
@@ -39,11 +39,11 @@ export const env = {
    * =============================== */
   AI_HOURLY_LIMIT: envNumber('AI_HOURLY_LIMIT', 120) ?? 120,
   AI_DAILY_LIMIT: AI_DAILY_LIMIT_BASE,
-  AI_DAILY_LIMIT_CRYPTO:
-    envNumber('AI_DAILY_LIMIT_CRYPTO', AI_DAILY_LIMIT_BASE) ?? AI_DAILY_LIMIT_BASE,
-  AI_DAILY_LIMIT_KRX: envNumber('AI_DAILY_LIMIT_KRX', AI_DAILY_LIMIT_BASE) ?? AI_DAILY_LIMIT_BASE,
-  AI_DAILY_LIMIT_US: envNumber('AI_DAILY_LIMIT_US', AI_DAILY_LIMIT_BASE) ?? AI_DAILY_LIMIT_BASE,
-  AI_MONTHLY_BUDGET_USD: envNumber('AI_MONTHLY_BUDGET_USD', 10) ?? 10,
+  AI_DAILY_LIMIT_CRYPTO: envNumber('AI_DAILY_LIMIT_CRYPTO', 20) ?? 20,
+  AI_DAILY_LIMIT_KRX: envNumber('AI_DAILY_LIMIT_KRX', 10) ?? 10,
+  AI_DAILY_LIMIT_US: envNumber('AI_DAILY_LIMIT_US', 0) ?? 0,
+  AI_MONTHLY_BUDGET_USD: envNumber('AI_MONTHLY_BUDGET_USD', 15) ?? 15,
+  AI_ESTIMATED_COST_PER_CALL_USD: envNumber('AI_ESTIMATED_COST_PER_CALL_USD', 0.0075) ?? 0.0075,
 
   /** ===============================
    * 시장별 호출 트리거

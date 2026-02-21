@@ -30,11 +30,10 @@ check-types: yarn check-types
 
 ## AI 예산 알림 규칙
 - `AI_HOURLY_LIMIT` 도달 시 `ai_budget_hourly_limit`(CRIT)
-- 시장별 일 한도(`AI_DAILY_LIMIT_CRYPTO`, `AI_DAILY_LIMIT_KRX`, `AI_DAILY_LIMIT_US`) 도달 시 `ai_budget_daily_limit`(CRIT)
-- `AI_DAILY_LIMIT`는 시장별 키 미지정 시 fallback(공통 기준값)
-- 일 한도 알림은 도달한 시장 단위로 개별 전송
 - 월 비용이 `AI_MONTHLY_BUDGET_USD`의 80% 이상이면 `ai_budget_monthly_80`(CRIT)
 - 월 비용이 `AI_MONTHLY_BUDGET_USD` 이상이면 `ai_budget_monthly_limit`(CRIT)
+- 일 한도 알림(`ai_budget_daily_limit`)은 사용하지 않는다(제거)
+- 일 한도 상태는 daily report에서 오토스케일 계산 결과와 종목별 AI 사용량으로 확인한다.
 
 ## notification_events 전송 필터
 - `level=ERROR`는 항상 Telegram 전송

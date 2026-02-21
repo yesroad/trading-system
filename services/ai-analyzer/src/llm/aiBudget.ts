@@ -2,6 +2,13 @@ import { Market } from '../config/markets.js';
 import type { MarketMode } from '../config/schedule.js';
 import { DateTime } from 'luxon';
 import { getDailyCallCount, getMonthlyAICost, recordAICall } from '@workspace/db-client';
+import {
+  AI_BUDGET_MARKETS,
+  buildAIDailyBudgetPolicy,
+  canUseDailyBudgetForMarket,
+  sumAIMarketUsage,
+  type AIBudgetMarket,
+} from '@workspace/shared-utils';
 import { env } from '../config/env.js';
 
 type BudgetState = {
@@ -25,10 +32,34 @@ function today() {
   return DateTime.now().toUTC().toISODate() ?? '';
 }
 
-function getDailyLimitForMarket(market: Market): number {
-  if (market === Market.CRYPTO) return env.AI_DAILY_LIMIT_CRYPTO;
-  if (market === Market.KRX) return env.AI_DAILY_LIMIT_KRX;
-  return env.AI_DAILY_LIMIT_US;
+function toBudgetMarket(market: Market): AIBudgetMarket {
+  if (market === Market.CRYPTO) return 'CRYPTO';
+  if (market === Market.KRX) return 'KRX';
+  return 'US';
+}
+
+function emptyDailyUsageByMarket(): Record<AIBudgetMarket, number> {
+  return {
+    CRYPTO: 0,
+    KRX: 0,
+    US: 0,
+  };
+}
+
+async function getDailyUsageByMarket(date: string): Promise<Record<AIBudgetMarket, number>> {
+  const entries = await Promise.all(
+    AI_BUDGET_MARKETS.map(async (market) => {
+      const count = await getDailyCallCount({ date, market });
+      return [market, count] as const;
+    }),
+  );
+
+  const usage = emptyDailyUsageByMarket();
+  for (const [market, count] of entries) {
+    usage[market] = count;
+  }
+
+  return usage;
 }
 
 /** 시장/모드별 쿨다운(ms) */
@@ -85,24 +116,50 @@ export async function canCallLLM(market: Market, mode: MarketMode): Promise<bool
 
   // 4. 일/월 제한 (DB 조회)
   try {
-    const dailyCount = await getDailyCallCount({ date: today(), market });
-    const dailyLimit = getDailyLimitForMarket(market);
-    if (dailyCount >= dailyLimit) {
-      console.log(
-        `[AI Budget] 일일 한도 도달 | market=${market} | count=${dailyCount}/${dailyLimit}`,
-      );
-      return false;
-    }
-
     const nowUtc = DateTime.now().toUTC();
-    const monthlyCost = await getMonthlyAICost({
-      year: nowUtc.year,
-      month: nowUtc.month,
-    });
+    const dateUtc = today();
+    const [dailyUsageByMarket, monthlyCost] = await Promise.all([
+      getDailyUsageByMarket(dateUtc),
+      getMonthlyAICost({
+        year: nowUtc.year,
+        month: nowUtc.month,
+      }),
+    ]);
 
     if (monthlyCost >= env.AI_MONTHLY_BUDGET_USD) {
       console.log(
         `[AI Budget] 월 예산 한도 도달 | cost=$${monthlyCost.toFixed(4)} / budget=$${env.AI_MONTHLY_BUDGET_USD.toFixed(2)}`,
+      );
+      return false;
+    }
+
+    const policy = buildAIDailyBudgetPolicy({
+      nowUtc,
+      monthlyBudgetUsd: env.AI_MONTHLY_BUDGET_USD,
+      monthlyUsedUsd: monthlyCost,
+      globalDailyLimit: env.AI_DAILY_LIMIT,
+      baseDailyLimitByMarket: {
+        CRYPTO: env.AI_DAILY_LIMIT_CRYPTO,
+        KRX: env.AI_DAILY_LIMIT_KRX,
+        US: env.AI_DAILY_LIMIT_US,
+      },
+      avgCostPerCallUsd: env.AI_ESTIMATED_COST_PER_CALL_USD,
+    });
+    const budgetMarket = toBudgetMarket(market);
+
+    if (
+      !canUseDailyBudgetForMarket({
+        policy,
+        usageByMarket: dailyUsageByMarket,
+        market: budgetMarket,
+      })
+    ) {
+      const marketUsed = dailyUsageByMarket[budgetMarket];
+      const marketLimit = policy.effectiveDailyLimitByMarket[budgetMarket];
+      const totalUsed = sumAIMarketUsage(dailyUsageByMarket);
+
+      console.log(
+        `[AI Budget] 일일 예산 도달 | market=${budgetMarket} | market=${marketUsed}/${marketLimit} | total=${totalUsed}/${policy.effectiveDailyCap} | sharedPool=${policy.sharedPool} | scaledDown=${policy.scaledDown}`,
       );
       return false;
     }
@@ -133,7 +190,8 @@ export async function recordLLMCall(market: Market, estimatedCostUsd = 0.0) {
     await recordAICall({
       date: today(),
       market,
-      estimatedCostUsd,
+      estimatedCostUsd:
+        estimatedCostUsd > 0 ? estimatedCostUsd : env.AI_ESTIMATED_COST_PER_CALL_USD,
     });
   } catch (error) {
     console.error('[AI Budget] DB 기록 실패', error);
