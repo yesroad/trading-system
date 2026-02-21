@@ -1,11 +1,21 @@
 import Big from 'big.js';
 import { DateTime } from 'luxon';
-import { createBackoff, createLogger, sleep, type Nullable } from '@workspace/shared-utils';
+import {
+  buildAIDailyBudgetPolicy,
+  createBackoff,
+  createLogger,
+  isAIMarketDailyLimitReached,
+  sleep,
+  sumAIMarketUsage,
+  type AIBudgetMarket,
+  type Nullable,
+} from '@workspace/shared-utils';
 import { getDailyCallCount, getMonthlyAICost } from '@workspace/db-client';
 import { env } from '../config/env.js';
 import {
   buildPreviousKstDayWindow,
   fetchAceOutcomesInRange,
+  fetchAiUsageBySymbolInRange,
   fetchAiDecisionCountsInRange,
   fetchCircuitBreakerCountInRange,
   fetchSignalCountsInRange,
@@ -14,6 +24,7 @@ import {
   fetchSystemGuardTradingEnabled,
   fetchTradesInRange,
   type AceOutcomeRow,
+  type AiUsageBySymbolRow,
   type SignalFailureReasonRow,
   type SymbolCatalogRow,
   type TradeRow,
@@ -33,20 +44,28 @@ type ParsedOutcome = {
 };
 type AIDailyUsage = {
   byMarket: Record<AIMarket, number>;
+  effectiveLimitByMarket: Record<AIMarket, number>;
   total: number;
+  effectiveDailyCap: number;
+  baseDailyTotal: number;
+  sharedPool: number;
+  scaledDown: boolean;
+  todayCallCap: number;
   reachedMarkets: AIMarket[];
 };
 
-function getDailyLimitByMarket(market: AIMarket): number {
-  if (market === 'CRYPTO') return env.AI_DAILY_LIMIT_CRYPTO;
-  if (market === 'KRX') return env.AI_DAILY_LIMIT_KRX;
-  return env.AI_DAILY_LIMIT_US;
+function toBudgetMarket(market: AIMarket): AIBudgetMarket {
+  if (market === 'CRYPTO') return 'CRYPTO';
+  if (market === 'KRX') return 'KRX';
+  return 'US';
 }
 
-function isDailyLimitReached(market: AIMarket, count: number): boolean {
-  const limit = getDailyLimitByMarket(market);
-  if (limit <= 0) return count > 0;
-  return count >= limit;
+function toBudgetUsage(usage: Record<AIMarket, number>): Record<AIBudgetMarket, number> {
+  return {
+    CRYPTO: usage.CRYPTO,
+    KRX: usage.KRX,
+    US: usage.US,
+  };
 }
 
 function createEmptyAIDailyUsage(): AIDailyUsage {
@@ -56,7 +75,17 @@ function createEmptyAIDailyUsage(): AIDailyUsage {
       KRX: 0,
       US: 0,
     },
+    effectiveLimitByMarket: {
+      CRYPTO: 0,
+      KRX: 0,
+      US: 0,
+    },
     total: 0,
+    effectiveDailyCap: 0,
+    baseDailyTotal: 0,
+    sharedPool: 0,
+    scaledDown: false,
+    todayCallCap: 0,
     reachedMarkets: [],
   };
 }
@@ -316,7 +345,7 @@ async function getMonthlyAICostWithRetry(params: { year: number; month: number }
   throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
-async function getDailyAIUsage(params: { date: string }): Promise<AIDailyUsage> {
+async function getDailyAICounts(params: { date: string }): Promise<Record<AIMarket, number>> {
   const entries = await Promise.all(
     AI_MARKETS.map(async (market) => {
       const count = await getDailyCallCount({
@@ -327,15 +356,54 @@ async function getDailyAIUsage(params: { date: string }): Promise<AIDailyUsage> 
     }),
   );
 
-  const usage = createEmptyAIDailyUsage();
+  const usage = createEmptyAIDailyUsage().byMarket;
 
   for (const [market, count] of entries) {
-    usage.byMarket[market] = count;
+    usage[market] = count;
   }
 
-  usage.total = AI_MARKETS.reduce((sum, market) => sum + usage.byMarket[market], 0);
+  return usage;
+}
+
+function buildDailyAIUsage(params: {
+  byMarket: Record<AIMarket, number>;
+  monthlyAiCost: number;
+  nowUtc: DateTime;
+}): AIDailyUsage {
+  const usage = createEmptyAIDailyUsage();
+  usage.byMarket = params.byMarket;
+  usage.total = sumAIMarketUsage(toBudgetUsage(params.byMarket));
+
+  const policy = buildAIDailyBudgetPolicy({
+    nowUtc: params.nowUtc,
+    monthlyBudgetUsd: env.AI_MONTHLY_BUDGET_USD,
+    monthlyUsedUsd: params.monthlyAiCost,
+    globalDailyLimit: env.AI_DAILY_LIMIT,
+    baseDailyLimitByMarket: {
+      CRYPTO: env.AI_DAILY_LIMIT_CRYPTO,
+      KRX: env.AI_DAILY_LIMIT_KRX,
+      US: env.AI_DAILY_LIMIT_US,
+    },
+    avgCostPerCallUsd: env.AI_ESTIMATED_COST_PER_CALL_USD,
+  });
+
+  usage.effectiveLimitByMarket = {
+    CRYPTO: policy.effectiveDailyLimitByMarket.CRYPTO,
+    KRX: policy.effectiveDailyLimitByMarket.KRX,
+    US: policy.effectiveDailyLimitByMarket.US,
+  };
+  usage.effectiveDailyCap = policy.effectiveDailyCap;
+  usage.baseDailyTotal = policy.baseDailyLimitTotal;
+  usage.sharedPool = policy.sharedPool;
+  usage.scaledDown = policy.scaledDown;
+  usage.todayCallCap = policy.todayCallCap;
+
   usage.reachedMarkets = AI_MARKETS.filter((market) =>
-    isDailyLimitReached(market, usage.byMarket[market]),
+    isAIMarketDailyLimitReached({
+      policy,
+      usageByMarket: toBudgetUsage(usage.byMarket),
+      market: toBudgetMarket(market),
+    }),
   );
 
   return usage;
@@ -357,8 +425,9 @@ export async function buildDailyReportText(): Promise<string> {
     circuitBreakerCount,
     signalFailures,
     aceOutcomeRows,
-    aiDailyUsage,
+    aiDailyCounts,
     monthlyAiCost,
+    aiUsageBySymbolRows,
   ] = await Promise.all([
     safeQuery(
       'trades',
@@ -382,16 +451,26 @@ export async function buildDailyReportText(): Promise<string> {
     ),
     safeQuery('ace_outcomes', () => fetchAceOutcomesInRange(window), [] as AceOutcomeRow[]),
     safeQuery(
-      'ai_daily_calls',
-      () => getDailyAIUsage({ date: reportUtcDate }),
-      createEmptyAIDailyUsage(),
+      'ai_daily_counts',
+      () => getDailyAICounts({ date: reportUtcDate }),
+      createEmptyAIDailyUsage().byMarket,
     ),
     safeQuery(
       'ai_monthly_cost',
       () => getMonthlyAICostWithRetry({ year: nowUtc.year, month: nowUtc.month }),
       0,
     ),
+    safeQuery(
+      'ai_symbol_usage',
+      () => fetchAiUsageBySymbolInRange(window),
+      [] as AiUsageBySymbolRow[],
+    ),
   ]);
+  const aiDailyUsage = buildDailyAIUsage({
+    byMarket: aiDailyCounts,
+    monthlyAiCost,
+    nowUtc,
+  });
 
   const byCurrency = new Map<Currency, Big>();
   let buyCount = 0;
@@ -422,6 +501,9 @@ export async function buildDailyReportText(): Promise<string> {
   }
   for (const outcome of parsedOutcomes) {
     symbolPairs.push({ market: outcome.market, symbol: outcome.symbol });
+  }
+  for (const usage of aiUsageBySymbolRows) {
+    symbolPairs.push({ market: usage.market, symbol: usage.symbol });
   }
 
   const symbolCatalogRows = await safeQuery(
@@ -486,15 +568,35 @@ export async function buildDailyReportText(): Promise<string> {
   lines.push('');
   lines.push('AI 사용:');
   const dailyUsageByMarket = AI_MARKETS.map(
-    (market) => `${market} ${aiDailyUsage.byMarket[market]}/${getDailyLimitByMarket(market)}`,
+    (market) =>
+      `${market} ${aiDailyUsage.byMarket[market]}/${aiDailyUsage.effectiveLimitByMarket[market]}`,
   );
   lines.push(`- 일 사용(UTC 집계, 시장별): ${dailyUsageByMarket.join(' / ')}`);
-  lines.push(`- 일 사용 총합(참고): ${aiDailyUsage.total} / ${env.AI_DAILY_LIMIT}`);
+  lines.push(
+    `- 일 사용 총합(UTC 집계): ${aiDailyUsage.total} / ${aiDailyUsage.effectiveDailyCap} (base ${aiDailyUsage.baseDailyTotal}, shared ${aiDailyUsage.sharedPool})`,
+  );
+  lines.push(
+    `- 일 예산 모드: ${aiDailyUsage.scaledDown ? '축소(비율)' : '기본+공유풀'} (today_cap=${aiDailyUsage.todayCallCap})`,
+  );
   const monthlyRatio =
     env.AI_MONTHLY_BUDGET_USD > 0 ? (monthlyAiCost / env.AI_MONTHLY_BUDGET_USD) * 100 : 0;
   lines.push(
     `- 월 사용(UTC 집계): $${monthlyAiCost.toFixed(2)} / $${env.AI_MONTHLY_BUDGET_USD.toFixed(2)} (${monthlyRatio.toFixed(0)}%)`,
   );
+
+  lines.push('- 종목별 AI 사용(UTC 집계, 상위 15):');
+  if (aiUsageBySymbolRows.length === 0) {
+    lines.push('  - 없음');
+  } else {
+    const maxRows = 15;
+    for (const row of aiUsageBySymbolRows.slice(0, maxRows)) {
+      const symbolLabel = resolveSymbolDisplay(symbolCatalogMap, row.market, row.symbol);
+      lines.push(`  - ${marketLabel(row.market)} | ${symbolLabel} | ${row.usageCount}회`);
+    }
+    if (aiUsageBySymbolRows.length > maxRows) {
+      lines.push(`  - 외 ${aiUsageBySymbolRows.length - maxRows}종목`);
+    }
+  }
 
   return lines.join('\n');
 }

@@ -10,7 +10,6 @@ export type AlertCategory =
   | 'ai_missing'
   | 'ai_stale'
   | 'ai_budget_hourly_limit'
-  | 'ai_budget_daily_limit'
   | 'ai_budget_monthly_80'
   | 'ai_budget_monthly_limit'
   | 'notification_event'

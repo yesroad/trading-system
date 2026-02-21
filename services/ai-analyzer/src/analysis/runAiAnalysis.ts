@@ -76,8 +76,7 @@ export async function runAiAnalysis(market: Market, mode: MarketMode): Promise<v
   // 저장(targets별 N건) + 호출 기록
   await saveAiResults(market, mode, result);
 
-  // 비용 추정: 평균 1500 tokens @ $0.005/1K tokens = $0.0075
-  const estimatedCostUsd = 0.0075;
+  const estimatedCostUsd = env.AI_ESTIMATED_COST_PER_CALL_USD;
   await recordLLMCall(market, estimatedCostUsd);
 
   console.log(`[AI] ${market} | ${mode} 완료 (${result.results.length}개 대상)`);

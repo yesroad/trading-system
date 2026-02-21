@@ -36,11 +36,18 @@ yarn lint
 
 ## AI 예산 CRIT 알림
 - 시간 한도 도달: `AI_HOURLY_LIMIT` (시장별 1시간 호출 수 기준)
-- 일 한도 도달: 시장별 `AI_DAILY_LIMIT_CRYPTO`, `AI_DAILY_LIMIT_KRX`, `AI_DAILY_LIMIT_US`
-- `AI_DAILY_LIMIT`는 시장별 키 미지정 시 fallback(공통 기준값)으로 사용
-- 일 한도 알림은 도달한 시장 단위로 `ai_budget_daily_limit` CRIT 전송
 - 월 예산 80% 도달: `AI_MONTHLY_BUDGET_USD * 0.8`
 - 월 예산 100% 도달: `AI_MONTHLY_BUDGET_USD`
+
+## AI 일 한도 운영
+- 일 한도 모니터링 알림(`ai_budget_daily_limit`)은 제거
+- 일 한도는 데일리 리포트에서 확인:
+  - 오토스케일 적용된 시장별 일 사용량/유효 한도
+  - 종목별 AI 사용량(상위 15)
+- 오토스케일 기준:
+  - `today_call_cap = floor((remaining_month_budget / remaining_days) / AI_ESTIMATED_COST_PER_CALL_USD)`
+  - `effective_daily_cap = min(AI_DAILY_LIMIT, today_call_cap)`
+  - 기본 시장 한도(`AI_DAILY_LIMIT_CRYPTO/KRX/US`) 합보다 클 때만 공유풀 사용
 
 ## 외부 outbox(`notification_events`) 정책
 - 외부 이벤트는 내부 CRIT 필터와 별도로 처리

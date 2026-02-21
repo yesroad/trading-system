@@ -313,9 +313,10 @@ FMP_API_KEY=your-fmp-api-key
 # Monitoring Bot
 TELEGRAM_BOT_TOKEN=your-telegram-token
 TELEGRAM_CHAT_ID=your-chat-id
-AI_MONTHLY_BUDGET_USD=10
-AI_DAILY_LIMIT=40              # 시장별 키 미지정 시 fallback(공통 기준값)
-AI_DAILY_LIMIT_CRYPTO=30
+AI_MONTHLY_BUDGET_USD=15
+AI_ESTIMATED_COST_PER_CALL_USD=0.0075
+AI_DAILY_LIMIT=50              # 글로벌 일 상한(오토스케일 cap 상한)
+AI_DAILY_LIMIT_CRYPTO=20       # 기본 시장별 배분
 AI_DAILY_LIMIT_KRX=10
 AI_DAILY_LIMIT_US=0
 AI_HOURLY_LIMIT=6

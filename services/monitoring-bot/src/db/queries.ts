@@ -277,6 +277,57 @@ export async function fetchAiDecisionCountsInRange(params: {
   };
 }
 
+export type AiUsageBySymbolRow = {
+  market: string;
+  symbol: string;
+  usageCount: number;
+};
+
+export async function fetchAiUsageBySymbolInRange(params: {
+  fromIso: string;
+  toIso: string;
+}): Promise<AiUsageBySymbolRow[]> {
+  const { data, error } = await supabase
+    .from('ai_analysis_results')
+    .select('market,symbol')
+    .gte('created_at', params.fromIso)
+    .lte('created_at', params.toIso);
+
+  if (error) throw new Error(`ai_analysis_results(종목별 사용량) 조회 실패: ${error.message}`);
+
+  const rows = Array.isArray(data) ? data : [];
+  const aggregated = new Map<string, AiUsageBySymbolRow>();
+
+  for (const row of rows) {
+    if (typeof row !== 'object' || row === null) continue;
+    const record = row as Record<string, unknown>;
+    const market = String(record.market ?? '')
+      .trim()
+      .toUpperCase();
+    const symbol = String(record.symbol ?? '').trim();
+    if (!market || !symbol) continue;
+
+    const key = `${market}:${symbol}`;
+    const found = aggregated.get(key);
+    if (found) {
+      found.usageCount += 1;
+      continue;
+    }
+
+    aggregated.set(key, {
+      market,
+      symbol,
+      usageCount: 1,
+    });
+  }
+
+  return [...aggregated.values()].sort((a, b) => {
+    if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
+    if (a.market !== b.market) return a.market.localeCompare(b.market);
+    return a.symbol.localeCompare(b.symbol);
+  });
+}
+
 export async function fetchSystemGuardTradingEnabled(): Promise<Nullable<boolean>> {
   const { data, error } = await supabase
     .from('system_guard')
