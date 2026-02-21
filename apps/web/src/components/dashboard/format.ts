@@ -2,9 +2,17 @@ import Big from 'big.js';
 import { DateTime } from 'luxon';
 import { normalizeUtcIso, type Nullable } from '@workspace/shared-utils';
 
+const DASHBOARD_TIME_ZONE = 'Asia/Seoul';
+const DASHBOARD_LOCALE = 'ko-KR';
+const KRW_FORMATTER = new Intl.NumberFormat(DASHBOARD_LOCALE, {
+  maximumFractionDigits: 0,
+});
+
 export function formatLocalDateTime(isoUtc: Nullable<string>): string {
   if (!isoUtc) return 'N/A';
-  const dt = DateTime.fromISO(normalizeUtcIso(isoUtc), { zone: 'utc' }).toLocal();
+  const dt = DateTime.fromISO(normalizeUtcIso(isoUtc), { zone: 'utc' }).setZone(
+    DASHBOARD_TIME_ZONE,
+  );
   if (!dt.isValid) return 'N/A';
   return dt.toFormat('yyyy-LL-dd HH:mm:ss');
 }
@@ -30,7 +38,7 @@ export function formatCurrency(value: Nullable<string>): string {
     const amount = new Big(value).round(0, 0);
     const numeric = Number(amount.toString());
     if (!Number.isFinite(numeric)) return 'N/A';
-    return `${numeric.toLocaleString()}원`;
+    return `${KRW_FORMATTER.format(numeric)}원`;
   } catch {
     return 'N/A';
   }
