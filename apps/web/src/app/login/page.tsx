@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { isAllowedEmail } from '@/lib/auth/allowed-emails';
-import { envOptionalServer, envServer } from '@/lib/env.server';
+import { envServer } from '@/lib/env.server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { LoginForm } from './login-form';
 
@@ -17,7 +17,7 @@ export default async function LoginPage() {
     redirect('/auth/logout?reason=forbidden');
   }
 
-  const appUrl = envOptionalServer('NEXT_PUBLIC_APP_URL') ?? null;
+  const appUrl = envServer('NEXT_PUBLIC_APP_URL');
   const supabaseUrl = envServer('NEXT_PUBLIC_SUPABASE_URL');
   const supabaseAnonKey = envServer('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 

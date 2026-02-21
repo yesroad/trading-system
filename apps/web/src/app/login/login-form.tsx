@@ -6,15 +6,13 @@ import { Button } from '@/components/ui/button';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface LoginFormProps {
-  appUrl: string | null;
+  appUrl: string;
   supabaseUrl: string;
   supabaseAnonKey: string;
 }
 
-function buildAppUrl(appUrl: string | null): string {
-  if (appUrl) return appUrl;
-  if (typeof window !== 'undefined') return window.location.origin;
-  return 'http://localhost:3000';
+function buildAppUrl(appUrl: string): string {
+  return appUrl.trim();
 }
 
 function normalizeNextPath(raw: string | null): string {
