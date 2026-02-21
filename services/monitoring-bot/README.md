@@ -14,6 +14,7 @@ yarn lint
 ## 실행 방식
 - PM2 기준 `monitoring-bot`는 `cron_restart: */10 * * * *`로 10분 주기 실행
 - `monitoring-daily-report`는 `--daily-report`로 일 1회 실행 (09:10 KST)
+- 내부 집계/저장은 UTC 기준, Telegram/리포트 표시는 KST 기준
 
 ## 내부 알림 정책
 - 내부 체크 결과는 `CRIT`만 Telegram 전송
@@ -34,8 +35,10 @@ yarn lint
 - 체크 함수 실행 실패/DB 조회 실패
 
 ## AI 예산 CRIT 알림
-- 시간 한도 도달: `AI_HOURLY_LIMIT`
-- 일 한도 도달: `AI_DAILY_LIMIT`
+- 시간 한도 도달: `AI_HOURLY_LIMIT` (시장별 1시간 호출 수 기준)
+- 일 한도 도달: 시장별 `AI_DAILY_LIMIT_CRYPTO`, `AI_DAILY_LIMIT_KRX`, `AI_DAILY_LIMIT_US`
+- `AI_DAILY_LIMIT`는 시장별 키 미지정 시 fallback(공통 기준값)으로 사용
+- 일 한도 알림은 도달한 시장 단위로 `ai_budget_daily_limit` CRIT 전송
 - 월 예산 80% 도달: `AI_MONTHLY_BUDGET_USD * 0.8`
 - 월 예산 100% 도달: `AI_MONTHLY_BUDGET_USD`
 
