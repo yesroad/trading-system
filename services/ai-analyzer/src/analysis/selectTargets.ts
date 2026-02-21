@@ -6,13 +6,32 @@ import { createLogger } from '@workspace/shared-utils';
 
 const logger = createLogger('select-targets');
 
+export type TargetTechnicalContext = {
+  trendBias: 'BUY_BIAS' | 'SELL_BIAS' | 'NEUTRAL';
+  quality: 'HIGH' | 'MEDIUM' | 'LOW';
+  currentPrice: number;
+  rsi: number | null;
+  macdHistogram: number | null;
+  volumeRatio: number | null;
+  priceVsEma20Pct: number | null;
+  priceVsSma20Pct: number | null;
+  atrPct: number | null;
+  calculatedAt: string;
+  reasons: string[];
+  summary: string;
+};
+
 export type SelectedTarget = {
   symbol: string;
   score: number;
   reason: string;
+  technical?: TargetTechnicalContext;
 };
 
-export async function selectTargets(maxTargets: number, snapshot: Snapshot): Promise<SelectedTarget[]> {
+export async function selectTargets(
+  maxTargets: number,
+  snapshot: Snapshot,
+): Promise<SelectedTarget[]> {
   const targets: SelectedTarget[] = [];
 
   // 1. 성공한 수집 runs에서 symbols 추출

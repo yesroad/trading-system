@@ -75,7 +75,21 @@ ai-analyzer는 **계속 떠있는 데몬이 아님**.
   - 재시도 토글: `AI_HOLD_RETRY_ENABLED` (기본: `true`)
 - 재시도 프롬프트는 방향성(BUY/SELL) 우선 판단을 강제하고, HOLD는 예외적으로만 허용한다.
 
-## 5. 운영 팁
+## 5. 타겟 기술지표 컨텍스트(2026-02 추가)
+
+- LLM 호출 직전에 타겟별 기술지표를 수집해 `targets_json[*].technical`로 함께 전달한다.
+- 포함 지표(요약):
+  - `trendBias` (`BUY_BIAS` | `SELL_BIAS` | `NEUTRAL`)
+  - `quality` (`HIGH` | `MEDIUM` | `LOW`)
+  - `rsi`, `macdHistogram`, `volumeRatio`
+  - `priceVsEma20Pct`, `priceVsSma20Pct`, `atrPct`
+- 목적:
+  - 프롬프트가 추상 문장만 보고 HOLD를 선택하는 상황을 줄이고,
+  - 종목별 수치 근거 기반으로 BUY/SELL 방향 결정을 유도한다.
+- 관련 env:
+  - `AI_TECHNICAL_ENRICH_LIMIT` (기본 12): 실행당 기술지표 보강 대상 종목 수
+
+## 6. 운영 팁
 
 - 5시간 이상 신호가 0건이면 아래 순서로 점검한다.
   1. `ai_analysis_results`의 decision 분포(HOLD 편향 여부)
