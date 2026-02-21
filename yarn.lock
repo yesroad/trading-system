@@ -3529,6 +3529,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@supabase/ssr@npm:^0.7.0":
+  version: 0.7.0
+  resolution: "@supabase/ssr@npm:0.7.0"
+  dependencies:
+    cookie: "npm:^1.0.2"
+  peerDependencies:
+    "@supabase/supabase-js": ^2.43.4
+  checksum: 10c0/b047fec768faa42121c00fff77ff2bc3457e85a2487da5a341ba1df2c09b280530524540ea0799277886da975e6cea742984b5f82ec540ba8a5257da1d0432e7
+  languageName: node
+  linkType: hard
+
 "@supabase/storage-js@npm:2.90.1":
   version: 2.90.1
   resolution: "@supabase/storage-js@npm:2.90.1"
@@ -4799,12 +4810,14 @@ __metadata:
   resolution: "ai-analyzer@workspace:services/ai-analyzer"
   dependencies:
     "@supabase/supabase-js": "npm:^2.90.1"
+    "@types/big.js": "npm:^6.2.2"
     "@types/luxon": "npm:^3.7.1"
     "@workspace/db-client": "npm:*"
     "@workspace/eslint-config": "npm:*"
     "@workspace/shared-utils": "npm:*"
     "@workspace/stock-screener": "npm:*"
     "@workspace/trading-utils": "npm:*"
+    big.js: "npm:^7.0.1"
     dotenv: "npm:^17.2.3"
     eslint: "npm:^9.39.2"
     openai: "npm:^6.16.0"
@@ -11929,6 +11942,7 @@ __metadata:
     "@radix-ui/react-slot": "npm:^1.2.4"
     "@radix-ui/react-tabs": "npm:^1.1.13"
     "@radix-ui/react-tooltip": "npm:^1.2.8"
+    "@supabase/ssr": "npm:^0.7.0"
     "@supabase/supabase-js": "npm:^2.90.1"
     "@tailwindcss/postcss": "npm:^4"
     "@tanstack/eslint-plugin-query": "npm:^5.91.3"

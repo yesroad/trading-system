@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getUnconsumedSignals } from '@workspace/db-client';
 import { nowIso } from '@workspace/shared-utils';
+import { requireApiUser } from '@/lib/auth/require-api-user';
 import type { TradingSignalsResponse } from '@/types/api/trading-signals';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
   try {
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
+
     const url = new URL(req.url);
     const marketParam = url.searchParams.get('market');
     const minConfidenceParam = url.searchParams.get('minConfidence');
@@ -17,17 +21,14 @@ export async function GET(req: Request) {
 
     // Validate market
     if (market && !['CRYPTO', 'KRX', 'US'].includes(market)) {
-      return NextResponse.json(
-        { error: { message: 'Invalid market parameter' } },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: { message: 'Invalid market parameter' } }, { status: 400 });
     }
 
     // Validate minConfidence
     if (isNaN(minConfidence) || minConfidence < 0 || minConfidence > 1) {
       return NextResponse.json(
         { error: { message: 'Invalid minConfidence parameter (must be 0-1)' } },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -42,9 +43,7 @@ export async function GET(req: Request) {
 
     // 평균 신뢰도 계산
     const avgConfidence =
-      limited.length > 0
-        ? limited.reduce((sum, s) => sum + s.confidence, 0) / limited.length
-        : 0;
+      limited.length > 0 ? limited.reduce((sum, s) => sum + s.confidence, 0) / limited.length : 0;
 
     const response: TradingSignalsResponse = {
       signals: limited,
@@ -64,7 +63,7 @@ export async function GET(req: Request) {
           message: error instanceof Error ? error.message : 'Unknown error',
         },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

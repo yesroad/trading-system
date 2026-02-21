@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
+import { DateTime } from 'luxon';
 import { getRecentRiskEvents, countCriticalEventsRecent } from '@workspace/db-client';
 import { nowIso } from '@workspace/shared-utils';
+import { requireApiUser } from '@/lib/auth/require-api-user';
 import type { RiskEventsResponse } from '@/types/api/risk-events';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
   try {
+    const auth = await requireApiUser();
+    if (auth instanceof NextResponse) return auth;
+
     const url = new URL(req.url);
     const severityParam = url.searchParams.get('severity');
     const hoursParam = url.searchParams.get('hours');
@@ -19,7 +24,7 @@ export async function GET(req: Request) {
     if (severity && !['low', 'medium', 'high', 'critical'].includes(severity)) {
       return NextResponse.json(
         { error: { message: 'Invalid severity parameter' } },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -27,7 +32,7 @@ export async function GET(req: Request) {
     if (isNaN(hours) || hours < 1 || hours > 168) {
       return NextResponse.json(
         { error: { message: 'Invalid hours parameter (must be 1-168)' } },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -41,9 +46,11 @@ export async function GET(req: Request) {
     ]);
 
     // 시간 범위 필터링
-    const cutoffMs = Date.now() - hours * 3600000;
+    const cutoffMs = DateTime.utc().minus({ hours }).toMillis();
     const filtered = events.filter((e) => {
-      const createdMs = new Date(e.created_at).getTime();
+      const createdAt = DateTime.fromISO(e.created_at, { setZone: true });
+      if (!createdAt.isValid) return false;
+      const createdMs = createdAt.toUTC().toMillis();
       return createdMs >= cutoffMs;
     });
 
@@ -69,7 +76,7 @@ export async function GET(req: Request) {
           message: error instanceof Error ? error.message : 'Unknown error',
         },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

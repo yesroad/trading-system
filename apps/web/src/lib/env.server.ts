@@ -1,4 +1,4 @@
-import { requireEnv } from '@workspace/shared-utils';
+import { env, requireEnv } from '@workspace/shared-utils';
 
 export function envServer(name: string): string {
   const normalized = requireEnv(name).trim();
@@ -8,8 +8,16 @@ export function envServer(name: string): string {
   return normalized;
 }
 
+export function envOptionalServer(name: string): string | undefined {
+  const raw = env(name);
+  if (raw === undefined) return undefined;
+
+  const normalized = raw.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 export function envBooleanServer(name: string, defaultValue: boolean): boolean {
-  const raw = process.env[name];
+  const raw = env(name);
   if (raw === undefined) return defaultValue;
 
   const normalized = raw.trim().toLowerCase();
