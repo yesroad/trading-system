@@ -1,6 +1,6 @@
 import Big from 'big.js';
 import { DateTime } from 'luxon';
-import { createLogger, type Nullable } from '@workspace/shared-utils';
+import { createBackoff, createLogger, sleep, type Nullable } from '@workspace/shared-utils';
 import { getMonthlyAICost } from '@workspace/db-client';
 import { env } from '../config/env.js';
 import {
@@ -257,6 +257,34 @@ async function safeQuery<T>(label: string, run: () => Promise<T>, fallback: T): 
   }
 }
 
+async function getMonthlyAICostWithRetry(params: { year: number; month: number }): Promise<number> {
+  const maxAttempts = 3;
+  const backoff = createBackoff({ baseMs: 500, maxMs: 4000 });
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await getMonthlyAICost(params);
+    } catch (error: unknown) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const isFetchFailure = message.includes('fetch failed');
+      if (!isFetchFailure || attempt >= maxAttempts) break;
+
+      const delayMs = backoff.nextDelayMs();
+      logger.warn('daily-report ai_monthly_cost 재시도', {
+        attempt,
+        maxAttempts,
+        delayMs,
+        message,
+      });
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
 export async function buildDailyReportText(): Promise<string> {
   const window = buildPreviousKstDayWindow();
   const reportDate = DateTime.fromFormat(window.dayIsoDate, 'yyyy-MM-dd', {
@@ -296,11 +324,7 @@ export async function buildDailyReportText(): Promise<string> {
     safeQuery('ace_outcomes', () => fetchAceOutcomesInRange(window), [] as AceOutcomeRow[]),
     safeQuery(
       'ai_monthly_cost',
-      () =>
-        getMonthlyAICost({
-          year: reportDate.year,
-          month: reportDate.month,
-        }),
+      () => getMonthlyAICostWithRetry({ year: reportDate.year, month: reportDate.month }),
       0,
     ),
   ]);
