@@ -1,5 +1,5 @@
 import { getSupabase, getSignalFailureStats } from '@workspace/db-client';
-import { nowIso } from '@workspace/shared-utils';
+import { nowIso, toIsoString } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 import type { AlertEvent } from '../types/status.js';
 
@@ -14,8 +14,7 @@ export async function checkSignalFailures(): Promise<AlertEvent[]> {
   const supabase = getSupabase();
 
   // 최근 24시간 AI 분석 결과 수 조회
-  const twentyFourHoursAgo = DateTime.now().minus({ hours: 24 }).toUTC().toISO();
-  if (!twentyFourHoursAgo) return events;
+  const twentyFourHoursAgo = toIsoString(DateTime.now().minus({ hours: 24 }).toUTC());
 
   const { data: aiResults, error: aiError } = await supabase
     .from('ai_analysis_results')

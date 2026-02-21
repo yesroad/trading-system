@@ -1,5 +1,5 @@
 import { getDailyCallCount, getMonthlyAICost, getSupabase } from '@workspace/db-client';
-import { nowIso } from '@workspace/shared-utils';
+import { nowIso, toIsoString } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 import { env } from '../config/env.js';
 import type { AlertEvent } from '../types/status.js';
@@ -9,8 +9,7 @@ const MONTHLY_WARN_RATIO = 0.8;
 
 async function estimateCurrentHourCallCount(): Promise<number> {
   const supabase = getSupabase();
-  const hourStartIso = DateTime.now().toUTC().startOf('hour').toISO();
-  if (!hourStartIso) return 0;
+  const hourStartIso = toIsoString(DateTime.now().toUTC().startOf('hour'));
 
   const { data, error } = await supabase
     .from('ai_analysis_results')

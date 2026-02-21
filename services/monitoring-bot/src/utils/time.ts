@@ -1,9 +1,11 @@
+import { normalizeUtcIso } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 
 function toDateTime(value: string | DateTime): DateTime {
   if (typeof value !== 'string') return value;
 
-  const parsed = DateTime.fromISO(value, { setZone: true });
+  const normalized = normalizeUtcIso(value);
+  const parsed = DateTime.fromISO(normalized, { setZone: true });
   if (!parsed.isValid) throw new Error(`시간 파싱 실패: ${value}`);
   return parsed;
 }

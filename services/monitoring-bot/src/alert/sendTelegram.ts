@@ -1,4 +1,5 @@
 import { request } from 'node:https';
+import { sleep } from '@workspace/shared-utils';
 import { env } from '../config/env.js';
 
 type TelegramResponse = {
@@ -18,10 +19,6 @@ function formatUnknownError(error: unknown): string {
     return error.message;
   }
   return String(error);
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
 }
 
 async function postTelegram(text: string): Promise<void> {

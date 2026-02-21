@@ -1,3 +1,4 @@
+import { createLogger } from '@workspace/shared-utils';
 import { env } from '../config/env.js';
 import { sendTelegram } from '../alert/sendTelegram.js';
 import { marketLabel, toKstDisplay } from '../utils/time.js';
@@ -9,6 +10,8 @@ import {
   type NotificationEventRow,
   type SymbolCatalogRow,
 } from '../db/queries.js';
+
+const logger = createLogger('monitoring-bot:notification-events');
 
 function normalizeLevel(level: string): 'INFO' | 'WARNING' | 'ERROR' {
   if (level === 'ERROR') return 'ERROR';
@@ -343,9 +346,7 @@ async function buildSymbolCatalog(
     const catalogRows = await fetchSymbolCatalogRows(pairs);
     return buildCatalogMap(catalogRows);
   } catch (error: unknown) {
-    console.error(
-      `[TRADING] symbol_catalog 조회 실패(알림 포맷 fallback): ${error instanceof Error ? error.message : String(error)}`,
-    );
+    logger.error('symbol_catalog 조회 실패(알림 포맷 fallback)', error);
     return new Map<string, SymbolCatalogRow>();
   }
 }
@@ -393,9 +394,7 @@ export async function checkNotificationEvents(): Promise<{
         await markNotificationEventFailed(row.id, msg);
         failed += 1;
       } catch (markError: unknown) {
-        console.error(
-          `[TRADING] notification_events FAILED 업데이트 실패(id=${row.id}): ${markError instanceof Error ? markError.message : String(markError)}`,
-        );
+        logger.error(`notification_events FAILED 업데이트 실패(id=${row.id})`, markError);
         skipped += 1;
       }
     }

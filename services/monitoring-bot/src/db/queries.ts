@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js';
-import { nowIso } from '@workspace/shared-utils';
+import { nowIso, toIsoString } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 
 export async function fetchRecentIngestionRuns(limit: number) {
@@ -320,11 +320,8 @@ export function buildPreviousKstDayWindow(now: DateTime = DateTime.now()): {
   const dayStart = kst.minus({ days: 1 }).startOf('day');
   const dayEnd = dayStart.endOf('day');
 
-  const fromIso = dayStart.toUTC().toISO();
-  const toIso = dayEnd.toUTC().toISO();
-  if (!fromIso || !toIso) {
-    throw new Error('전일 KST 범위 계산 실패');
-  }
+  const fromIso = toIsoString(dayStart.toUTC());
+  const toIso = toIsoString(dayEnd.toUTC());
 
   return {
     fromIso,
