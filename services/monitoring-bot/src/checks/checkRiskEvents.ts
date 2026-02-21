@@ -1,5 +1,5 @@
 import { getSupabase } from '@workspace/db-client';
-import { nowIso } from '@workspace/shared-utils';
+import { nowIso, toIsoString } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 import { toKstIso } from '../utils/time.js';
 import type { AlertEvent } from '../types/status.js';
@@ -14,8 +14,7 @@ export async function checkRiskEvents(): Promise<AlertEvent[]> {
   const events: AlertEvent[] = [];
   const supabase = getSupabase();
 
-  const tenMinutesAgo = DateTime.now().minus({ minutes: 10 }).toUTC().toISO();
-  if (!tenMinutesAgo) return events;
+  const tenMinutesAgo = toIsoString(DateTime.now().minus({ minutes: 10 }).toUTC());
 
   // 최근 10분 내 리스크 이벤트 조회
   const { data: recentEvents, error } = await supabase

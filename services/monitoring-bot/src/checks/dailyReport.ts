@@ -1,5 +1,6 @@
 import Big from 'big.js';
 import { DateTime } from 'luxon';
+import { createLogger } from '@workspace/shared-utils';
 import { getMonthlyAICost } from '@workspace/db-client';
 import { env } from '../config/env.js';
 import {
@@ -18,6 +19,8 @@ import {
   type TradeRow,
 } from '../db/queries.js';
 import { formatSignedNumber, marketLabel, toKstDisplay } from '../utils/time.js';
+
+const logger = createLogger('monitoring-bot:daily-report');
 
 type Currency = 'KRW' | 'USD';
 type ParsedOutcome = {
@@ -249,9 +252,7 @@ async function safeQuery<T>(label: string, run: () => Promise<T>, fallback: T): 
   try {
     return await run();
   } catch (error: unknown) {
-    console.error(
-      `[TRADING] daily-report 조회 실패(${label}): ${error instanceof Error ? error.message : String(error)}`,
-    );
+    logger.error(`daily-report 조회 실패(${label})`, error);
     return fallback;
   }
 }
