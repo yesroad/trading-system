@@ -37,6 +37,7 @@ yarn lint
 - 최근 10분 내 `circuit_breaker` (`risk_events`)
 - 최근 1시간 거래 실패율 CRIT (`trades`)
 - 최근 24시간 신호 생성 실패율 CRIT (`signal_failures`)
+  - 단, 최근 24시간 `BUY/SELL` 표본이 20건 미만이면 오탐 방지를 위해 알림 미발송
 - 체크 함수 실행 실패/DB 조회 실패
 
 ## AI 예산 CRIT 알림
