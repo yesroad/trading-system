@@ -1,4 +1,4 @@
-import { createLogger } from '@workspace/shared-utils';
+import { createLogger, type Nullable } from '@workspace/shared-utils';
 import { env } from '../config/env.js';
 import { sendTelegram } from '../alert/sendTelegram.js';
 import { marketLabel, toKstDisplay } from '../utils/time.js';
@@ -46,12 +46,14 @@ function toEventType(row: NotificationEventRow): string {
     .toUpperCase();
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
+function asRecord(value: unknown): Nullable<Record<string, unknown>> {
   if (typeof value !== 'object' || value === null) return null;
   return value as Record<string, unknown>;
 }
 
-function normalizeLookupMarket(raw: string | null | undefined): 'KRX' | 'US' | 'CRYPTO' | 'GLOBAL' {
+function normalizeLookupMarket(
+  raw: Nullable<string> | undefined,
+): 'KRX' | 'US' | 'CRYPTO' | 'GLOBAL' {
   const market = String(raw ?? '')
     .trim()
     .toUpperCase();
@@ -100,7 +102,7 @@ function resolveEventPayload(row: NotificationEventRow): Record<string, unknown>
   return asRecord(row.payload) ?? {};
 }
 
-function pickSymbolFromPayload(payload: Record<string, unknown>): string | null {
+function pickSymbolFromPayload(payload: Record<string, unknown>): Nullable<string> {
   const candidates = [
     payload.symbol,
     payload.ticker,
@@ -135,8 +137,8 @@ function pickMarketFromPayload(
 function lookupCatalogRow(
   catalogMap: Map<string, SymbolCatalogRow>,
   market: 'KRX' | 'US' | 'CRYPTO' | 'GLOBAL',
-  symbol: string | null,
-): SymbolCatalogRow | null {
+  symbol: Nullable<string>,
+): Nullable<SymbolCatalogRow> {
   if (!symbol || market === 'GLOBAL') return null;
 
   const raw = symbol.trim();
@@ -159,7 +161,7 @@ function lookupCatalogRow(
 function resolveSymbolDisplay(
   catalogMap: Map<string, SymbolCatalogRow>,
   market: 'KRX' | 'US' | 'CRYPTO' | 'GLOBAL',
-  symbol: string | null,
+  symbol: Nullable<string>,
 ): string {
   if (!symbol) return '-';
 
@@ -175,7 +177,7 @@ function resolveSymbolDisplay(
   return `${name} (${symbol})`;
 }
 
-function formatCount(value: unknown): string | null {
+function formatCount(value: unknown): Nullable<string> {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value.toLocaleString('ko-KR', {
       maximumFractionDigits: value % 1 === 0 ? 0 : 8,
@@ -197,7 +199,7 @@ function formatCount(value: unknown): string | null {
   return null;
 }
 
-function formatPrice(value: unknown): string | null {
+function formatPrice(value: unknown): Nullable<string> {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value.toLocaleString('ko-KR');
   }
@@ -215,7 +217,7 @@ function formatPrice(value: unknown): string | null {
 function normalizeTradeSide(
   eventType: string,
   payload: Record<string, unknown>,
-): 'BUY' | 'SELL' | null {
+): Nullable<'BUY' | 'SELL'> {
   if (eventType === 'BUY_FILLED') return 'BUY';
   if (eventType === 'SELL_FILLED') return 'SELL';
 

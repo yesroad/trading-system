@@ -1,4 +1,4 @@
-import { normalizeUtcIso } from '@workspace/shared-utils';
+import { normalizeUtcIso, type Nullable } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 
 function toDateTime(value: string | DateTime): DateTime {
@@ -26,7 +26,7 @@ export function toKstDate(value: string | DateTime): string {
   return toDateTime(value).setZone('Asia/Seoul').toFormat('yy.MM.dd');
 }
 
-export function marketLabel(raw: string | null | undefined): string {
+export function marketLabel(raw: Nullable<string> | undefined): string {
   const value = String(raw ?? '')
     .trim()
     .toUpperCase();

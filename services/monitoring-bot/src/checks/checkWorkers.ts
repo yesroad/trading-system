@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import type { Nullable } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 import { diffMinutes, toKstIso } from '../utils/time.js';
 import type { AlertEvent, AlertMarket } from '../types/status.js';
@@ -8,10 +9,10 @@ import { nowIso } from '@workspace/shared-utils';
 type WorkerRow = {
   service: string;
   state: string;
-  run_mode: string | null;
-  last_event_at: string | null;
-  last_success_at: string | null;
-  message: string | null;
+  run_mode: Nullable<string>;
+  last_event_at: Nullable<string>;
+  last_success_at: Nullable<string>;
+  message: Nullable<string>;
 };
 
 const MARKET_WORKERS: Array<{
@@ -24,7 +25,7 @@ const MARKET_WORKERS: Array<{
   { market: 'CRYPTO', enabled: env.ENABLE_CRYPTO, service: 'upbit-collector' },
 ];
 
-function levelOfWorkerLag(mins: number): 'WARN' | 'CRIT' | null {
+function levelOfWorkerLag(mins: number): Nullable<'WARN' | 'CRIT'> {
   if (mins >= env.WORKER_LAG_CRIT_MIN) return 'CRIT';
   if (mins >= env.WORKER_LAG_WARN_MIN) return 'WARN';
   return null;
@@ -35,7 +36,7 @@ function isSkippedState(state: string): boolean {
 }
 
 function normalizeRunMode(
-  raw: string | null | undefined,
+  raw: Nullable<string> | undefined,
 ): 'MARKET' | 'PREMARKET' | 'AFTERMARKET' | 'EXTENDED' | 'NO_CHECK' {
   const normalized = String(raw ?? '')
     .trim()
@@ -48,7 +49,7 @@ function normalizeRunMode(
   return 'MARKET';
 }
 
-function isOutsideWindow(market: AlertMarket, runModeRaw: string | null | undefined): boolean {
+function isOutsideWindow(market: AlertMarket, runModeRaw: Nullable<string> | undefined): boolean {
   const runMode = normalizeRunMode(runModeRaw);
   if (runMode === 'NO_CHECK') return false;
   if (market === 'CRYPTO') return false;

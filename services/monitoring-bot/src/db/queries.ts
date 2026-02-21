@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js';
-import { nowIso, toIsoString } from '@workspace/shared-utils';
+import { nowIso, toIsoString, type Nullable } from '@workspace/shared-utils';
 import { DateTime } from 'luxon';
 
 export async function fetchRecentIngestionRuns(limit: number) {
@@ -18,7 +18,7 @@ export async function fetchRecentIngestionRuns(limit: number) {
 export async function fetchLatestAiResultsByMarket(markets: Array<'KR' | 'US' | 'CRYPTO'>) {
   // 시장별 최신 created_at 하나만 가져오기 위해 “group by + max” 대신
   // 간단히 RPC나 view 없이도 동작하는 방식으로: markets를 돌면서 1개씩 가져옴 (시장 3개면 충분히 가벼움)
-  const out: Array<{ market: string; latest_created_at: string | null }> = [];
+  const out: Array<{ market: string; latest_created_at: Nullable<string> }> = [];
 
   for (const m of markets) {
     const { data, error } = await supabase
@@ -51,7 +51,7 @@ export async function fetchLatestWorkers() {
 }
 
 export async function fetchLatestIngestionSuccessByJobs(jobs: string[]) {
-  const out: Array<{ job: string; latest_success_at: string | null }> = [];
+  const out: Array<{ job: string; latest_success_at: Nullable<string> }> = [];
 
   for (const job of jobs) {
     const { data, error } = await supabase
@@ -77,8 +77,8 @@ export async function fetchLatestIngestionSuccessByJobs(jobs: string[]) {
 export type SymbolCatalogRow = {
   market: string;
   symbol: string;
-  name_ko: string | null;
-  name_en: string | null;
+  name_ko: Nullable<string>;
+  name_en: Nullable<string>;
 };
 
 export async function fetchSymbolCatalogRows(
@@ -130,12 +130,12 @@ export type TradeRow = {
   market: string;
   side: string;
   status: string;
-  qty: string | number | null;
-  price: string | number | null;
-  executed_at: string | null;
+  qty: Nullable<string | number>;
+  price: Nullable<string | number>;
+  executed_at: Nullable<string>;
   created_at: string;
-  fee_amount?: string | number | null;
-  tax_amount?: string | number | null;
+  fee_amount?: Nullable<string | number>;
+  tax_amount?: Nullable<string | number>;
   metadata?: unknown;
 };
 
@@ -261,7 +261,7 @@ export async function fetchAiDecisionCountsInRange(params: {
   };
 }
 
-export async function fetchSystemGuardTradingEnabled(): Promise<boolean | null> {
+export async function fetchSystemGuardTradingEnabled(): Promise<Nullable<boolean>> {
   const { data, error } = await supabase
     .from('system_guard')
     .select('trading_enabled')
@@ -276,14 +276,14 @@ export async function fetchSystemGuardTradingEnabled(): Promise<boolean | null> 
 export type WorkerStatusSummary = {
   service: string;
   state: string;
-  run_mode: string | null;
-  last_event_at: string | null;
-  last_success_at: string | null;
+  run_mode: Nullable<string>;
+  last_event_at: Nullable<string>;
+  last_success_at: Nullable<string>;
 };
 
 export async function fetchWorkerStatusByService(
   service: string,
-): Promise<WorkerStatusSummary | null> {
+): Promise<Nullable<WorkerStatusSummary>> {
   const { data, error } = await supabase
     .from('worker_status')
     .select('service,state,run_mode,last_event_at,last_success_at')
@@ -291,7 +291,7 @@ export async function fetchWorkerStatusByService(
     .maybeSingle();
 
   if (error) throw new Error(`worker_status(${service}) 조회 실패: ${error.message}`);
-  return (data ?? null) as WorkerStatusSummary | null;
+  return (data ?? null) as Nullable<WorkerStatusSummary>;
 }
 
 export async function fetchCircuitBreakerCountInRange(params: {
@@ -337,7 +337,7 @@ export type NotificationEventRow = {
   source_service: string;
   event_type: string;
   level: 'INFO' | 'WARNING' | 'ERROR' | string;
-  market: 'KR' | 'US' | 'CRYPTO' | 'GLOBAL' | string | null;
+  market: Nullable<string>;
   title: string;
   message: string;
   payload: unknown;

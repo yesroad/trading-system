@@ -1,6 +1,6 @@
 import Big from 'big.js';
 import { DateTime } from 'luxon';
-import { createLogger } from '@workspace/shared-utils';
+import { createLogger, type Nullable } from '@workspace/shared-utils';
 import { getMonthlyAICost } from '@workspace/db-client';
 import { env } from '../config/env.js';
 import {
@@ -30,12 +30,12 @@ type ParsedOutcome = {
   realizedPnL: Big;
 };
 
-function asRecord(value: unknown): Record<string, unknown> | null {
+function asRecord(value: unknown): Nullable<Record<string, unknown>> {
   if (typeof value !== 'object' || value === null) return null;
   return value as Record<string, unknown>;
 }
 
-function toNumber(value: unknown): number | null {
+function toNumber(value: unknown): Nullable<number> {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
 
   if (typeof value === 'string') {
@@ -53,7 +53,7 @@ function toBig(value: unknown): Big {
 }
 
 function normalizeMarketForLookup(
-  raw: string | null | undefined,
+  raw: Nullable<string> | undefined,
 ): 'KRX' | 'US' | 'CRYPTO' | 'GLOBAL' {
   const value = String(raw ?? '')
     .trim()
@@ -103,7 +103,7 @@ function lookupCatalogRow(
   map: Map<string, SymbolCatalogRow>,
   market: 'KRX' | 'US' | 'CRYPTO' | 'GLOBAL',
   symbol: string,
-): SymbolCatalogRow | null {
+): Nullable<SymbolCatalogRow> {
   if (market === 'GLOBAL') return null;
   const normalized = symbol.trim();
   if (!normalized) return null;
@@ -172,7 +172,7 @@ function calcTradeCashflow(trade: TradeRow): Big {
   return new Big(0);
 }
 
-function parseAceOutcomeRow(row: AceOutcomeRow): ParsedOutcome | null {
+function parseAceOutcomeRow(row: AceOutcomeRow): Nullable<ParsedOutcome> {
   const outcome = asRecord(row.outcome);
   if (!outcome) return null;
 
@@ -202,7 +202,7 @@ function hasKeywordInFailures(rows: SignalFailureReasonRow[], keywords: string[]
 }
 
 function buildNoTradeReasons(params: {
-  guardEnabled: boolean | null;
+  guardEnabled: Nullable<boolean>;
   circuitBreakerCount: number;
   aiDailyCalls: number;
   aiBuySellDecisions: number;
@@ -286,7 +286,7 @@ export async function buildDailyReportText(): Promise<string> {
       buySellCount: 0,
       totalCount: 0,
     }),
-    safeQuery('system_guard', () => fetchSystemGuardTradingEnabled(), null as boolean | null),
+    safeQuery('system_guard', () => fetchSystemGuardTradingEnabled(), null as Nullable<boolean>),
     safeQuery('circuit_breaker', () => fetchCircuitBreakerCountInRange(window), 0),
     safeQuery(
       'signal_failures',
