@@ -14,6 +14,23 @@ import { validateSignal } from './validator.js';
 
 const logger = createLogger('signal-generator');
 
+function resolveAnalysisPrice(priceAtAnalysis: string, currentPrice: Big): Big {
+  try {
+    const parsed = new Big(priceAtAnalysis);
+    if (parsed.gt(0)) {
+      return parsed;
+    }
+  } catch {
+    // ignore parse error and fallback to currentPrice
+  }
+
+  logger.warn('분석 시점 가격이 유효하지 않아 현재가로 대체', {
+    priceAtAnalysis,
+    currentPrice: currentPrice.toString(),
+  });
+  return currentPrice;
+}
+
 /**
  * 신호 가격 계산
  *
@@ -31,7 +48,7 @@ function calculateSignalPrices(params: {
   const { direction, currentPrice, atr, priceAtAnalysis } = params;
 
   // 진입가: 현재가 사용 (또는 분석 시점 가격과 비교하여 더 유리한 가격 선택)
-  const analysisPrice = new Big(priceAtAnalysis);
+  const analysisPrice = resolveAnalysisPrice(priceAtAnalysis, currentPrice);
   let entry: Big;
 
   if (direction === 'BUY') {
@@ -76,7 +93,7 @@ function calculateSignalPrices(params: {
   logger.debug('신호 가격 계산 완료', {
     direction,
     currentPrice: currentPrice.toString(),
-    analysisPrice: priceAtAnalysis,
+    analysisPrice: analysisPrice.toString(),
     entry: entry.toString(),
     target: target.toString(),
     stopLoss: stopLoss.toString(),
