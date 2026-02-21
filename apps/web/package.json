@@ -19,6 +19,7 @@
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.90.1",
     "@tanstack/react-query": "^5.90.20",
+    "@workspace/db-client": "*",
     "@workspace/shared-utils": "*",
     "add": "^2.0.6",
     "axios": "^1.13.3",

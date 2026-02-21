@@ -11955,6 +11955,7 @@ __metadata:
     "@types/react": "npm:^19"
     "@types/react-dom": "npm:^19"
     "@types/recharts": "npm:^2.0.1"
+    "@workspace/db-client": "npm:*"
     "@workspace/eslint-config": "npm:*"
     "@workspace/shared-utils": "npm:*"
     add: "npm:^2.0.6"
